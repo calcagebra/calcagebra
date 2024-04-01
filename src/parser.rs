@@ -62,24 +62,9 @@ impl Parser {
                     let expr = self.pratt_parser(tokens, 0).0;
                     ast.push(Ast::FunctionDeclaration(name.to_string(), args, expr));
                 } else {
-                    let mut args = vec![];
+                    let (args, _) = self.pratt_parser(tokens, 0);
 
-                    loop {
-                        let t = tokens.peek();
-
-                        if t.is_none() || **t.unwrap() == Token::Eq {
-                            break;
-                        }
-
-                        let t = tokens.next().unwrap();
-
-                        args.push(match t {
-                            Token::Identifier(i) => Expression::Identifier(i.to_string()),
-                            Token::Number(n) => Expression::Number(*n),
-                            _ => unreachable!(),
-                        })
-                    }
-                    ast.push(Ast::Print(args));
+                    ast.push(Ast::FunctionCall(name.to_string(), vec![args]));
                 }
             }
         }
@@ -97,7 +82,65 @@ impl Parser {
 
         match token {
             Token::Identifier(i) => {
-                expr = Some(Expression::Identifier(i.to_string()));
+                if tokens.peek().is_some()
+                    && self.infix_binding_power(tokens.peek().unwrap()) == 0
+                    && **tokens.peek().unwrap() != Token::RParen
+                {
+                    let mut collected_tokens = vec![];
+                    let mut depth = 1;
+
+                    loop {
+                        let t = tokens.next();
+
+                        if t.is_none() {
+                            break;
+                        }
+
+                        let t = t.unwrap();
+
+                        if t == &Token::LParen {
+                            depth += 1;
+                        } else if t == &Token::RParen {
+                            depth -= 1;
+                        }
+
+                        collected_tokens.push(t);
+
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+                    let mut params = vec![];
+                    let mut expression = vec![];
+
+                    for token in collected_tokens {
+                        if *token == Token::RParen {
+                            if !expression.is_empty() {
+                                let lex = expression.iter().peekable();
+                                let (data, _) = self.pratt_parser(lex, 0);
+
+                                params.push(data);
+                                expression.clear();
+                            }
+                            break;
+                        }
+
+                        if *token == Token::Comma {
+                            let lex = expression.iter().peekable();
+                            let (data, _) = self.pratt_parser(lex, 0);
+
+                            params.push(data);
+
+                            expression.clear();
+                            continue;
+                        }
+
+                        expression.push(token.to_owned());
+                    }
+                    expr = Some(Expression::FunctionCall(i.to_string(), params));
+                } else {
+                    expr = Some(Expression::Identifier(i.to_string()));
+                }
             }
             Token::LParen => {
                 let exp;
@@ -152,8 +195,7 @@ impl Parser {
             Token::Mul => 3,
             Token::Div => 4,
             Token::Pow => 5,
-            Token::Neq | Token::Geq | Token::Leq | Token::GT | Token::LT => 6,
-            _ => panic!("unexpected operator {op:?}"),
+            _ => 0,
         }
     }
 }

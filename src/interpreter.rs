@@ -6,44 +6,65 @@ use crate::{
 };
 
 pub struct Interpreter {
-    ast: Vec<Ast>,
     global_vars: HashMap<String, i32>,
     scope_vars: HashMap<String, i32>,
     functions: HashMap<String, (Vec<String>, Expression)>,
+    std: HashMap<String, fn(Vec<i32>) -> i32>,
 }
 
 impl Interpreter {
-    pub fn new(ast: Vec<Ast>) -> Self {
+    pub fn new() -> Self {
         Self {
-            ast,
             global_vars: HashMap::new(),
             scope_vars: HashMap::new(),
             functions: HashMap::new(),
+            std: HashMap::new(),
         }
     }
 
-    pub fn run(&mut self) {
-        let ast = &self.ast;
+    pub fn init_std(&mut self) {
+        self.std.insert("print".to_string(), |x| {
+            x.iter().for_each(|a| println!("{a}"));
+            0
+        });
+    }
 
+    pub fn run(&mut self, ast: Vec<Ast>) {
+        self.init_std();
         for node in ast {
             match node {
                 Ast::Assignment(name, expr) => {
-                    self.global_vars
-                        .insert(name.to_string(), self.parse_expression(expr));
+                    let r = self.parse_expression(&expr);
+                    self.global_vars.insert(name.to_string(), r);
                 }
-                Ast::Print(exprs) => {
-                    for expr in exprs {
-											println!("{}", self.parse_expression(expr));
-										}
+                Ast::FunctionCall(i, exprs) => {
+                    if self.std.get(&i).is_some() {
+                        let f = self.std.get(&i).unwrap();
+                        f(exprs.iter().map(|x| self.parse_expression(x)).collect());
+                    } else {
+                        let (args, code) = self.functions.get(&i).unwrap().clone();
+
+                        let scope_vars = self.scope_vars.clone();
+
+                        for (i, arg) in args.iter().enumerate() {
+                            let r = self.parse_expression(&exprs[i]);
+                            self.scope_vars.insert(arg.to_string(), r);
+                        }
+
+                        self.parse_expression(&code);
+
+                        self.scope_vars = scope_vars;
+                    }
                 }
                 Ast::FunctionDeclaration(name, args, code) => {
-									self.functions.insert(name.to_string(), (args.to_vec(), code.clone()));
-								},
+                    self.functions
+                        .insert(name.to_string(), (args.to_vec(), code.clone()));
+                }
             }
         }
     }
 
-    pub fn parse_expression(&self, expr: &Expression) -> i32 {
+    pub fn parse_expression(&mut self, expr: &Expression) -> i32 {
         match expr {
             Expression::Binary(lhs, op, rhs) => match op {
                 Token::Add => self.parse_expression(lhs) + self.parse_expression(rhs),
@@ -65,6 +86,26 @@ impl Interpreter {
                 }
             }
             Expression::Number(n) => *n,
+            Expression::FunctionCall(i, exprs) => {
+                if self.std.get(i).is_some() {
+                    let f = self.std.get(i).unwrap();
+                    return f(exprs.iter().map(|x| self.parse_expression(x)).collect());
+                }
+                let (args, code) = self.functions.get(i).unwrap().clone();
+
+                let scope_vars = self.scope_vars.clone();
+
+                for (i, arg) in args.iter().enumerate() {
+                    let r = self.parse_expression(&exprs[i]);
+                    self.scope_vars.insert(arg.to_string(), r);
+                }
+
+                let r = self.parse_expression(&code);
+
+                self.scope_vars = scope_vars;
+
+                r
+            }
         }
     }
 }

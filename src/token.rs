@@ -4,18 +4,13 @@ pub enum Token {
     Identifier(String),
 
     Eq,
-    Neq,
-    GT,
-    LT,
-    Geq,
-    Leq,
-
     Add,
     Sub,
     Mul,
     Div,
     Pow,
 
+    Comma,
     LParen,
     RParen,
 }
@@ -24,18 +19,13 @@ impl Token {
     pub fn new(token: String) -> Self {
         match token.as_str() {
             "=" => Token::Eq,
-            "!=" => Token::Neq,
-            ">" => Token::GT,
-            "<" => Token::LT,
-            ">=" => Token::Geq,
-            "<=" => Token::Leq,
-
             "+" => Token::Add,
             "-" => Token::Sub,
             "*" => Token::Mul,
             "/" => Token::Div,
             "^" => Token::Pow,
 
+            "," => Token::Comma,
             "(" => Token::LParen,
             ")" => Token::RParen,
 

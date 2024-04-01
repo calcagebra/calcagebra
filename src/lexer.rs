@@ -54,17 +54,6 @@ impl<'a> Lexer<'a> {
                 token.clear();
             } else {
                 token.push(char);
-                loop {
-                    let char = line.peek();
-
-                    if char.is_none() || char.unwrap().is_ascii_alphanumeric() || char.unwrap().is_whitespace() {
-                        break;
-                    }
-
-                    let char = line.next();
-
-                    token.push(char.unwrap());
-                }
                 tokens.push(Token::new(token.clone()));
                 token.clear();
             }
