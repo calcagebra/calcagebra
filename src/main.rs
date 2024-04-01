@@ -27,10 +27,6 @@ struct Args {
     #[clap(short, long, value_parser)]
     time: bool,
 
-    /// The code which is to be executed
-    #[clap(short, long, value_parser)]
-    code: Option<String>,
-
     /// The path of file which is to be executed
     #[clap()]
     input: Option<String>,
