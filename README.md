@@ -31,7 +31,7 @@ Assignments follow the `name = value` structure, variables can be reassigned wit
 
 ### Function Declaration
 
-Functions are declared by the `name params = code` structure where `name` is an identifier, `params` are `identifiers` seperated by `,` and `code` is an `expr`.
+Functions are declared by the `name params = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
 
 ### Function Calls
 
