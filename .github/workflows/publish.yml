@@ -12,11 +12,11 @@ jobs:
       matrix:
         include:
           - target: x86_64-pc-windows-gnu
-            name: oxido.exe
+            name: calcagebra.exe
           - target: x86_64-unknown-linux-musl
-            name: oxido
+            name: calcagebra
           - target: x86_64-apple-darwin
-            name: oxido-darwin
+            name: calcagebra-darwin
     steps:
       - uses: actions/checkout@master
       - uses: actions-rs/toolchain@v1
