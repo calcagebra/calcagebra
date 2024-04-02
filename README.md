@@ -49,3 +49,13 @@ print(cube(5), 7)
 # 125
 # 7
 ```
+
+### Read
+
+The read function reads a number from stdin with the prompt `Enter number: `.
+```hs
+a = read
+print a
+# Enter number: 5
+# 5
+```

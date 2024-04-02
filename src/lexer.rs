@@ -12,8 +12,15 @@ impl<'a> Lexer<'a> {
     pub fn tokens(&self) -> Vec<Vec<Token>> {
         self.contents
             .lines()
-            .map(|line| self.tokenize_line(line))
-            .collect::<Vec<Vec<Token>>>()
+            .map(|line| {
+                if !line.starts_with("//") {
+                    self.tokenize_line(line)
+                } else {
+                    vec![]
+                }
+            })
+            .filter(|x| !x.is_empty())
+            .collect()
     }
 
     fn tokenize_line(&self, line: &str) -> Vec<Token> {

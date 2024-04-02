@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::{stdin, stdout, Write}};
 
 use crate::{
     ast::{Ast, Expression},
     token::Token,
 };
 
+#[derive(Debug)]
 pub struct Interpreter {
     global_vars: HashMap<String, i32>,
     scope_vars: HashMap<String, i32>,
@@ -26,6 +27,15 @@ impl Interpreter {
         self.std.insert("print".to_string(), |x| {
             x.iter().for_each(|a| println!("{a}"));
             0
+        });
+        self.std.insert("read".to_string(), |_| {
+            print!("Enter number: ");
+            stdout().flush().unwrap();
+            let mut buf = String::new();
+
+            stdin().read_line(&mut buf).unwrap();
+
+            buf.trim_end().parse::<i32>().unwrap()
         });
     }
 
@@ -81,6 +91,9 @@ impl Interpreter {
                     *self.global_vars.get(ident).unwrap()
                 } else if self.scope_vars.get(ident).is_some() {
                     *self.scope_vars.get(ident).unwrap()
+                } else if self.std.get(ident).is_some() {
+                    let f = self.std.get(ident).unwrap();
+                    f(vec![])
                 } else {
                     panic!("attempt to access value of not assigned identifier `{ident}`")
                 }
