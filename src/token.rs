@@ -30,7 +30,7 @@ impl Token {
             ")" => Token::RParen,
 
             _ => {
-                if token.chars().all(|a| a.is_ascii_digit()) {
+                if token.chars().all(|a| a.is_ascii_digit() || a=='.') {
                     Token::Number(token.parse::<f32>().unwrap())
                 } else {
                     Token::Identifier(token)

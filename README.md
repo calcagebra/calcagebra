@@ -19,8 +19,8 @@ Download the binary for your OS from the [releases page.](https://github.com/meg
 An expression can be one of the following types:
 
 * Binary Expression: `expr (+|-|*|/|^) expr`
-* Identifier: `[a-zA-Z]+`
-* Number: `[0-9]+`
+* Identifier: `[a-zA-Z.]+`
+* Number: `[0-9.]+`
 * FunctionCall: `identifier exprs`
 
 Note: Multiple exprs should always be seperated by a `,`. `()` should be used for nesting three or more function calls, `print cube square 5` -> `print cube(square 5)`
@@ -42,8 +42,7 @@ Functions are called by the `name args` structure, `name` is an identifier and `
 All standard library functions follow the function calling structure.
 
 ### Print
-
-The print function prints numbers to stdout, numbers are always followed by a newline.
+Prints numbers to stdout, numbers are always followed by a newline, returns 0.
 ```hs
 print(cube(5), 7) 
 # 125
@@ -51,11 +50,17 @@ print(cube(5), 7)
 ```
 
 ### Read
-
-The read function reads a number from stdin with the prompt `Enter number: `.
+Reads a number from stdin with the prompt `Enter number: ` and returns it.
 ```hs
 a = read
 print a
 # Enter number: 5
 # 5
+```
+
+### Log
+Returns natural log of number.
+```hs
+print log(2)
+# 0.6931472
 ```
