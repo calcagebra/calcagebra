@@ -1,4 +1,7 @@
-use std::{collections::HashMap, io::{stdin, stdout, Write}};
+use std::{
+    collections::HashMap,
+    io::{stdin, stdout, Write},
+};
 
 use crate::{
     ast::{Ast, Expression},
@@ -7,10 +10,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Interpreter {
-    global_vars: HashMap<String, i32>,
-    scope_vars: HashMap<String, i32>,
+    global_vars: HashMap<String, f32>,
+    scope_vars: HashMap<String, f32>,
     functions: HashMap<String, (Vec<String>, Expression)>,
-    std: HashMap<String, fn(Vec<i32>) -> i32>,
+    std: HashMap<String, fn(Vec<f32>) -> f32>,
 }
 
 impl Interpreter {
@@ -26,7 +29,7 @@ impl Interpreter {
     pub fn init_std(&mut self) {
         self.std.insert("print".to_string(), |x| {
             x.iter().for_each(|a| println!("{a}"));
-            0
+            0.0
         });
         self.std.insert("read".to_string(), |_| {
             print!("Enter number: ");
@@ -35,8 +38,10 @@ impl Interpreter {
 
             stdin().read_line(&mut buf).unwrap();
 
-            buf.trim_end().parse::<i32>().unwrap()
+            buf.trim_end().parse::<f32>().unwrap()
         });
+
+        self.std.insert("log".to_string(), |x| x[0].ln());
     }
 
     pub fn run(&mut self, ast: Vec<Ast>) {
@@ -74,7 +79,7 @@ impl Interpreter {
         }
     }
 
-    pub fn parse_expression(&mut self, expr: &Expression) -> i32 {
+    pub fn parse_expression(&mut self, expr: &Expression) -> f32 {
         match expr {
             Expression::Binary(lhs, op, rhs) => match op {
                 Token::Add => self.parse_expression(lhs) + self.parse_expression(rhs),
@@ -83,7 +88,7 @@ impl Interpreter {
                 Token::Div => self.parse_expression(lhs) / self.parse_expression(rhs),
                 Token::Pow => self
                     .parse_expression(lhs)
-                    .pow(self.parse_expression(rhs).try_into().unwrap()),
+                    .powf(self.parse_expression(rhs)),
                 _ => unimplemented!(),
             },
             Expression::Identifier(ident) => {

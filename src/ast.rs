@@ -13,6 +13,6 @@ pub enum Ast {
 pub enum Expression {
     Binary(Box<Expression>, Token, Box<Expression>),
     Identifier(String),
-    Number(i32),
+    Number(f32),
     FunctionCall(String, Vec<Expression>)
 }

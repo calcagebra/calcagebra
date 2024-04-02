@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-    Number(i32),
+    Number(f32),
     Identifier(String),
 
     Eq,
@@ -31,7 +31,7 @@ impl Token {
 
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit()) {
-                    Token::Number(token.parse::<i32>().unwrap())
+                    Token::Number(token.parse::<f32>().unwrap())
                 } else {
                     Token::Identifier(token)
                 }
