@@ -1,2 +1,5 @@
-a=5.3
-print a
+circle.diameter = read
+circle.radius = circle.diameter/2
+circle.parameter = 2 * pi * circle.radius
+
+print circle.parameter

@@ -1,6 +1,5 @@
 use std::{
-    collections::HashMap,
-    io::{stdin, stdout, Write},
+    collections::HashMap, f32::consts::{PI, E}, io::{stdin, stdout, Write}
 };
 
 use crate::{
@@ -44,8 +43,13 @@ impl Interpreter {
         self.std.insert("log".to_string(), |x| x[0].ln());
     }
 
+    pub fn init_globals(&mut self) {
+        [("pi", PI), ("e", E)].map(|(k,v)|self.global_vars.insert(k.to_string(), v));
+    }
+
     pub fn run(&mut self, ast: Vec<Ast>) {
         self.init_std();
+        self.init_globals();
         for node in ast {
             match node {
                 Ast::Assignment(name, expr) => {
