@@ -51,11 +51,10 @@ fn main() {
                         break;
                     }
 
-                    print!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
+                    println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
                     interpreter.run(Parser::new(Lexer::new(&line).tokens()).ast());
 
-                    println!("\n");
                 }
                 Err(ReadlineError::Interrupted) => {
                     println!("CTRL-C");
