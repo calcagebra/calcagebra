@@ -1,5 +1,7 @@
 use std::{
-    collections::HashMap, f32::consts::{PI, E}, io::{stdin, stdout, Write}
+    collections::HashMap,
+    f32::consts::{E, PI},
+    io::{stdin, stdout, Write},
 };
 
 use crate::{
@@ -41,10 +43,19 @@ impl Interpreter {
         });
 
         self.std.insert("log".to_string(), |x| x[0].ln());
+
+        self.std.insert("sin".to_string(), |x| x[0].sin());
+        self.std.insert("cos".to_string(), |x| x[0].cos());
+        self.std.insert("tan".to_string(), |x| x[0].tan());
+
+        self.std.insert("sqrt".to_string(), |x| x[0].sqrt());
+        self.std.insert("cbrt".to_string(), |x| x[0].cbrt());
+        self.std
+            .insert("nrt".to_string(), |x| x[0].powf(1.0 / x[1]));
     }
 
     pub fn init_globals(&mut self) {
-        [("pi", PI), ("e", E)].map(|(k,v)|self.global_vars.insert(k.to_string(), v));
+        [("pi", PI), ("e", E)].map(|(k, v)| self.global_vars.insert(k.to_string(), v));
     }
 
     pub fn run(&mut self, ast: Vec<Ast>) {
@@ -90,9 +101,7 @@ impl Interpreter {
                 Token::Sub => self.parse_expression(lhs) - self.parse_expression(rhs),
                 Token::Mul => self.parse_expression(lhs) * self.parse_expression(rhs),
                 Token::Div => self.parse_expression(lhs) / self.parse_expression(rhs),
-                Token::Pow => self
-                    .parse_expression(lhs)
-                    .powf(self.parse_expression(rhs)),
+                Token::Pow => self.parse_expression(lhs).powf(self.parse_expression(rhs)),
                 _ => unimplemented!(),
             },
             Expression::Identifier(ident) => {

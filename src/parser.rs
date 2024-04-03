@@ -62,9 +62,14 @@ impl Parser {
                     let expr = self.pratt_parser(tokens, 0).0;
                     ast.push(Ast::FunctionDeclaration(name.to_string(), args, expr));
                 } else {
-                    let (args, _) = self.pratt_parser(tokens, 0);
+                    let (args, _) = self.pratt_parser(line.iter().peekable(), 0);
 
-                    ast.push(Ast::FunctionCall(name.to_string(), vec![args]));
+                    match args {
+                        Expression::FunctionCall(name, args) => {
+                            ast.push(Ast::FunctionCall(name.to_string(), args))
+                        }
+                        _ => unreachable!(),
+                    }
                 }
             }
         }
@@ -91,6 +96,7 @@ impl Parser {
 
                     loop {
                         let t = tokens.next();
+                        let next_token = tokens.peek();
 
                         if t.is_none() {
                             break;
@@ -106,24 +112,36 @@ impl Parser {
 
                         collected_tokens.push(t);
 
-                        if depth == 0 {
+                        if depth == 0
+                            && !(next_token.is_some()
+                                && (**next_token.unwrap() == Token::Comma
+                                    || **next_token.unwrap() == Token::LParen))
+                        {
                             break;
                         }
                     }
 
                     let mut params = vec![];
                     let mut expression = vec![];
+                    depth = 0;
 
                     for token in collected_tokens {
                         if *token == Token::RParen {
-                            if !expression.is_empty() {
-                                let lex = expression.iter().peekable();
-                                let (data, _) = self.pratt_parser(lex, 0);
+                            if depth == 0 {
+                                if !expression.is_empty() && depth == 0 {
+                                    let lex = expression.iter().peekable();
+                                    let (data, _) = self.pratt_parser(lex, 0);
 
-                                params.push(data);
-                                expression.clear();
+                                    params.push(data);
+                                    expression.clear();
+                                }
+                                break;
                             }
-                            break;
+                            depth -= 1;
+                        }
+
+                        if *token == Token::LParen {
+                            depth += 1;
                         }
 
                         if *token == Token::Comma {
@@ -137,6 +155,13 @@ impl Parser {
                         }
 
                         expression.push(token.to_owned());
+                    }
+                    if !expression.is_empty() {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        params.push(data);
+                        expression.clear();
                     }
                     expr = Some(Expression::FunctionCall(i.to_string(), params));
                 } else {

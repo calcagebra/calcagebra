@@ -64,3 +64,25 @@ Returns natural log of number.
 print log(2)
 # 0.6931472
 ```
+
+### Trignometric functions
+
+Trignometric functions include `sin`, `cos` and `tan` which take a single number in radians as input and return the value.
+
+```hs
+print(sin(0), cos(0), tan(pi/4))
+# 0
+# 1
+# 1
+```
+
+### Roots of numbers
+
+The `sqrt`, `cbrt` return the square and cube root of the number while `nrt` returns the nth root of the number.
+
+```hs
+print(sqrt(4), cbrt(27), nrt(343,3))
+# 2
+# 3
+# 7
+```
