@@ -9,6 +9,8 @@ use crate::{
     token::Token,
 };
 
+use textplots::{Chart, Plot, Shape};
+
 #[derive(Debug)]
 pub struct Interpreter {
     global_vars: HashMap<String, f32>,
@@ -64,24 +66,24 @@ impl Interpreter {
         for node in ast {
             match node {
                 Ast::Assignment(name, expr) => {
-                    let r = self.parse_expression(&expr);
+                    let r = self.eval_expression(&expr);
                     self.global_vars.insert(name.to_string(), r);
                 }
                 Ast::FunctionCall(i, exprs) => {
                     if self.std.get(&i).is_some() {
                         let f = self.std.get(&i).unwrap();
-                        f(exprs.iter().map(|x| self.parse_expression(x)).collect());
+                        f(exprs.iter().map(|x| self.eval_expression(x)).collect());
                     } else {
                         let (args, code) = self.functions.get(&i).unwrap().clone();
 
                         let scope_vars = self.scope_vars.clone();
 
                         for (i, arg) in args.iter().enumerate() {
-                            let r = self.parse_expression(&exprs[i]);
+                            let r = self.eval_expression(&exprs[i]);
                             self.scope_vars.insert(arg.to_string(), r);
                         }
 
-                        self.parse_expression(&code);
+                        self.eval_expression(&code);
 
                         self.scope_vars = scope_vars;
                     }
@@ -92,16 +94,67 @@ impl Interpreter {
                 }
             }
         }
+        self.graph();
     }
 
-    pub fn parse_expression(&mut self, expr: &Expression) -> f32 {
+    pub fn graph(&mut self) {
+        let functions = self.functions.clone();
+        functions
+            .iter()
+            .filter(|f| f.0.starts_with('$'))
+            .for_each(|f| {
+                Chart::default()
+                    .lineplot(&Shape::Continuous(Box::new(|x| {
+                        self.immutable_eval_expression(x, &f.1 .1)
+                    })))
+                    .display();
+            });
+    }
+
+    pub fn immutable_eval_expression(&self, x: f32, expr: &Expression) -> f32 {
         match expr {
             Expression::Binary(lhs, op, rhs) => match op {
-                Token::Add => self.parse_expression(lhs) + self.parse_expression(rhs),
-                Token::Sub => self.parse_expression(lhs) - self.parse_expression(rhs),
-                Token::Mul => self.parse_expression(lhs) * self.parse_expression(rhs),
-                Token::Div => self.parse_expression(lhs) / self.parse_expression(rhs),
-                Token::Pow => self.parse_expression(lhs).powf(self.parse_expression(rhs)),
+                Token::Add => {
+                    self.immutable_eval_expression(x, lhs) + self.immutable_eval_expression(x, rhs)
+                }
+                Token::Sub => {
+                    self.immutable_eval_expression(x, lhs) - self.immutable_eval_expression(x, rhs)
+                }
+                Token::Mul => {
+                    self.immutable_eval_expression(x, lhs) * self.immutable_eval_expression(x, rhs)
+                }
+                Token::Div => {
+                    self.immutable_eval_expression(x, lhs) / self.immutable_eval_expression(x, rhs)
+                }
+                Token::Pow => self
+                    .immutable_eval_expression(x, lhs)
+                    .powf(self.immutable_eval_expression(x, rhs)),
+                _ => unimplemented!(),
+            },
+            Expression::Identifier(_) => x,
+            Expression::Number(n) => *n,
+            Expression::FunctionCall(i, exprs) => {
+                if self.std.get(i).is_some() {
+                    let f = self.std.get(i).unwrap();
+                    return f(exprs
+                        .iter()
+                        .map(|exp| self.immutable_eval_expression(x, exp))
+                        .collect());
+                } else {
+                    panic!("user defined functions are not avaliable while graphing")
+                }
+            }
+        }
+    }
+
+    pub fn eval_expression(&mut self, expr: &Expression) -> f32 {
+        match expr {
+            Expression::Binary(lhs, op, rhs) => match op {
+                Token::Add => self.eval_expression(lhs) + self.eval_expression(rhs),
+                Token::Sub => self.eval_expression(lhs) - self.eval_expression(rhs),
+                Token::Mul => self.eval_expression(lhs) * self.eval_expression(rhs),
+                Token::Div => self.eval_expression(lhs) / self.eval_expression(rhs),
+                Token::Pow => self.eval_expression(lhs).powf(self.eval_expression(rhs)),
                 _ => unimplemented!(),
             },
             Expression::Identifier(ident) => {
@@ -120,18 +173,18 @@ impl Interpreter {
             Expression::FunctionCall(i, exprs) => {
                 if self.std.get(i).is_some() {
                     let f = self.std.get(i).unwrap();
-                    return f(exprs.iter().map(|x| self.parse_expression(x)).collect());
+                    return f(exprs.iter().map(|x| self.eval_expression(x)).collect());
                 }
                 let (args, code) = self.functions.get(i).unwrap().clone();
 
                 let scope_vars = self.scope_vars.clone();
 
                 for (i, arg) in args.iter().enumerate() {
-                    let r = self.parse_expression(&exprs[i]);
+                    let r = self.eval_expression(&exprs[i]);
                     self.scope_vars.insert(arg.to_string(), r);
                 }
 
-                let r = self.parse_expression(&code);
+                let r = self.eval_expression(&code);
 
                 self.scope_vars = scope_vars;
 

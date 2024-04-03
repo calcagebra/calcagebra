@@ -19,7 +19,7 @@ Download the binary for your OS from the [releases page.](https://github.com/meg
 An expression can be one of the following types:
 
 * Binary Expression: `expr (+|-|*|/|^) expr`
-* Identifier: `[a-zA-Z.]+`
+* Identifier: `[a-zA-Z.$]+`
 * Number: `[0-9.]+`
 * FunctionCall: `identifier exprs`
 
@@ -32,6 +32,8 @@ Assignments follow the `name = value` structure, variables can be reassigned wit
 ### Function Declaration
 
 Functions are declared by the `name params = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
+
+Any function with prefix $ will have a graph generated after the program evaluates, the function will however only have access to std values and methods during evaluation.
 
 ### Function Calls
 

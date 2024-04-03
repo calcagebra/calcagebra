@@ -49,7 +49,10 @@ impl<'a> Lexer<'a> {
                 loop {
                     let char = line.peek();
 
-                    if char.is_none() || (!char.unwrap().is_ascii_alphanumeric() && *char.unwrap() != '.' ){
+                    if char.is_none()
+                        || (!char.unwrap().is_ascii_alphanumeric()
+                            && (*char.unwrap() != '.' || *char.unwrap() != '$'))
+                    {
                         break;
                     }
 
