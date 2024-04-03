@@ -4,4 +4,4 @@ parameter = 2 * pi * radius
 
 print parameter
 
-$f x = sin(x)/x
+$f x = x^x

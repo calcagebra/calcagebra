@@ -9,7 +9,7 @@ use crate::{
     token::Token,
 };
 
-use textplots::{Chart, Plot, Shape};
+use textplots::{AxisBuilder, Chart, LineStyle, Plot, Shape, TickDisplay, TickDisplayBuilder};
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -98,16 +98,18 @@ impl Interpreter {
     }
 
     pub fn graph(&mut self) {
-        let functions = self.functions.clone();
-        functions
+        self.functions
             .iter()
             .filter(|f| f.0.starts_with('$'))
             .for_each(|f| {
-                Chart::default()
+                Chart::new_with_y_range(200, 60, -5.0, 5.0, -5.0, 5.0)
+                    .x_axis_style(LineStyle::Solid)
+                    .y_axis_style(LineStyle::Solid)
                     .lineplot(&Shape::Continuous(Box::new(|x| {
                         self.immutable_eval_expression(x, &f.1 .1)
                     })))
-                    .display();
+                    .y_tick_display(TickDisplay::Sparse)
+                    .nice();
             });
     }
 
