@@ -44,7 +44,7 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            if char.is_ascii_alphanumeric() {
+            if char.is_ascii_alphanumeric() || char == '$' {
                 token.push(char);
                 loop {
                     let char = line.peek();
