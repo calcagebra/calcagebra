@@ -87,7 +87,7 @@ impl Parser {
                     && **tokens.peek().unwrap() != Token::RParen
                 {
                     let mut collected_tokens = vec![];
-                    let mut depth = 1;
+                    let mut depth = 0;
 
                     loop {
                         let t = tokens.next();
@@ -110,6 +110,7 @@ impl Parser {
                             break;
                         }
                     }
+
                     let mut params = vec![];
                     let mut expression = vec![];
 
