@@ -23,7 +23,7 @@ An expression can be one of the following types:
 * Number: `[0-9.]+`
 * FunctionCall: `identifier exprs`
 
-Note: Multiple exprs should always be seperated by a `,`. `()` should be used for nesting three or more function calls, `print cube square 5` -> `print cube(square 5)`
+Note: Multiple exprs should always be seperated by a `,`.
 
 ### Assignment
 
@@ -37,7 +37,7 @@ Any function with prefix $ will have a graph generated after the program evaluat
 
 ### Function Calls
 
-Functions are called by the `name args` structure, `name` is an identifier and `args` are `identifiers` seperated by `,`.
+Functions are called by the `name(args)` structure, `name` is an identifier and `args` are `idents or exprs` seperated by `,`.
 
 ## Standard Library
 
@@ -54,8 +54,8 @@ print(cube(5), 7)
 ### Read
 Reads a number from stdin with the prompt `Enter number: ` and returns it.
 ```hs
-a = read
-print a
+a = read()
+print(a)
 # Enter number: 5
 # 5
 ```
@@ -63,7 +63,7 @@ print a
 ### Log
 Returns natural log of number.
 ```hs
-print log(2)
+print(log(2))
 # 0.6931472
 ```
 

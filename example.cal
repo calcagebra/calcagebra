@@ -2,6 +2,6 @@ diameter = read
 radius = diameter/2
 parameter = 2 * pi * radius
 
-print parameter
+print(parameter)
 
 $f x = x^x

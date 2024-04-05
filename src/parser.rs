@@ -91,41 +91,26 @@ impl Parser {
                     && self.infix_binding_power(tokens.peek().unwrap()) == 0
                     && **tokens.peek().unwrap() != Token::RParen
                 {
-                    let mut collected_tokens = vec![];
                     let mut depth = 0;
-
-                    loop {
-                        let t = tokens.next();
-                        let next_token = tokens.peek();
-
-                        if t.is_none() {
-                            break;
-                        }
-
-                        let t = t.unwrap();
-
-                        if t == &Token::LParen {
-                            depth += 1;
-                        } else if t == &Token::RParen {
-                            depth -= 1;
-                        }
-
-                        collected_tokens.push(t);
-
-                        if depth == 0
-                            && !(next_token.is_some()
-                                && (**next_token.unwrap() == Token::Comma
-                                    || **next_token.unwrap() == Token::LParen))
-                        {
-                            break;
-                        }
-                    }
-
                     let mut params = vec![];
                     let mut expression = vec![];
-                    depth = 0;
 
-                    for token in collected_tokens {
+                    assert!(
+                        *tokens.peek().unwrap() == &Token::LParen,
+                        "expected `(` found {:?}",
+                        tokens.peek().unwrap()
+                    );
+
+                    tokens.next();
+
+                    loop {
+                        let token = tokens.next();
+
+                        if token.is_none() {
+                            break;
+                        }
+
+                        let token = token.unwrap();
                         if *token == Token::RParen {
                             if depth == 0 {
                                 if !expression.is_empty() && depth == 0 {
