@@ -3,6 +3,8 @@ mod interpreter;
 mod lexer;
 mod parser;
 mod token;
+mod data;
+mod standardlibrary;
 
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{fs::read_to_string, process::exit, time::Instant};

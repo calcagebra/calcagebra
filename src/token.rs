@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
     Number(f32),
@@ -37,5 +39,24 @@ impl Token {
                 }
             }
         }
+    }
+}
+
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Token::Number(x) => x.to_string(),
+            Token::Identifier(ident) => ident.to_string(),
+            Token::Eq => "=".to_string(),
+            Token::Add => "+".to_string(),
+            Token::Sub => "-".to_string(),
+            Token::Mul => "*".to_string(),
+            Token::Div => "/".to_string(),
+            Token::Pow => "^".to_string(),
+            Token::Comma => ",".to_string(),
+            Token::LParen => "(".to_string(),
+            Token::RParen => ")".to_string(),
+        })
     }
 }

@@ -1,91 +1,93 @@
 use std::{
     collections::HashMap,
     f32::consts::{E, PI},
-    io::{stdin, stdout, Write},
 };
 
 use crate::{
-    ast::{Ast, Expression},
-    token::Token,
+    ast::{Ast, Expression}, data::Data, standardlibrary::StandardLibrary, token::Token
 };
 
-use textplots::{AxisBuilder, Chart, LineStyle, Plot, Shape, TickDisplay, TickDisplayBuilder};
+pub type Variables = HashMap<String, Data>;
+pub type Functions = HashMap<String, (Vec<String>, Expression)>;
+pub type Std = HashMap<String, Function>;
+pub type Function = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data;
 
 #[derive(Debug)]
 pub struct Interpreter {
-    global_vars: HashMap<String, f32>,
-    scope_vars: HashMap<String, f32>,
-    functions: HashMap<String, (Vec<String>, Expression)>,
-    std: HashMap<String, fn(Vec<f32>) -> f32>,
+    variables: Variables,
+    functions: Functions,
+    std: StandardLibrary,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            global_vars: HashMap::new(),
-            scope_vars: HashMap::new(),
+            variables: HashMap::new(),
             functions: HashMap::new(),
-            std: HashMap::new(),
+            std: StandardLibrary::new(),
         }
     }
 
-    pub fn init_std(&mut self) {
-        self.std.insert("print".to_string(), |x| {
-            x.iter().for_each(|a| println!("{a}"));
-            0.0
-        });
-        self.std.insert("read".to_string(), |_| {
-            print!("Enter number: ");
-            stdout().flush().unwrap();
-            let mut buf = String::new();
-
-            stdin().read_line(&mut buf).unwrap();
-
-            buf.trim_end().parse::<f32>().unwrap()
-        });
-
-        self.std.insert("log".to_string(), |x| x[0].ln());
-
-        self.std.insert("sin".to_string(), |x| x[0].sin());
-        self.std.insert("cos".to_string(), |x| x[0].cos());
-        self.std.insert("tan".to_string(), |x| x[0].tan());
-
-        self.std.insert("sqrt".to_string(), |x| x[0].sqrt());
-        self.std.insert("cbrt".to_string(), |x| x[0].cbrt());
-        self.std
-            .insert("nrt".to_string(), |x| x[0].powf(1.0 / x[1]));
-    }
-
     pub fn init_globals(&mut self) {
-        [("pi", PI), ("e", E)].map(|(k, v)| self.global_vars.insert(k.to_string(), v));
+        [("pi", PI), ("e", E)].map(|(k, v)| self.variables.insert(k.to_string(), Data::Number(v)));
     }
 
     pub fn run(&mut self, ast: Vec<Ast>) {
-        self.init_std();
+        self.std.init_std();
         self.init_globals();
         for node in ast {
             match node {
                 Ast::Assignment(name, expr) => {
-                    let r = self.eval_expression(&expr);
-                    self.global_vars.insert(name.to_string(), r);
+                    let r = Interpreter::eval_expression(
+                        &expr,
+                        &self.variables,
+                        &self.functions,
+                        &self.std.map,
+                    );
+                    self.variables.insert(name.to_string(), r);
                 }
                 Ast::FunctionCall(i, exprs) => {
-                    if self.std.get(&i).is_some() {
-                        let f = self.std.get(&i).unwrap();
-                        f(exprs.iter().map(|x| self.eval_expression(x)).collect());
+                    if self.std.map.get(&i).is_some() {
+                        let f = self.std.map.get(&i).unwrap();
+                        f(
+                            exprs
+                                .iter()
+                                .map(|x| {
+                                    Interpreter::eval_expression(
+                                        x,
+                                        &self.variables,
+                                        &self.functions,
+                                        &self.std.map,
+                                    )
+                                })
+                                .collect(),
+                            self.variables.clone(),
+                            self.functions.clone(),
+                            self.std.clone(),
+                        );
                     } else {
                         let (args, code) = self.functions.get(&i).unwrap().clone();
 
-                        let scope_vars = self.scope_vars.clone();
+                        let variables = self.variables.clone();
 
                         for (i, arg) in args.iter().enumerate() {
-                            let r = self.eval_expression(&exprs[i]);
-                            self.scope_vars.insert(arg.to_string(), r);
+                            let r = Interpreter::eval_expression(
+                                &exprs[i],
+                                &self.variables,
+                                &self.functions,
+                                &self.std.map,
+                            );
+                            self.variables.insert(arg.to_string(), r);
                         }
 
-                        self.eval_expression(&code);
+                        Interpreter::eval_expression(
+                            &code,
+                            &self.variables,
+                            &self.functions,
+                            &self.std.map,
+                        );
 
-                        self.scope_vars = scope_vars;
+                        self.variables = variables;
                     }
                 }
                 Ast::FunctionDeclaration(name, args, code) => {
@@ -94,103 +96,63 @@ impl Interpreter {
                 }
             }
         }
-        self.graph();
     }
 
-    pub fn graph(&mut self) {
-        self.functions
-            .iter()
-            .filter(|f| f.0.starts_with('$'))
-            .for_each(|f| {
-                Chart::new_with_y_range(200, 60, -5.0, 5.0, -5.0, 5.0)
-                    .x_axis_style(LineStyle::Solid)
-                    .y_axis_style(LineStyle::Solid)
-                    .lineplot(&Shape::Continuous(Box::new(|x| {
-                        self.immutable_eval_expression(x, &f.1 .1)
-                    })))
-                    .y_tick_display(TickDisplay::Sparse)
-                    .nice();
-            });
-    }
-
-    pub fn immutable_eval_expression(&self, x: f32, expr: &Expression) -> f32 {
+    pub fn eval_expression(
+        expr: &Expression,
+        variables: &Variables,
+        functions: &Functions,
+        std: &Std,
+    ) -> Data {
         match expr {
-            Expression::Binary(lhs, op, rhs) => match op {
-                Token::Add => {
-                    self.immutable_eval_expression(x, lhs) + self.immutable_eval_expression(x, rhs)
-                }
-                Token::Sub => {
-                    self.immutable_eval_expression(x, lhs) - self.immutable_eval_expression(x, rhs)
-                }
-                Token::Mul => {
-                    self.immutable_eval_expression(x, lhs) * self.immutable_eval_expression(x, rhs)
-                }
-                Token::Div => {
-                    self.immutable_eval_expression(x, lhs) / self.immutable_eval_expression(x, rhs)
-                }
-                Token::Pow => self
-                    .immutable_eval_expression(x, lhs)
-                    .powf(self.immutable_eval_expression(x, rhs)),
-                _ => unimplemented!(),
-            },
-            Expression::Identifier(_) => x,
-            Expression::Number(n) => *n,
-            Expression::FunctionCall(i, exprs) => {
-                if self.std.get(i).is_some() {
-                    let f = self.std.get(i).unwrap();
-                    return f(exprs
-                        .iter()
-                        .map(|exp| self.immutable_eval_expression(x, exp))
-                        .collect());
-                } else {
-                    panic!("user defined functions are not avaliable while graphing")
+            Expression::Binary(lhs, op, rhs) => {
+                let dlhs = Interpreter::eval_expression(lhs, variables, functions, std);
+                let drhs = Interpreter::eval_expression(rhs, variables, functions, std);
+                match op {
+                    Token::Add => dlhs + drhs,
+                    Token::Sub => dlhs - drhs,
+                    Token::Mul => dlhs * drhs,
+                    Token::Div => dlhs / drhs,
+                    Token::Pow => Data::Number(dlhs.to_number().powf(drhs.to_number())),
+                    _ => unimplemented!(),
                 }
             }
-        }
-    }
-
-    pub fn eval_expression(&mut self, expr: &Expression) -> f32 {
-        match expr {
-            Expression::Binary(lhs, op, rhs) => match op {
-                Token::Add => self.eval_expression(lhs) + self.eval_expression(rhs),
-                Token::Sub => self.eval_expression(lhs) - self.eval_expression(rhs),
-                Token::Mul => self.eval_expression(lhs) * self.eval_expression(rhs),
-                Token::Div => self.eval_expression(lhs) / self.eval_expression(rhs),
-                Token::Pow => self.eval_expression(lhs).powf(self.eval_expression(rhs)),
-                _ => unimplemented!(),
-            },
             Expression::Identifier(ident) => {
-                if self.global_vars.get(ident).is_some() {
-                    *self.global_vars.get(ident).unwrap()
-                } else if self.scope_vars.get(ident).is_some() {
-                    *self.scope_vars.get(ident).unwrap()
-                } else if self.std.get(ident).is_some() {
-                    let f = self.std.get(ident).unwrap();
-                    f(vec![])
+                if variables.get(ident).is_some() {
+                    variables.get(ident).unwrap().clone()
+                } else if std.get(ident).is_some() {
+                    let f = std.get(ident).unwrap();
+                    f(vec![], variables.clone(), functions.clone(), StandardLibrary::from_map(std.clone()))
+                } else if functions.get(ident).is_some() {
+                    Data::Function(ident.to_string())
                 } else {
                     panic!("attempt to access value of not assigned identifier `{ident}`")
                 }
             }
-            Expression::Number(n) => *n,
+            Expression::Number(n) => Data::Number(*n),
             Expression::FunctionCall(i, exprs) => {
-                if self.std.get(i).is_some() {
-                    let f = self.std.get(i).unwrap();
-                    return f(exprs.iter().map(|x| self.eval_expression(x)).collect());
+                if std.get(i).is_some() {
+                    let f = std.get(i).unwrap();
+                    return f(
+                        exprs
+                            .iter()
+                            .map(|x| Interpreter::eval_expression(x, variables, functions, std))
+                            .collect(),
+                        variables.clone(),
+                        functions.clone(),
+                        StandardLibrary::from_map(std.clone())
+                    );
                 }
-                let (args, code) = self.functions.get(i).unwrap().clone();
+                let (args, code) = functions.get(i).unwrap().clone();
 
-                let scope_vars = self.scope_vars.clone();
+                let mut variables = variables.clone();
 
                 for (i, arg) in args.iter().enumerate() {
-                    let r = self.eval_expression(&exprs[i]);
-                    self.scope_vars.insert(arg.to_string(), r);
+                    let r = Interpreter::eval_expression(&exprs[i], &variables, functions, std);
+                    variables.insert(arg.to_string(), r);
                 }
 
-                let r = self.eval_expression(&code);
-
-                self.scope_vars = scope_vars;
-
-                r
+                Interpreter::eval_expression(&code, &variables, functions, std)
             }
         }
     }

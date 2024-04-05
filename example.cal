@@ -4,4 +4,5 @@ parameter = 2 * pi * radius
 
 print(parameter)
 
-$f x = x^x
+f x = x^x
+graph(f)

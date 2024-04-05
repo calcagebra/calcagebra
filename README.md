@@ -33,8 +33,6 @@ Assignments follow the `name = value` structure, variables can be reassigned wit
 
 Functions are declared by the `name params = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
 
-Any function with prefix $ will have a graph generated after the program evaluates, the function will however only have access to std values and methods during evaluation.
-
 ### Function Calls
 
 Functions are called by the `name(args)` structure, `name` is an identifier and `args` are `idents or exprs` seperated by `,`.
@@ -58,6 +56,13 @@ a = read()
 print(a)
 # Enter number: 5
 # 5
+```
+
+### Graph
+Print the graph of a function to stdout.
+```hs
+f x = nrt(x^2,2)
+graph(f)
 ```
 
 ### Log
