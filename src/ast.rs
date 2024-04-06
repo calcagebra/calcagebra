@@ -15,6 +15,7 @@ pub enum Expression {
     Binary(Box<Expression>, Token, Box<Expression>),
     Identifier(String),
     Number(f32),
+    Set(Vec<Expression>),
     FunctionCall(String, Vec<Expression>),
 }
 
@@ -28,6 +29,11 @@ impl Display for Expression {
                     lhs.to_string() + &op.to_string() + &rhs.to_string(),
                 Expression::Identifier(ident) => ident.to_string(),
                 Expression::Number(n) => n.to_string(),
+                Expression::Set(exprs) => exprs
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(","),
                 Expression::FunctionCall(ident, exprs) => {
                     ident.to_string()
                         + &exprs

@@ -3,7 +3,11 @@ use textplots::{AxisBuilder, Chart, LineStyle, Plot, Shape, TickDisplay, TickDis
 
 use std::collections::HashMap;
 
-use crate::{ast::Expression, data::Data, interpreter::Interpreter};
+use crate::{
+    ast::Expression,
+    data::{set::Set, Data},
+    interpreter::Interpreter,
+};
 
 pub type Variables = HashMap<String, Data>;
 pub type Functions = HashMap<String, (Vec<String>, Expression)>;
@@ -65,25 +69,44 @@ impl StandardLibrary {
             Data::Number(x[0].to_number().powf(1.0 / x[1].to_number()))
         });
 
+        self.map.insert("len".to_string(), |x, _, _, _| {
+            Data::Number(match &x[0] {
+                Data::Number(_) | Data::Function(_) => 1.0,
+                Data::Set(x) => x.values.len() as f32,
+            })
+        });
+
+        self.map.insert("get".to_string(), |x, _, _, _| {
+            x[0].to_set()
+                .values
+                .get(x[1].to_number() as usize)
+                .unwrap()
+                .clone()
+        });
+        self.map.insert("set".to_string(), |x, _, _, _| {
+            let mut s = x[0].to_set().values.clone();
+            s.insert(x[1].to_number() as usize, x[2].clone());
+            Data::Set(Set::new(s))
+        });
+
         self.map
             .insert("graph".to_string(), |x, variables, functions, std| {
                 x.iter().for_each(|f| {
                     let (args, expr) = functions.get(&f.to_function()).unwrap();
-                    println!("\n\x1b[1m{} {} = {}\x1b[0m", f.to_function(), args.join(" "), expr);
+                    println!(
+                        "\n\x1b[1m{} {} = {}\x1b[0m",
+                        f.to_function(),
+                        args.join(" "),
+                        expr
+                    );
                     Chart::new_with_y_range(200, 60, -5.0, 5.0, -5.0, 5.0)
                         .x_axis_style(LineStyle::Solid)
                         .y_axis_style(LineStyle::Solid)
                         .lineplot(&Shape::Continuous(Box::new(|x| {
                             let mut variables = variables.clone();
-                            variables
-                                .insert(args.first().unwrap().to_string(), Data::Number(x));
-                            Interpreter::eval_expression(
-                                expr,
-                                &variables,
-                                &functions,
-                                &std.map,
-                            )
-                            .to_number()
+                            variables.insert(args.first().unwrap().to_string(), Data::Number(x));
+                            Interpreter::eval_expression(expr, &variables, &functions, &std.map)
+                                .to_number()
                         })))
                         .y_tick_display(TickDisplay::Sparse)
                         .nice();

@@ -158,6 +158,59 @@ impl Parser {
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(exp);
             }
+            Token::LCurly => {
+                let mut depth = 0;
+                let mut params = vec![];
+                let mut expression = vec![];
+
+                loop {
+                    let token = tokens.next();
+
+                    if token.is_none() {
+                        break;
+                    }
+
+                    let token = token.unwrap();
+                    if *token == Token::RCurly {
+                        if depth == 0 {
+                            if !expression.is_empty() && depth == 0 {
+                                let lex = expression.iter().peekable();
+                                let (data, _) = self.pratt_parser(lex, 0);
+
+                                params.push(data);
+                                expression.clear();
+                            }
+                            break;
+                        }
+                        depth -= 1;
+                    }
+
+                    if *token == Token::LCurly {
+                        depth += 1;
+                    }
+
+                    if *token == Token::Comma {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        params.push(data);
+
+                        expression.clear();
+                        continue;
+                    }
+
+                    expression.push(token.to_owned());
+                }
+                if !expression.is_empty() {
+                    let lex = expression.iter().peekable();
+                    let (data, _) = self.pratt_parser(lex, 0);
+
+                    params.push(data);
+                    expression.clear();
+                }
+
+                expr = Some(Expression::Set(params))
+            }
             Token::Sub => {
                 if let Token::Number(i) = tokens.peek().unwrap() {
                     expr = Some(Expression::Number(-i));

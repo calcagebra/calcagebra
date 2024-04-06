@@ -4,7 +4,10 @@ use std::{
 };
 
 use crate::{
-    ast::{Ast, Expression}, data::Data, standardlibrary::StandardLibrary, token::Token
+    ast::{Ast, Expression},
+    data::{set::Set, Data},
+    standardlibrary::StandardLibrary,
+    token::Token,
 };
 
 pub type Variables = HashMap<String, Data>;
@@ -122,7 +125,12 @@ impl Interpreter {
                     variables.get(ident).unwrap().clone()
                 } else if std.get(ident).is_some() {
                     let f = std.get(ident).unwrap();
-                    f(vec![], variables.clone(), functions.clone(), StandardLibrary::from_map(std.clone()))
+                    f(
+                        vec![],
+                        variables.clone(),
+                        functions.clone(),
+                        StandardLibrary::from_map(std.clone()),
+                    )
                 } else if functions.get(ident).is_some() {
                     Data::Function(ident.to_string())
                 } else {
@@ -130,6 +138,11 @@ impl Interpreter {
                 }
             }
             Expression::Number(n) => Data::Number(*n),
+            Expression::Set(s) => Data::Set(Set::new(
+                s.iter()
+                    .map(|f| Interpreter::eval_expression(f, variables, functions, std))
+                    .collect(),
+            )),
             Expression::FunctionCall(i, exprs) => {
                 if std.get(i).is_some() {
                     let f = std.get(i).unwrap();
@@ -140,7 +153,7 @@ impl Interpreter {
                             .collect(),
                         variables.clone(),
                         functions.clone(),
-                        StandardLibrary::from_map(std.clone())
+                        StandardLibrary::from_map(std.clone()),
                     );
                 }
                 let (args, code) = functions.get(i).unwrap().clone();

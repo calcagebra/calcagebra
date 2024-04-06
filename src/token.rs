@@ -15,6 +15,8 @@ pub enum Token {
     Comma,
     LParen,
     RParen,
+    LCurly,
+    RCurly,
 }
 
 impl Token {
@@ -30,6 +32,8 @@ impl Token {
             "," => Token::Comma,
             "(" => Token::LParen,
             ")" => Token::RParen,
+            "{" => Token::LCurly,
+            "}" => Token::RCurly,
 
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit() || a=='.') {
@@ -57,6 +61,8 @@ impl Display for Token {
             Token::Comma => ",".to_string(),
             Token::LParen => "(".to_string(),
             Token::RParen => ")".to_string(),
+            Token::LCurly => "{".to_string(),
+            Token::RCurly => "}".to_string(),
         })
     }
 }
