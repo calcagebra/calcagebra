@@ -1,7 +1,9 @@
 pub mod set;
 
 use std::{
-    fmt::Display, hash::Hash, ops::{Add, Div, Mul, Sub}
+    fmt::Display,
+    hash::Hash,
+    ops::{Add, Div, Mul, Sub},
 };
 
 use self::set::Set;

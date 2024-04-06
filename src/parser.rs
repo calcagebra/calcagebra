@@ -125,11 +125,15 @@ impl Parser {
                             depth -= 1;
                         }
 
-                        if *token == Token::LParen {
+                        if *token == Token::RCurly {
+                            depth -= 1;
+                        }
+
+                        if *token == Token::LParen || *token == Token::LCurly {
                             depth += 1;
                         }
 
-                        if *token == Token::Comma {
+                        if *token == Token::Comma && depth == 0 {
                             let lex = expression.iter().peekable();
                             let (data, _) = self.pratt_parser(lex, 0);
 

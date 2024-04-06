@@ -123,15 +123,7 @@ impl Interpreter {
             Expression::Identifier(ident) => {
                 if variables.get(ident).is_some() {
                     variables.get(ident).unwrap().clone()
-                } else if std.get(ident).is_some() {
-                    let f = std.get(ident).unwrap();
-                    f(
-                        vec![],
-                        variables.clone(),
-                        functions.clone(),
-                        StandardLibrary::from_map(std.clone()),
-                    )
-                } else if functions.get(ident).is_some() {
+                } else if std.get(ident).is_some() || functions.get(ident).is_some() {
                     Data::Function(ident.to_string())
                 } else {
                     panic!("attempt to access value of not assigned identifier `{ident}`")

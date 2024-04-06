@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display};
+use std::fmt::Display;
 
 use super::Data;
 
@@ -8,14 +8,14 @@ pub struct Set {
 }
 
 impl Set {
-    pub fn new(values: Vec<Data>) -> Self {
-        Self {
-            values: values
-                .into_iter()
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .collect::<Vec<_>>(),
+    pub fn new(args: Vec<Data>) -> Self {
+        let mut values = vec![];
+        for arg in args {
+            if !values.contains(&arg) {
+                values.push(arg)
+            }
         }
+        Self { values }
     }
 }
 

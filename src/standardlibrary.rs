@@ -90,6 +90,43 @@ impl StandardLibrary {
         });
 
         self.map
+            .insert("map".to_string(), |x, variables, functions, std| {
+                let mut sets = vec![];
+                let mut i = String::new();
+                for arg in x {
+                    if matches!(arg, Data::Function(_)) {
+                        i = arg.to_function();
+                        break;
+                    }
+                    sets.push(arg);
+                }
+                if std.map.get(&i).is_some() {
+                    let f = std.map.get(&i).unwrap();
+                    let mut r = vec![];
+                    for set in sets {
+                        for n in set.to_set().values.clone() {
+                            r.push(f(
+                                vec![n],
+                                variables.clone(),
+                                functions.clone(),
+                                StandardLibrary::from_map(std.map.clone()),
+                            ));
+                        }
+                    }
+                    return Data::Set(Set::new(r));
+                }
+                let (args, code) = functions.get(&i).unwrap().clone();
+
+                let mut variables = variables.clone();
+
+                for (i, arg) in args.iter().enumerate() {
+                    variables.insert(arg.to_string(), sets[i].clone());
+                }
+
+                Interpreter::eval_expression(&code, &variables, &functions, &std.map)
+            });
+
+        self.map
             .insert("graph".to_string(), |x, variables, functions, std| {
                 x.iter().for_each(|f| {
                     let (args, expr) = functions.get(&f.to_function()).unwrap();
