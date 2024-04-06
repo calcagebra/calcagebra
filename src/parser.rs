@@ -213,7 +213,7 @@ impl Parser {
                     expression.clear();
                 }
 
-                expr = Some(Expression::Set(params))
+                expr = Some(Expression::SizedSet(params))
             }
             Token::Sub => {
                 if let Token::Number(i) = tokens.peek().unwrap() {

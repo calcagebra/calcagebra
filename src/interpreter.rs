@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     ast::{Ast, Expression},
-    data::{set::Set, Data},
+    data::{sizedset::SizedSet, Data},
     standardlibrary::StandardLibrary,
     token::Token,
 };
@@ -130,7 +130,7 @@ impl Interpreter {
                 }
             }
             Expression::Number(n) => Data::Number(*n),
-            Expression::Set(s) => Data::Set(Set::new(
+            Expression::SizedSet(s) => Data::SizedSet(SizedSet::new(
                 s.iter()
                     .map(|f| Interpreter::eval_expression(f, variables, functions, std))
                     .collect(),

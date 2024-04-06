@@ -1,4 +1,4 @@
-pub mod set;
+pub mod sizedset;
 
 use std::{
     fmt::Display,
@@ -6,13 +6,13 @@ use std::{
     ops::{Add, Div, Mul, Sub},
 };
 
-use self::set::Set;
+use self::sizedset::SizedSet;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Data {
     Number(f32),
     Function(String),
-    Set(Set),
+    SizedSet(SizedSet),
 }
 
 impl Data {
@@ -33,9 +33,9 @@ impl Data {
         }
     }
 
-    pub fn to_set(&self) -> &Set {
+    pub fn to_set(&self) -> &SizedSet {
         match self {
-            Data::Set(s) => s,
+            Data::SizedSet(s) => s,
             _ => unimplemented!(),
         }
     }
@@ -57,7 +57,7 @@ impl Display for Data {
             match self {
                 Data::Number(n) => n.to_string(),
                 Data::Function(ident) => ident.to_string(),
-                Data::Set(set) => set.to_string(),
+                Data::SizedSet(set) => set.to_string(),
             }
         )
     }
@@ -92,8 +92,8 @@ impl Mul for Data {
     fn mul(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Data::Number(n), Data::Number(m)) => Data::Number(n * m),
-            (Data::Number(n), Data::Set(s)) | (Data::Set(s), Data::Number(n)) => {
-                Data::Set(Set::new(
+            (Data::Number(n), Data::SizedSet(s)) | (Data::SizedSet(s), Data::Number(n)) => {
+                Data::SizedSet(SizedSet::new(
                     s.values
                         .into_iter()
                         .map(|f| (f * Data::Number(n)))
@@ -111,8 +111,8 @@ impl Div for Data {
     fn div(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Data::Number(n), Data::Number(m)) => Data::Number(n / m),
-            (Data::Number(n), Data::Set(s)) | (Data::Set(s), Data::Number(n)) => {
-                Data::Set(Set::new(
+            (Data::Number(n), Data::SizedSet(s)) | (Data::SizedSet(s), Data::Number(n)) => {
+                Data::SizedSet(SizedSet::new(
                     s.values
                         .into_iter()
                         .map(|f| (f / Data::Number(n)))

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::{
     ast::Expression,
-    data::{set::Set, Data},
+    data::{sizedset::SizedSet, Data},
     interpreter::Interpreter,
 };
 
@@ -72,7 +72,7 @@ impl StandardLibrary {
         self.map.insert("len".to_string(), |x, _, _, _| {
             Data::Number(match &x[0] {
                 Data::Number(_) | Data::Function(_) => 1.0,
-                Data::Set(x) => x.values.len() as f32,
+                Data::SizedSet(x) => x.values.len() as f32,
             })
         });
 
@@ -86,7 +86,7 @@ impl StandardLibrary {
         self.map.insert("set".to_string(), |x, _, _, _| {
             let mut s = x[0].to_set().values.clone();
             s.insert(x[1].to_number() as usize, x[2].clone());
-            Data::Set(Set::new(s))
+            Data::SizedSet(SizedSet::new(s))
         });
 
         self.map
@@ -113,7 +113,7 @@ impl StandardLibrary {
                             ));
                         }
                     }
-                    return Data::Set(Set::new(r));
+                    return Data::SizedSet(SizedSet::new(r));
                 }
                 let (args, code) = functions.get(&i).unwrap().clone();
 

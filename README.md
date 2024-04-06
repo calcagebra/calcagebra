@@ -20,7 +20,7 @@ An expression can be one of the following types:
 
 * Binary Expression: `expr (+|-|*|/|^) expr`
 * Identifier: `[a-zA-Z.$]+`
-* Set: `{([0-9.],?)+}`
+* SizedSet: `{([0-9.],?)+}`
 * Number: `[0-9.]+`
 * FunctionCall: `identifier exprs`
 

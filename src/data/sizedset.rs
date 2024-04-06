@@ -3,11 +3,11 @@ use std::fmt::Display;
 use super::Data;
 
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Hash)]
-pub struct Set {
+pub struct SizedSet {
     pub values: Vec<Data>,
 }
 
-impl Set {
+impl SizedSet {
     pub fn new(args: Vec<Data>) -> Self {
         let mut values = vec![];
         for arg in args {
@@ -19,7 +19,7 @@ impl Set {
     }
 }
 
-impl Display for Set {
+impl Display for SizedSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
