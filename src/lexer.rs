@@ -44,13 +44,28 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
-            if char.is_ascii_alphanumeric() || char == '$' {
+            if char.is_ascii_alphabetic() {
+                token.push(char);
+                loop {
+                    let char = line.peek();
+
+                    if char.is_none() || !char.unwrap().is_ascii_alphabetic() {
+                        break;
+                    }
+
+                    let char = line.next();
+
+                    token.push(char.unwrap());
+                }
+                tokens.push(Token::new(token.clone()));
+                token.clear();
+            } else if char.is_ascii_digit() {
                 token.push(char);
                 loop {
                     let char = line.peek();
 
                     if char.is_none()
-                        || (!char.unwrap().is_ascii_alphanumeric() && *char.unwrap() != '.')
+                        || (!char.unwrap().is_ascii_digit() && *char.unwrap() != '.')
                     {
                         break;
                     }
@@ -84,6 +99,22 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        tokens
+        let mut r = vec![];
+
+        for i in 0..tokens.len() {
+            r.push(tokens[i].clone());
+
+            if tokens.get(i + 1).is_none() {
+                break;
+            }
+
+            if let Token::Number(_) = tokens[i] {
+                if let Token::Identifier(_) = tokens[i + 1] {
+                    r.push(Token::Mul);
+                }
+            }
+        }
+
+        r
     }
 }

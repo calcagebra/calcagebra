@@ -24,7 +24,7 @@ An expression can be one of the following types:
 * Number: `[0-9.]+`
 * FunctionCall: `identifier exprs`
 
-Note: Multiple exprs should always be seperated by a `,`.
+Note: Multiple exprs should always be seperated by a `,`. `*` operator is optional between `identifier` and `number`, `6x^2 + 5x + 1` is perfectly valid code.
 
 ### Assignment
 
