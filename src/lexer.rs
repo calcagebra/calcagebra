@@ -50,8 +50,7 @@ impl<'a> Lexer<'a> {
                     let char = line.peek();
 
                     if char.is_none()
-                        || (!char.unwrap().is_ascii_alphanumeric()
-                            && (*char.unwrap() != '.' || *char.unwrap() != '$'))
+                        || (!char.unwrap().is_ascii_alphanumeric() && *char.unwrap() != '.')
                     {
                         break;
                     }
@@ -64,6 +63,22 @@ impl<'a> Lexer<'a> {
                 token.clear();
             } else {
                 token.push(char);
+                let punctuation = ['.', '(', ')', '{', '}', '[', '['];
+                loop {
+                    let char = line.peek();
+
+                    if char.is_none()
+                        || char.unwrap().is_ascii_alphanumeric()
+                        || punctuation.contains(char.unwrap())
+                        || punctuation.map(|f| token.contains(f)).contains(&true)
+                    {
+                        break;
+                    }
+
+                    let char = line.next();
+
+                    token.push(char.unwrap());
+                }
                 tokens.push(Token::new(token.clone()));
                 token.clear();
             }

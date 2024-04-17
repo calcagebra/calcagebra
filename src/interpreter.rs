@@ -116,8 +116,21 @@ impl Interpreter {
                     Token::Sub => dlhs - drhs,
                     Token::Mul => dlhs * drhs,
                     Token::Div => dlhs / drhs,
+                    Token::Modulo => dlhs % drhs,
                     Token::Pow => Data::Number(dlhs.to_number().powf(drhs.to_number())),
+                    Token::IsEq => Data::Bool(dlhs == drhs),
+                    Token::Gt => Data::Bool(dlhs > drhs),
+                    Token::Lt => Data::Bool(dlhs < drhs),
+                    Token::GtEq => Data::Bool(dlhs >= drhs),
+                    Token::LtEq => Data::Bool(dlhs <= drhs),
                     _ => unimplemented!(),
+                }
+            }
+            Expression::Branched(condition, a, b) => {
+                if Interpreter::eval_expression(condition, variables, functions, std).to_bool() {
+                    Interpreter::eval_expression(a, variables, functions, std)
+                } else {
+                    Interpreter::eval_expression(b, variables, functions, std)
                 }
             }
             Expression::Identifier(ident) => {

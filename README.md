@@ -38,6 +38,10 @@ Functions are declared by the `name params = code` structure where `name` is an 
 
 Functions are called by the `name(args)` structure, `name` is an identifier and `args` are `idents or exprs` seperated by `,`.
 
+### If statements
+
+If statements begin with `if` followed by the statement, `then` the expression to value if statement is evaled to true, `else` the expression in case it is not, ended by an `end`.
+
 ## Standard Library
 
 All standard library functions follow the function calling structure.
@@ -64,6 +68,15 @@ Print the graph of a function to stdout.
 ```hs
 f x = nrt(x^2,2)
 graph(f)
+```
+
+### Round, Floor, Ceil
+Return the number rounded, floored or ceiled.
+```hs
+print(floor(e), round(e), ceil(e))
+# 2
+# 3
+# 3
 ```
 
 ### Log

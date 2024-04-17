@@ -45,6 +45,18 @@ impl StandardLibrary {
             Data::Number(buf.trim_end().parse::<f32>().unwrap())
         });
 
+        self.map.insert("round".to_string(), |x,_,_,_| {
+            Data::Number(x[0].to_number().round())
+        });
+
+        self.map.insert("ceil".to_string(), |x,_,_,_| {
+            Data::Number(x[0].to_number().ceil())
+        });
+
+        self.map.insert("floor".to_string(), |x,_,_,_| {
+            Data::Number(x[0].to_number().floor())
+        });
+
         self.map.insert("log".to_string(), |x, _, _, _| {
             Data::Number(x[0].to_number().ln())
         });
@@ -71,7 +83,7 @@ impl StandardLibrary {
 
         self.map.insert("len".to_string(), |x, _, _, _| {
             Data::Number(match &x[0] {
-                Data::Number(_) | Data::Function(_) => 1.0,
+                Data::Number(_) | Data::Function(_) | Data::Bool(_) => 1.0,
                 Data::SizedSet(x) => x.values.len() as f32,
             })
         });
@@ -130,13 +142,7 @@ impl StandardLibrary {
             .insert("graph".to_string(), |x, variables, functions, std| {
                 x.iter().for_each(|f| {
                     let (args, expr) = functions.get(&f.to_function()).unwrap();
-                    println!(
-                        "\n\x1b[1m{} {} = {}\x1b[0m",
-                        f.to_function(),
-                        args.join(" "),
-                        expr
-                    );
-                    Chart::new_with_y_range(200, 60, -5.0, 5.0, -5.0, 5.0)
+                    Chart::default()
                         .x_axis_style(LineStyle::Solid)
                         .y_axis_style(LineStyle::Solid)
                         .lineplot(&Shape::Continuous(Box::new(|x| {

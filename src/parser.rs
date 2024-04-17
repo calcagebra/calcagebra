@@ -162,6 +162,57 @@ impl Parser {
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(exp);
             }
+            Token::If => {
+                let mut depth = 1;
+                let mut params = vec![];
+                let mut expression = vec![];
+
+                loop {
+                    let token = tokens.next();
+
+                    if token.is_none() {
+                        break;
+                    }
+
+                    let token = token.unwrap();
+
+                    if *token == Token::Then || *token == Token::Else {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        params.push(data);
+                        expression.clear();
+                        continue;
+                    }
+
+                    if *token == Token::If {
+                        depth += 1;
+                    }
+
+                    if *token == Token::End {
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+
+                    expression.push(token.to_owned());
+                }
+
+                if !expression.is_empty() {
+                    let lex = expression.iter().peekable();
+                    let (data, _) = self.pratt_parser(lex, 0);
+
+                    params.push(data);
+                    expression.clear();
+                }
+
+                expr = Some(Expression::Branched(
+                    Box::new(params[0].clone()),
+                    Box::new(params[1].clone()),
+                    Box::new(params[2].clone()),
+                ))
+            }
             Token::LCurly => {
                 let mut depth = 0;
                 let mut params = vec![];
@@ -205,6 +256,7 @@ impl Parser {
 
                     expression.push(token.to_owned());
                 }
+
                 if !expression.is_empty() {
                     let lex = expression.iter().peekable();
                     let (data, _) = self.pratt_parser(lex, 0);
@@ -236,14 +288,16 @@ impl Parser {
                 break;
             }
 
-            if **op.unwrap() == Token::Pow && self.infix_binding_power(op.unwrap()) < prec {
+            let op = tokens.next().unwrap();
+
+            if *op == Token::Pow && self.infix_binding_power(op) < prec {
                 break;
             }
 
-            if **op.unwrap() != Token::Pow && self.infix_binding_power(op.unwrap()) <= prec {
+            if *op != Token::Pow && self.infix_binding_power(op) <= prec {
                 break;
             }
-            let op = tokens.next().unwrap();
+
             let rhs;
             (rhs, tokens) = self.pratt_parser(tokens, self.infix_binding_power(op));
             expr = Some(Expression::Binary(
@@ -262,7 +316,10 @@ impl Parser {
             Token::Sub => 2,
             Token::Mul => 3,
             Token::Div => 4,
-            Token::Pow => 5,
+            Token::Modulo => 5,
+            Token::Pow => 6,
+            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => 7,
+            Token::If | Token::Then | Token::Else | Token::End => 8,
             _ => 0,
         }
     }

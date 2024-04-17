@@ -3,7 +3,7 @@ pub mod sizedset;
 use std::{
     fmt::Display,
     hash::Hash,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Div, Mul, Rem, Sub},
 };
 
 use self::sizedset::SizedSet;
@@ -11,6 +11,7 @@ use self::sizedset::SizedSet;
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Data {
     Number(f32),
+    Bool(bool),
     Function(String),
     SizedSet(SizedSet),
 }
@@ -22,6 +23,13 @@ impl Data {
     pub fn to_number(&self) -> f32 {
         match self {
             Data::Number(n) => *n,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn to_bool(&self) -> bool {
+        match self {
+            Data::Bool(n) => *n,
             _ => unimplemented!(),
         }
     }
@@ -56,6 +64,7 @@ impl Display for Data {
             "{}",
             match self {
                 Data::Number(n) => n.to_string(),
+                Data::Bool(b) => b.to_string(),
                 Data::Function(ident) => ident.to_string(),
                 Data::SizedSet(set) => set.to_string(),
             }
@@ -116,6 +125,26 @@ impl Div for Data {
                     s.values
                         .into_iter()
                         .map(|f| (f / Data::Number(n)))
+                        .collect::<Vec<Data>>(),
+                ))
+            }
+            (_, _) => unimplemented!(),
+        }
+    }
+}
+
+
+impl Rem for Data {
+    type Output = Data;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (Data::Number(n), Data::Number(m)) => Data::Number(n % m),
+            (Data::Number(n), Data::SizedSet(s)) | (Data::SizedSet(s), Data::Number(n)) => {
+                Data::SizedSet(SizedSet::new(
+                    s.values
+                        .into_iter()
+                        .map(|f| (f % Data::Number(n)))
                         .collect::<Vec<Data>>(),
                 ))
             }
