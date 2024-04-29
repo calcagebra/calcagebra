@@ -45,15 +45,15 @@ impl StandardLibrary {
             Data::Number(buf.trim_end().parse::<f32>().unwrap())
         });
 
-        self.map.insert("round".to_string(), |x,_,_,_| {
+        self.map.insert("round".to_string(), |x, _, _, _| {
             Data::Number(x[0].to_number().round())
         });
 
-        self.map.insert("ceil".to_string(), |x,_,_,_| {
+        self.map.insert("ceil".to_string(), |x, _, _, _| {
             Data::Number(x[0].to_number().ceil())
         });
 
-        self.map.insert("floor".to_string(), |x,_,_,_| {
+        self.map.insert("floor".to_string(), |x, _, _, _| {
             Data::Number(x[0].to_number().floor())
         });
 
@@ -140,19 +140,42 @@ impl StandardLibrary {
 
         self.map
             .insert("graph".to_string(), |x, variables, functions, std| {
-                x.iter().for_each(|f| {
-                    let (args, expr) = functions.get(&f.to_function()).unwrap();
-                    Chart::default()
-                        .x_axis_style(LineStyle::Solid)
-                        .y_axis_style(LineStyle::Solid)
-                        .lineplot(&Shape::Continuous(Box::new(|x| {
-                            let mut variables = variables.clone();
-                            variables.insert(args.first().unwrap().to_string(), Data::Number(x));
-                            Interpreter::eval_expression(expr, &variables, &functions, &std.map)
-                                .to_number()
-                        })))
-                        .y_tick_display(TickDisplay::Sparse)
-                        .nice();
+                x.iter().for_each(|f| match f {
+                    Data::Number(_) => todo!(),
+                    Data::Bool(_) => todo!(),
+                    Data::Function(_) => {
+                        let (args, expr) = functions.get(&f.to_function()).unwrap();
+                        Chart::default()
+                            .x_axis_style(LineStyle::Solid)
+                            .y_axis_style(LineStyle::Solid)
+                            .lineplot(&Shape::Continuous(Box::new(|x| {
+                                let mut variables = variables.clone();
+                                variables
+                                    .insert(args.first().unwrap().to_string(), Data::Number(x));
+                                Interpreter::eval_expression(expr, &variables, &functions, &std.map)
+                                    .to_number()
+                            })))
+                            .y_tick_display(TickDisplay::Sparse)
+                            .nice();
+                    }
+                    Data::SizedSet(s) => {
+                        Chart::default()
+                            .x_axis_style(LineStyle::Solid)
+                            .y_axis_style(LineStyle::Solid)
+                            .lineplot(&Shape::Points(
+                                &s.values
+                                    .iter()
+                                    .map(|d| {
+                                        (
+                                            d.to_set().values[0].to_number(),
+                                            d.to_set().values[1].to_number(),
+                                        )
+                                    })
+                                    .collect::<Vec<(f32, f32)>>(),
+                            ))
+                            .y_tick_display(TickDisplay::Sparse)
+                            .display();
+                    }
                 });
                 Data::default()
             });

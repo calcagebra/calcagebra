@@ -273,7 +273,7 @@ impl Parser {
         &'a self,
         mut tokens: Peekable<Iter<'a, Token>>,
     ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
-        let mut depth = 0;
+        let mut depth = 1;
         let mut params = vec![];
         let mut expression = vec![];
 
@@ -286,30 +286,37 @@ impl Parser {
 
             let token = token.unwrap();
             if *token == Token::RCurly {
-                if depth == 0 {
-                    if !expression.is_empty() && depth == 0 {
-                        let lex = expression.iter().peekable();
-                        let (data, _) = self.pratt_parser(lex, 0);
+                if !expression.is_empty() {
+                    expression.push(token.to_owned());
+                    let lex = expression.iter().peekable();
+                    let (data, _) = self.pratt_parser(lex, 0);
 
-                        params.push(data);
-                        expression.clear();
-                    }
+                    params.push(data);
+                    expression.clear();
+                    depth -= 1;
+                    continue;
+                }
+
+                depth -= 1;
+
+                if depth == 0 {
                     break;
                 }
-                depth -= 1;
             }
 
             if *token == Token::LCurly {
                 depth += 1;
             }
 
-            if *token == Token::Comma {
-                let lex = expression.iter().peekable();
-                let (data, _) = self.pratt_parser(lex, 0);
+            if *token == Token::Comma && depth == 1 {
+                if !expression.is_empty() {
+                    let lex = expression.iter().peekable();
+                    let (data, _) = self.pratt_parser(lex, 0);
 
-                params.push(data);
+                    params.push(data);
 
-                expression.clear();
+                    expression.clear();
+                }
                 continue;
             }
 
