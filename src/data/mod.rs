@@ -1,4 +1,5 @@
 pub mod sizedset;
+pub mod unsizedset;
 
 use std::{
     fmt::Display,

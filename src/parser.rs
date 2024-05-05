@@ -277,6 +277,8 @@ impl Parser {
         let mut params = vec![];
         let mut expression = vec![];
 
+        let mut is_unsized_set = false;
+
         loop {
             let token = tokens.next();
 
@@ -285,9 +287,22 @@ impl Parser {
             }
 
             let token = token.unwrap();
+
+            if *token == Token::Colon && depth == 1 {
+                is_unsized_set = true;
+                let lex = expression.iter().peekable();
+                let (data, _) = self.pratt_parser(lex, 0);
+
+                params.push(data);
+                expression.clear();
+                continue;
+            }
+
             if *token == Token::RCurly {
                 if !expression.is_empty() {
-                    expression.push(token.to_owned());
+                    if !is_unsized_set {
+                        expression.push(token.to_owned());
+                    }
                     let lex = expression.iter().peekable();
                     let (data, _) = self.pratt_parser(lex, 0);
 
@@ -330,8 +345,13 @@ impl Parser {
             params.push(data);
             expression.clear();
         }
-
-        (Some(Expression::SizedSet(params)), tokens)
+        
+        if is_unsized_set {
+            params.split(|f| f )
+            (Some(Expression::UnsizedSet(vec![], vec![])), tokens)
+        } else {
+            (Some(Expression::SizedSet(params)), tokens)
+        }
     }
 
     fn infix_binding_power(&self, op: &Token) -> u16 {
@@ -340,7 +360,7 @@ impl Parser {
             Token::Mul | Token::Div => 2,
             Token::Modulo => 3,
             Token::Pow => 4,
-            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => 5,
+            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq | Token::HashTag => 5,
             Token::If | Token::Then | Token::Else | Token::End => 6,
             _ => 0,
         }

@@ -15,5 +15,6 @@ pub enum Expression {
     Identifier(String),
     Number(f32),
     SizedSet(Vec<Expression>),
+    UnsizedSet(Vec<Expression>,Vec<Expression>),
     FunctionCall(String, Vec<Expression>),
 }

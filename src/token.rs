@@ -24,6 +24,8 @@ pub enum Token {
     Modulo,
 
     Comma,
+    HashTag,
+    Colon,
     LParen,
     RParen,
     LCurly,
@@ -54,6 +56,8 @@ impl Token {
             "%" => Token::Modulo,
 
             "," => Token::Comma,
+            "#" => Token::HashTag,
+            ":" => Token::Colon,
             "(" => Token::LParen,
             ")" => Token::RParen,
             "{" => Token::LCurly,

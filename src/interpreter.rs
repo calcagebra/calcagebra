@@ -148,6 +148,7 @@ impl Interpreter {
                     .map(|f| Interpreter::eval_expression(f, variables, functions, std))
                     .collect(),
             )),
+            Expression::UnsizedSet(_,_) => Data::default(),
             Expression::FunctionCall(i, exprs) => {
                 if std.get(i).is_some() {
                     let f = std.get(i).unwrap();
