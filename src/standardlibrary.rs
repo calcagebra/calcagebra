@@ -45,6 +45,10 @@ impl StandardLibrary {
             Data::Number(buf.trim_end().parse::<f32>().unwrap())
         });
 
+        self.map.insert("mod".to_string(), |x, _, _, _| {
+            Data::Number(x[0].to_number().abs())
+        });
+
         self.map.insert("round".to_string(), |x, _, _, _| {
             Data::Number(x[0].to_number().round())
         });

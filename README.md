@@ -70,13 +70,14 @@ f x = nrt(x^2,2)
 graph(f)
 ```
 
-### Round, Floor, Ceil
-Return the number rounded, floored or ceiled.
+### Round, Floor, Ceil, Mod
+Return the number rounded, floored, ceiled or absoluted.
 ```hs
-print(floor(e), round(e), ceil(e))
+print(floor(e), round(e), ceil(e), mod(-1))
 # 2
 # 3
 # 3
+# 1
 ```
 
 ### Log
