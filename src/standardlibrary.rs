@@ -46,7 +46,12 @@ impl StandardLibrary {
         });
 
         self.map.insert("mod".to_string(), |x, _, _, _| {
-            Data::Number(x[0].to_number().abs())
+            Data::Number(match &x[0] {
+                Data::Number(n) => n.abs(),
+                Data::Bool(b) => *b as u8 as f32,
+                Data::Function(_) => unimplemented!(),
+                Data::SizedSet(s) => s.values.len() as f32,
+            })
         });
 
         self.map.insert("round".to_string(), |x, _, _, _| {
