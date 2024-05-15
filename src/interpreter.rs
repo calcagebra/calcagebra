@@ -126,6 +126,16 @@ impl Interpreter {
                     _ => unimplemented!(),
                 }
             }
+            Expression::Abs(operand) => {
+                let data = Interpreter::eval_expression(operand, variables, functions, std);
+
+                Data::Number(match data {
+                    Data::Number(n) => n.abs(),
+                    Data::Bool(b) => b as u8 as f32,
+                    Data::Function(_) => unimplemented!(),
+                    Data::SizedSet(s) => s.values.len() as f32,
+                })
+            }
             Expression::Branched(condition, a, b) => {
                 if Interpreter::eval_expression(condition, variables, functions, std).to_bool() {
                     Interpreter::eval_expression(a, variables, functions, std)

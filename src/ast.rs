@@ -10,6 +10,7 @@ pub enum Ast {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    Abs(Box<Expression>),
     Binary(Box<Expression>, Token, Box<Expression>),
     Branched(Box<Expression>, Box<Expression>, Box<Expression>),
     Identifier(String),

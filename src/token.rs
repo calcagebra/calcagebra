@@ -28,8 +28,7 @@ pub enum Token {
     RParen,
     LCurly,
     RCurly,
-    LSquare,
-    RSquare,
+    VLine,
 }
 
 impl Token {
@@ -60,8 +59,7 @@ impl Token {
             ")" => Token::RParen,
             "{" => Token::LCurly,
             "}" => Token::RCurly,
-            "[" => Token::LSquare,
-            "]" => Token::RSquare,
+            "|" => Token::VLine,
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit() || a=='.') {
                     Token::Number(token.parse::<f32>().unwrap())
