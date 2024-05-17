@@ -87,7 +87,7 @@ impl Parser {
         match token {
             Token::Identifier(i) => {
                 if tokens.peek().is_some()
-                    && self.infix_binding_power(tokens.peek().unwrap()) == 0
+                    && self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
                     && ![Token::RParen, Token::VLine].contains(*tokens.peek().unwrap())
                 {
                     (expr, tokens) = self.parse_fn(tokens, i.clone());
@@ -104,6 +104,7 @@ impl Parser {
                 let exp;
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(Expression::Abs(Box::new(exp)));
+                tokens.next();
             }
             Token::If => {
                 (expr, tokens) = self.parse_if(tokens);
@@ -117,38 +118,32 @@ impl Parser {
                     tokens.next();
                 }
             }
-            _ => {
-                if let Token::Number(i) = token {
-                    expr = Some(Expression::Number(*i));
-                }
-            }
+            Token::Number(n) => expr = Some(Expression::Number(*n)),
+            _ => {}
         };
 
         loop {
             let op = tokens.peek();
 
-            if op.is_none() || ![Token::RParen, Token::VLine].contains(*op.unwrap()) {
-                tokens.next();
+            if op.is_none() || [Token::RParen, Token::VLine].contains(op.unwrap()) {
+                break;
+            }
+
+            let (lbp, rbp) = self.infix_binding_power(op.unwrap());
+
+            if lbp < prec {
                 break;
             }
 
             let op = tokens.next().unwrap();
 
-            if *op == Token::Pow && self.infix_binding_power(op) < prec {
-                break;
-            }
-
-            if *op != Token::Pow && self.infix_binding_power(op) <= prec {
-                break;
-            }
-
             let rhs;
-            (rhs, tokens) = self.pratt_parser(tokens, self.infix_binding_power(op));
+            (rhs, tokens) = self.pratt_parser(tokens, rbp);
             expr = Some(Expression::Binary(
                 Box::new(expr.unwrap()),
                 op.clone(),
                 Box::new(rhs),
-            ))
+            ));
         }
 
         (expr.unwrap(), tokens)
@@ -344,15 +339,14 @@ impl Parser {
         (Some(Expression::SizedSet(params)), tokens)
     }
 
-    fn infix_binding_power(&self, op: &Token) -> u16 {
+    fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
         match op {
-            Token::Add | Token::Sub => 1,
-            Token::Mul | Token::Div => 2,
-            Token::Modulo => 3,
-            Token::Pow => 4,
-            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => 5,
-            Token::If | Token::Then | Token::Else | Token::End => 6,
-            _ => 0,
+            Token::Add | Token::Sub => (1, 2),
+            Token::Mul | Token::Div | Token::Modulo => (3, 4),
+            Token::Pow => (5, 6),
+            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => (7, 8),
+            Token::If | Token::Then | Token::Else | Token::End => (9, 10),
+            _ => (0, 0),
         }
     }
 }
