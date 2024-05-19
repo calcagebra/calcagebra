@@ -18,10 +18,12 @@ Download the binary for your OS from the [releases page.](https://github.com/meg
 
 An expression can be one of the following types:
 
+* Abs: `|expr|`
 * Binary Expression: `expr (+|-|*|/|^) expr`
+* Branched: `if expr then expr else expr end`
 * Identifier: `[a-zA-Z.$]+`
-* SizedSet: `{([0-9.],?)+}`
 * Number: `[0-9.]+`
+* SizedSet: `{([0-9.],?)+}`
 * FunctionCall: `identifier exprs`
 
 Note: Multiple exprs should always be seperated by a `,`. `*` operator is optional between `identifier` and `number`, `6x^2 + 5x + 1` is perfectly valid code.
@@ -71,12 +73,13 @@ graph(f)
 ```
 
 ### Round, Floor, Ceil
-Return the number rounded, floored or ceiled.
+Return the number rounded, floored, ceiled.
 ```hs
 print(floor(e), round(e), ceil(e))
 # 2
 # 3
 # 3
+# 1
 ```
 
 ### Log

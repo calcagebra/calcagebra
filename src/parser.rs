@@ -84,75 +84,13 @@ impl Parser {
     ) -> (Expression, Peekable<Iter<Token>>) {
         let token = tokens.next().unwrap();
         let mut expr: Option<Expression> = None;
-
         match token {
             Token::Identifier(i) => {
                 if tokens.peek().is_some()
-                    && self.infix_binding_power(tokens.peek().unwrap()) == 0
-                    && **tokens.peek().unwrap() != Token::RParen
+                    && self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
+                    && ![Token::RParen, Token::VLine].contains(*tokens.peek().unwrap())
                 {
-                    let mut depth = 0;
-                    let mut params = vec![];
-                    let mut expression = vec![];
-
-                    assert!(
-                        *tokens.peek().unwrap() == &Token::LParen,
-                        "expected `(` found {:?}",
-                        tokens.peek().unwrap()
-                    );
-
-                    tokens.next();
-
-                    loop {
-                        let token = tokens.next();
-
-                        if token.is_none() {
-                            break;
-                        }
-
-                        let token = token.unwrap();
-                        if *token == Token::RParen {
-                            if depth == 0 {
-                                if !expression.is_empty() && depth == 0 {
-                                    let lex = expression.iter().peekable();
-                                    let (data, _) = self.pratt_parser(lex, 0);
-
-                                    params.push(data);
-                                    expression.clear();
-                                }
-                                break;
-                            }
-                            depth -= 1;
-                        }
-
-                        if *token == Token::RCurly {
-                            depth -= 1;
-                        }
-
-                        if *token == Token::LParen || *token == Token::LCurly {
-                            depth += 1;
-                        }
-
-                        if *token == Token::Comma && depth == 0 {
-                            let lex = expression.iter().peekable();
-                            let (data, _) = self.pratt_parser(lex, 0);
-
-                            params.push(data);
-
-                            expression.clear();
-                            continue;
-                        }
-
-                        expression.push(token.to_owned());
-                    }
-                    if !expression.is_empty() {
-                        let lex = expression.iter().peekable();
-                        let (data, _) = self.pratt_parser(lex, 0);
-
-                        params.push(data);
-                        expression.clear();
-                    }
-                    expr = Some(Expression::FunctionCall(i.to_string(), params));
+                    (expr, tokens) = self.parse_fn(tokens, i.clone());
                 } else {
                     expr = Some(Expression::Identifier(i.to_string()));
                 }
@@ -161,6 +99,12 @@ impl Parser {
                 let exp;
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(exp);
+            }
+            Token::VLine => {
+                let exp;
+                (exp, tokens) = self.pratt_parser(tokens, 0);
+                expr = Some(Expression::Abs(Box::new(exp)));
+                tokens.next();
             }
             Token::If => {
                 (expr, tokens) = self.parse_if(tokens);
@@ -174,41 +118,102 @@ impl Parser {
                     tokens.next();
                 }
             }
-            _ => {
-                if let Token::Number(i) = token {
-                    expr = Some(Expression::Number(*i));
-                }
-            }
+            Token::Number(n) => expr = Some(Expression::Number(*n)),
+            _ => {}
         };
 
         loop {
             let op = tokens.peek();
 
-            if op.is_none() || **op.unwrap() == Token::RParen {
-                tokens.next();
+            if op.is_none() || [Token::RParen, Token::VLine].contains(op.unwrap()) {
+                break;
+            }
+
+            let (lbp, rbp) = self.infix_binding_power(op.unwrap());
+
+            if lbp < prec {
                 break;
             }
 
             let op = tokens.next().unwrap();
 
-            if *op == Token::Pow && self.infix_binding_power(op) < prec {
-                break;
-            }
-
-            if *op != Token::Pow && self.infix_binding_power(op) <= prec {
-                break;
-            }
-
             let rhs;
-            (rhs, tokens) = self.pratt_parser(tokens, self.infix_binding_power(op));
+            (rhs, tokens) = self.pratt_parser(tokens, rbp);
             expr = Some(Expression::Binary(
                 Box::new(expr.unwrap()),
                 op.clone(),
                 Box::new(rhs),
-            ))
+            ));
         }
 
         (expr.unwrap(), tokens)
+    }
+
+    pub fn parse_fn<'a>(
+        &'a self,
+        mut tokens: Peekable<Iter<'a, Token>>,
+        i: String,
+    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+        let mut depth = 0;
+        let mut params = vec![];
+        let mut expression = vec![];
+
+        tokens.next();
+
+        loop {
+            let token = tokens.next();
+
+            if token.is_none() {
+                break;
+            }
+
+            let token = token.unwrap();
+            if *token == Token::RParen {
+                if depth == 0 {
+                    if !expression.is_empty() && depth == 0 {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        params.push(data);
+                        expression.clear();
+                    }
+                    break;
+                }
+                depth -= 1;
+            }
+
+            if *token == Token::RCurly {
+                depth -= 1;
+            }
+
+            if *token == Token::LParen || *token == Token::LCurly {
+                depth += 1;
+            }
+
+            if *token == Token::Comma && depth == 0 {
+                let lex = expression.iter().peekable();
+                let (data, _) = self.pratt_parser(lex, 0);
+
+                params.push(data);
+
+                expression.clear();
+                continue;
+            }
+
+            expression.push(token.to_owned());
+        }
+        if !expression.is_empty() {
+            let lex = expression.iter().peekable();
+            let (data, _) = self.pratt_parser(lex, 0);
+
+            params.push(data);
+            expression.clear();
+        }
+
+        (
+            Some(Expression::FunctionCall(i.to_string(), params)),
+            tokens,
+        )
     }
 
     pub fn parse_if<'a>(
@@ -347,22 +352,22 @@ impl Parser {
         }
         
         if is_unsized_set {
-            params.split(|f| f )
+            println!("{params:?}");
+            // params.split(|f| f )
             (Some(Expression::UnsizedSet(vec![], vec![])), tokens)
         } else {
             (Some(Expression::SizedSet(params)), tokens)
         }
     }
 
-    fn infix_binding_power(&self, op: &Token) -> u16 {
+    fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
         match op {
-            Token::Add | Token::Sub => 1,
-            Token::Mul | Token::Div => 2,
-            Token::Modulo => 3,
-            Token::Pow => 4,
-            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq | Token::HashTag => 5,
-            Token::If | Token::Then | Token::Else | Token::End => 6,
-            _ => 0,
+            Token::Add | Token::Sub => (1, 2),
+            Token::Mul | Token::Div | Token::Modulo => (3, 4),
+            Token::Pow => (5, 6),
+            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => (7, 8),
+            Token::If | Token::Then | Token::Else | Token::End => (9, 10),
+            _ => (0, 0),
         }
     }
 }
