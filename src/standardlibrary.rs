@@ -85,6 +85,7 @@ impl StandardLibrary {
             Data::Number(match &x[0] {
                 Data::Number(_) | Data::Function(_) | Data::Bool(_) => 1.0,
                 Data::SizedSet(x) => x.values.len() as f32,
+                _ => unimplemented!(),
             })
         });
 
@@ -141,8 +142,6 @@ impl StandardLibrary {
         self.map
             .insert("graph".to_string(), |x, variables, functions, std| {
                 x.iter().for_each(|f| match f {
-                    Data::Number(_) => todo!(),
-                    Data::Bool(_) => todo!(),
                     Data::Function(_) => {
                         let (args, expr) = functions.get(&f.to_function()).unwrap();
                         Chart::default()
@@ -176,6 +175,7 @@ impl StandardLibrary {
                             .y_tick_display(TickDisplay::Sparse)
                             .display();
                     }
+                    _ => {}
                 });
                 Data::default()
             });

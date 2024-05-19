@@ -352,9 +352,21 @@ impl Parser {
         }
         
         if is_unsized_set {
+
             println!("{params:?}");
-            // params.split(|f| f )
-            (Some(Expression::UnsizedSet(vec![], vec![])), tokens)
+
+            let mut idents = vec![];
+            let mut conditions = vec![];
+
+            for param in params {
+                if let Expression::Identifier(_) = param {
+                    idents.push(param);
+                } else {
+                    conditions.push(param);
+                }
+            }
+
+            (Some(Expression::UnsizedSet(idents, conditions)), tokens)
         } else {
             (Some(Expression::SizedSet(params)), tokens)
         }
@@ -365,7 +377,7 @@ impl Parser {
             Token::Add | Token::Sub => (1, 2),
             Token::Mul | Token::Div | Token::Modulo => (3, 4),
             Token::Pow => (5, 6),
-            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => (7, 8),
+            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq | Token::HashTag => (7, 8),
             Token::If | Token::Then | Token::Else | Token::End => (9, 10),
             _ => (0, 0),
         }

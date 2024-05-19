@@ -7,7 +7,7 @@ use std::{
     ops::{Add, Div, Mul, Rem, Sub},
 };
 
-use self::sizedset::SizedSet;
+use self::{sizedset::SizedSet, unsizedset::UnsizedSet};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Data {
@@ -15,6 +15,7 @@ pub enum Data {
     Bool(bool),
     Function(String),
     SizedSet(SizedSet),
+    UnsizedSet(UnsizedSet)
 }
 
 impl Data {
@@ -68,6 +69,7 @@ impl Display for Data {
                 Data::Bool(b) => b.to_string(),
                 Data::Function(ident) => ident.to_string(),
                 Data::SizedSet(set) => set.to_string(),
+                _ => unimplemented!()
             }
         )
     }

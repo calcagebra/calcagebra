@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     ast::{Ast, Expression},
-    data::{sizedset::SizedSet, Data},
+    data::{sizedset::SizedSet, unsizedset::UnsizedSet, Data},
     standardlibrary::StandardLibrary,
     token::Token,
 };
@@ -132,8 +132,8 @@ impl Interpreter {
                 Data::Number(match data {
                     Data::Number(n) => n.abs(),
                     Data::Bool(b) => b as u8 as f32,
-                    Data::Function(_) => unimplemented!(),
                     Data::SizedSet(s) => s.values.len() as f32,
+                    _ => unimplemented!(),
                 })
             }
             Expression::Branched(condition, a, b) => {
@@ -158,7 +158,9 @@ impl Interpreter {
                     .map(|f| Interpreter::eval_expression(f, variables, functions, std))
                     .collect(),
             )),
-            Expression::UnsizedSet(_,_) => Data::default(),
+            Expression::UnsizedSet(idents, conditions) => {
+                Data::UnsizedSet(UnsizedSet::new(idents.to_vec(), conditions.to_vec()))
+            }
             Expression::FunctionCall(i, exprs) => {
                 if std.get(i).is_some() {
                     let f = std.get(i).unwrap();

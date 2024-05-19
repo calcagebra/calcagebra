@@ -1,4 +1,6 @@
-#[derive(Debug)]
+use crate::ast::Expression;
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum BaseSet {
     Natural,
     Whole,
@@ -6,7 +8,7 @@ pub enum BaseSet {
     Real,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct UnsizedSet {
     upper_limit: f32,
     lower_limit: f32,
@@ -14,7 +16,11 @@ pub struct UnsizedSet {
 }
 
 impl UnsizedSet {
-    pub fn new() {
-        
+    pub fn new(idents: Vec<Expression>, conditions: Vec<Expression>) -> Self {
+        Self {
+            upper_limit: 0.0,
+            lower_limit: 0.0,
+            base_set: BaseSet::Real
+        }
     }
 }
