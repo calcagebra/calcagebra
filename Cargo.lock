@@ -39,7 +39,7 @@ checksum = "5d6d68c57235a3a081186990eca2867354726650f42f7516ca50c28d6281fd15"
 
 [[package]]
 name = "calcagebra"
-version = "1.6.0"
+version = "1.7.0"
 dependencies = [
  "clap",
  "rustyline",

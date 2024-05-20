@@ -133,6 +133,7 @@ impl Interpreter {
                     Data::Number(n) => n.abs(),
                     Data::Bool(b) => b as u8 as f32,
                     Data::SizedSet(s) => s.values.len() as f32,
+                    Data::UnsizedSet(x) => x.len(variables, functions, std),
                     _ => unimplemented!(),
                 })
             }

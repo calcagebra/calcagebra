@@ -4,16 +4,9 @@ use textplots::{AxisBuilder, Chart, LineStyle, Plot, Shape, TickDisplay, TickDis
 use std::collections::HashMap;
 
 use crate::{
-    ast::Expression,
     data::{sizedset::SizedSet, Data},
-    interpreter::Interpreter,
+    interpreter::{Interpreter, Std},
 };
-
-pub type Variables = HashMap<String, Data>;
-pub type Functions = HashMap<String, (Vec<String>, Expression)>;
-pub type Std = HashMap<String, Function>;
-pub type Function = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data;
-
 #[derive(Debug, Clone)]
 pub struct StandardLibrary {
     pub map: Std,
@@ -81,11 +74,11 @@ impl StandardLibrary {
             Data::Number(x[0].to_number().powf(1.0 / x[1].to_number()))
         });
 
-        self.map.insert("len".to_string(), |x, _, _, _| {
+        self.map.insert("len".to_string(), |x, variables, functions, std| {
             Data::Number(match &x[0] {
                 Data::Number(_) | Data::Function(_) | Data::Bool(_) => 1.0,
                 Data::SizedSet(x) => x.values.len() as f32,
-                _ => unimplemented!(),
+                Data::UnsizedSet(x) => x.len(&variables, &functions, &std.map),
             })
         });
 

@@ -353,8 +353,6 @@ impl Parser {
         
         if is_unsized_set {
 
-            println!("{params:?}");
-
             let mut idents = vec![];
             let mut conditions = vec![];
 

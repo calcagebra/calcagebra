@@ -1,6 +1,6 @@
 use crate::token::Token;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum Ast {
     Assignment(String, Expression),
@@ -8,7 +8,7 @@ pub enum Ast {
     FunctionDeclaration(String, Vec<String>, Expression),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Expression {
     Abs(Box<Expression>),
     Binary(Box<Expression>, Token, Box<Expression>),

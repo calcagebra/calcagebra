@@ -9,7 +9,7 @@ pub enum Token {
     End,
 
     Eq,
-    
+    NEq,
     IsEq,
     Gt,
     Lt,
@@ -42,7 +42,7 @@ impl Token {
             "end" => Token::End,
 
             "=" => Token::Eq,
-
+            "!=" => Token::NEq,
             "==" => Token::IsEq,
             ">" => Token::Gt,
             "<" => Token::Lt,
