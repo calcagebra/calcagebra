@@ -1,3 +1,4 @@
-S = { x : x # W, x <= 5 }
+f x = x
+g y = sin(y)
 
-print(|S|)
+graph(f,g)
