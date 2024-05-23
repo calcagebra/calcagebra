@@ -347,9 +347,8 @@ impl Parser {
             params.push(data);
             expression.clear();
         }
-        
-        if is_unsized_set {
 
+        if is_unsized_set {
             let mut idents = vec![];
             let mut conditions = vec![];
 
@@ -372,7 +371,13 @@ impl Parser {
             Token::Add | Token::Sub => (1, 2),
             Token::Mul | Token::Div | Token::Modulo => (3, 4),
             Token::Pow => (5, 6),
-            Token::IsEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq | Token::HashTag => (7, 8),
+            Token::IsEq
+            | Token::NEq
+            | Token::Gt
+            | Token::Lt
+            | Token::GtEq
+            | Token::LtEq
+            | Token::Belongs => (7, 8),
             Token::If | Token::Then | Token::Else | Token::End => (9, 10),
             _ => (0, 0),
         }

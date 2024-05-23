@@ -83,18 +83,49 @@ impl StandardLibrary {
                 })
             });
 
-        self.map.insert("get".to_string(), |x, _, _, _| {
-            x[0].to_set()
-                .values
-                .get(x[1].to_number() as usize)
-                .unwrap()
-                .clone()
-        });
-        self.map.insert("set".to_string(), |x, _, _, _| {
-            let mut s = x[0].to_set().values.clone();
-            s.insert(x[1].to_number() as usize, x[2].clone());
-            Data::SizedSet(SizedSet::new(s))
-        });
+        self.map
+            .insert("get".to_string(), |x, variables, functions, std| {
+                x[0].to_set(&variables, &functions, &std.map)
+                    .values
+                    .get(x[1].to_number() as usize)
+                    .unwrap()
+                    .clone()
+            });
+        self.map
+            .insert("set".to_string(), |x, variables, functions, std| {
+                let mut s = x[0].to_set(&variables, &functions, &std.map).values.clone();
+                s.insert(x[1].to_number() as usize, x[2].clone());
+                Data::SizedSet(SizedSet::new(s))
+            });
+        self.map
+            .insert("sum".to_string(), |x, variables, functions, std| {
+                Data::Number(
+                    x.iter()
+                        .map(|s| {
+                            s.to_set(&variables, &functions, &std.map)
+                                .values
+                                .iter()
+                                .map(|y| y.to_number())
+                                .sum::<f32>()
+                        })
+                        .sum(),
+                )
+            });
+
+        self.map
+            .insert("product".to_string(), |x, variables, functions, std| {
+                Data::Number(
+                    x.iter()
+                        .map(|s| {
+                            s.to_set(&variables, &functions, &std.map)
+                                .values
+                                .iter()
+                                .map(|y| y.to_number())
+                                .product::<f32>()
+                        })
+                        .product(),
+                )
+            });
 
         self.map
             .insert("map".to_string(), |x, variables, functions, std| {
@@ -111,7 +142,7 @@ impl StandardLibrary {
                     let f = std.map.get(&i).unwrap();
                     let mut r = vec![];
                     for set in sets {
-                        for n in set.to_set().values.clone() {
+                        for n in set.to_set(&variables, &functions, &std.map).values.clone() {
                             r.push(f(
                                 vec![n],
                                 variables.clone(),

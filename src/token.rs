@@ -24,7 +24,7 @@ pub enum Token {
     Modulo,
 
     Comma,
-    HashTag,
+    Belongs,
     Colon,
     LParen,
     RParen,
@@ -57,7 +57,7 @@ impl Token {
             "%" => Token::Modulo,
 
             "," => Token::Comma,
-            "#" => Token::HashTag,
+            "E" => Token::Belongs,
             ":" => Token::Colon,
             "(" => Token::LParen,
             ")" => Token::RParen,

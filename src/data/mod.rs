@@ -7,6 +7,8 @@ use std::{
     ops::{Add, Div, Mul, Rem, Sub},
 };
 
+use crate::interpreter::{Functions, Std, Variables};
+
 use self::{sizedset::SizedSet, unsizedset::UnsizedSet};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -15,7 +17,7 @@ pub enum Data {
     Bool(bool),
     Function(String),
     SizedSet(SizedSet),
-    UnsizedSet(UnsizedSet)
+    UnsizedSet(UnsizedSet),
 }
 
 impl Data {
@@ -43,9 +45,10 @@ impl Data {
         }
     }
 
-    pub fn to_set(&self) -> &SizedSet {
+    pub fn to_set(&self, variables: &Variables, functions: &Functions, std: &Std) -> SizedSet {
         match self {
-            Data::SizedSet(s) => s,
+            Data::SizedSet(s) => s.clone(),
+            Data::UnsizedSet(s) => s.to_sizedset(variables, functions, std),
             _ => unimplemented!(),
         }
     }
@@ -69,7 +72,7 @@ impl Display for Data {
                 Data::Bool(b) => b.to_string(),
                 Data::Function(ident) => ident.to_string(),
                 Data::SizedSet(set) => set.to_string(),
-                _ => unimplemented!()
+                _ => unimplemented!(),
             }
         )
     }
@@ -135,7 +138,6 @@ impl Div for Data {
         }
     }
 }
-
 
 impl Rem for Data {
     type Output = Data;
