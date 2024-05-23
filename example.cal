@@ -1,4 +1,5 @@
-f x = x
-g y = sin(y)
+S = {1,2,3}
 
-graph(f,g)
+L = 2*S
+
+print(L)

@@ -305,9 +305,6 @@ impl Parser {
 
             if *token == Token::RCurly {
                 if !expression.is_empty() {
-                    if !is_unsized_set {
-                        expression.push(token.to_owned());
-                    }
                     let lex = expression.iter().peekable();
                     let (data, _) = self.pratt_parser(lex, 0);
 
