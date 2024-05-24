@@ -99,6 +99,7 @@ impl Parser {
                 let exp;
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(exp);
+                tokens.next();
             }
             Token::VLine => {
                 let exp;
