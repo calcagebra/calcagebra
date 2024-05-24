@@ -1,10 +1,10 @@
 mod ast;
+mod data;
 mod interpreter;
 mod lexer;
 mod parser;
-mod token;
-mod data;
 mod standardlibrary;
+mod token;
 
 use rustyline::{error::ReadlineError, DefaultEditor};
 use std::{fs::read_to_string, process::exit, time::Instant};
@@ -17,17 +17,21 @@ use crate::{interpreter::Interpreter, parser::Parser};
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Whether to output debug information
+    /// Output debug information
     #[clap(short, long, value_parser)]
     debug: bool,
 
-    /// Whether to dry run
+    /// Only run the lexer and parser
     #[clap(long, value_parser)]
     dry_run: bool,
 
-    /// Whether to print the time elapsed
+    /// Print the time elapsed while executing code
     #[clap(short, long, value_parser)]
     time: bool,
+
+    /// Print the characters used as globals
+    #[clap(short, long, value_parser)]
+    globals: bool,
 
     /// The path of file which is to be executed
     #[clap()]
@@ -39,6 +43,16 @@ fn main() {
     let main = Instant::now();
 
     if args.input.is_none() {
+        if args.globals {
+            println!("calcagebra v{}\n", version());
+            let _ = Interpreter::new()
+                .init_globals()
+                .variables
+                .iter()
+                .map(|(a, b)| println!("{a} {b}"))
+                .collect::<Vec<_>>();
+            return;
+        }
         println!(
             "Welcome to calcagebra v{}\nTo exit, press CTRL+C or CTRL+D",
             version()
@@ -56,7 +70,6 @@ fn main() {
                     println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
                     interpreter.run(Parser::new(Lexer::new(&line).tokens()).ast());
-
                 }
                 Err(ReadlineError::Interrupted) => {
                     println!("CTRL-C");

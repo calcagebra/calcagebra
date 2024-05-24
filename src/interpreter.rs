@@ -17,7 +17,7 @@ pub type Function = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data
 
 #[derive(Debug)]
 pub struct Interpreter {
-    variables: Variables,
+    pub variables: Variables,
     functions: Functions,
     std: StandardLibrary,
 }
@@ -31,8 +31,10 @@ impl Interpreter {
         }
     }
 
-    pub fn init_globals(&mut self) {
-        [("pi", PI), ("e", E)].map(|(k, v)| self.variables.insert(k.to_string(), Data::Number(v)));
+    pub fn init_globals(&mut self) -> &Self {
+        [("π", PI), ("pi", PI), ("e", E)].map(|(k, v)| self.variables.insert(k.to_string(), Data::Number(v)));
+        
+        self
     }
 
     pub fn run(&mut self, ast: Vec<Ast>) {

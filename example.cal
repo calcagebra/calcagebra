@@ -1,3 +1,3 @@
-S = { x : x <= 9, x != 8, x E N }
+S = { x : x < 1, x E N }
 
-print(sum(S))
+print(product(S))
