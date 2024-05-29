@@ -88,9 +88,15 @@ impl Parser {
             Token::Identifier(i) => {
                 if tokens.peek().is_some()
                     && self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
-                    && ![Token::RParen, Token::VLine].contains(*tokens.peek().unwrap())
+                    && ![Token::RParen, Token::VLine, Token::Differentiate]
+                        .contains(*tokens.peek().unwrap())
                 {
                     (expr, tokens) = self.parse_fn(tokens, i.clone());
+                } else if tokens.peek().is_some()
+                    && *tokens.peek().unwrap() == &Token::Differentiate
+                {
+                    expr = Some(Expression::Differentiate(Box::new(Expression::Identifier(i.to_string()))));
+                    tokens.next();
                 } else {
                     expr = Some(Expression::Identifier(i.to_string()));
                 }
@@ -370,16 +376,17 @@ impl Parser {
     fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
         match op {
             Token::Add | Token::Sub => (1, 2),
-            Token::Mul | Token::Div | Token::Modulo => (3, 4),
+            Token::Mul | Token::Div | Token::Mod => (3, 4),
             Token::Pow => (5, 6),
+            Token::Differentiate => (7, 8),
             Token::IsEq
             | Token::NEq
             | Token::Gt
             | Token::Lt
             | Token::GtEq
             | Token::LtEq
-            | Token::Belongs => (7, 8),
-            Token::If | Token::Then | Token::Else | Token::End => (9, 10),
+            | Token::Belongs => (9, 10),
+            Token::If | Token::Then | Token::Else | Token::End => (11, 12),
             _ => (0, 0),
         }
     }

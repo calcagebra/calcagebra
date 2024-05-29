@@ -7,7 +7,10 @@ use std::{
     ops::{Add, Div, Mul, Rem, Sub},
 };
 
-use crate::interpreter::{Functions, Std, Variables};
+use crate::{
+    ast::Expression,
+    interpreter::{Functions, Std, Variables},
+};
 
 use self::{sizedset::SizedSet, unsizedset::UnsizedSet};
 
@@ -15,7 +18,7 @@ use self::{sizedset::SizedSet, unsizedset::UnsizedSet};
 pub enum Data {
     Number(f32),
     Bool(bool),
-    Function(String),
+    Function(String, Vec<String>, Expression),
     SizedSet(SizedSet),
     UnsizedSet(UnsizedSet),
 }
@@ -40,7 +43,7 @@ impl Data {
 
     pub fn to_function(&self) -> String {
         match self {
-            Data::Function(ident) => ident.to_string(),
+            Data::Function(ident, _, _) => ident.to_string(),
             _ => unimplemented!(),
         }
     }
@@ -70,7 +73,13 @@ impl Display for Data {
             match self {
                 Data::Number(n) => n.to_string(),
                 Data::Bool(b) => b.to_string(),
-                Data::Function(ident) => ident.to_string(),
+                Data::Function(ident, args, expr) => format!(
+                    "{ident} {} = {expr}",
+                    args.iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                ),
                 Data::SizedSet(set) => set.to_string(),
                 _ => unimplemented!(),
             }
@@ -84,7 +93,6 @@ impl Add for Data {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Data::Number(n), Data::Number(m)) => Data::Number(n + m),
-            (Data::Function(_), Data::Function(_)) => todo!(),
             (_, _) => unimplemented!(),
         }
     }

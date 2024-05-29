@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub type Variables = HashMap<String, Data>;
-pub type Functions = HashMap<String, (Vec<String>, Expression)>;
+pub type Functions = HashMap<String, Data>;
 pub type Std = HashMap<String, Function>;
 pub type Function = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data;
 
@@ -32,8 +32,9 @@ impl Interpreter {
     }
 
     pub fn init_globals(&mut self) -> &Self {
-        [("π", PI), ("pi", PI), ("e", E)].map(|(k, v)| self.variables.insert(k.to_string(), Data::Number(v)));
-        
+        [("π", PI), ("pi", PI), ("e", E)]
+            .map(|(k, v)| self.variables.insert(k.to_string(), Data::Number(v)));
+
         self
     }
 
@@ -70,9 +71,9 @@ impl Interpreter {
                             self.functions.clone(),
                             self.std.clone(),
                         );
-                    } else {
-                        let (args, code) = self.functions.get(&i).unwrap().clone();
-
+                    } else if let Data::Function(_, args, code) =
+                        self.functions.get(&i).unwrap().clone()
+                    {
                         let variables = self.variables.clone();
 
                         for (i, arg) in args.iter().enumerate() {
@@ -96,8 +97,10 @@ impl Interpreter {
                     }
                 }
                 Ast::FunctionDeclaration(name, args, code) => {
-                    self.functions
-                        .insert(name.to_string(), (args.to_vec(), code.clone()));
+                    self.functions.insert(
+                        name.to_string(),
+                        Data::Function(name, args.to_vec(), code.clone()),
+                    );
                 }
             }
         }
@@ -118,14 +121,14 @@ impl Interpreter {
                     Token::Sub => dlhs - drhs,
                     Token::Mul => dlhs * drhs,
                     Token::Div => dlhs / drhs,
-                    Token::Modulo => dlhs % drhs,
+                    Token::Mod => dlhs % drhs,
                     Token::Pow => Data::Number(dlhs.to_number().powf(drhs.to_number())),
                     Token::IsEq => Data::Bool(dlhs == drhs),
                     Token::Gt => Data::Bool(dlhs > drhs),
                     Token::Lt => Data::Bool(dlhs < drhs),
                     Token::GtEq => Data::Bool(dlhs >= drhs),
                     Token::LtEq => Data::Bool(dlhs <= drhs),
-                    _ => unimplemented!(),
+                    _ => unreachable!(),
                 }
             }
             Expression::Abs(operand) => {
@@ -148,9 +151,11 @@ impl Interpreter {
             }
             Expression::Identifier(ident) => {
                 if variables.get(ident).is_some() {
-                    variables.get(ident).unwrap().clone()
-                } else if std.get(ident).is_some() || functions.get(ident).is_some() {
-                    Data::Function(ident.to_string())
+                    variables.get(ident).unwrap().to_owned()
+                } else if std.get(ident).is_some() {
+                    Data::Function(ident.to_string(), vec![], Expression::Undefined)
+                } else if functions.get(ident).is_some() {
+                    functions.get(ident).unwrap().to_owned()
                 } else {
                     panic!("attempt to access value of not assigned identifier `{ident}`")
                 }
@@ -176,17 +181,60 @@ impl Interpreter {
                         functions.clone(),
                         StandardLibrary::from_map(std.clone()),
                     );
+                } else if let Data::Function(_, args, code) = functions.get(i).unwrap().clone() {
+                    let mut variables = variables.clone();
+
+                    for (i, arg) in args.iter().enumerate() {
+                        let r = Interpreter::eval_expression(&exprs[i], &variables, functions, std);
+                        variables.insert(arg.to_string(), r);
+                    }
+
+                    return Interpreter::eval_expression(&code, &variables, functions, std);
                 }
-                let (args, code) = functions.get(i).unwrap().clone();
+                unreachable!()
+            }
+            Expression::Differentiate(ident) => {
+                let data = Interpreter::eval_expression(ident, variables, functions, std);
 
-                let mut variables = variables.clone();
+                match data {
+                    Data::Function(ident, args, expr) => {
+                        let r = match expr {
+                            Expression::Binary(e1, op, e2) => {
+                                match op {
+                                    Token::Add => todo!(),
+                                    Token::Sub => todo!(),
+                                    Token::Mul => todo!(),
+                                    Token::Div => todo!(),
+                                    Token::Mod => todo!(),
+                                    Token::Pow => todo!(),
+                                    _ => unreachable!(),
+                                }
+                            }
+                            Expression::Branched(_, _, _) => todo!(),
+                            Expression::Differentiate(_) => todo!(),
+                            Expression::Identifier(ident) => {
+                                if args.contains(&ident) {
+                                    Expression::Number(1.0)
+                                } else {
+                                    Expression::Number(0.0)
+                                }
+                            }
+                            Expression::Number(_) => Expression::Number(0.0),
 
-                for (i, arg) in args.iter().enumerate() {
-                    let r = Interpreter::eval_expression(&exprs[i], &variables, functions, std);
-                    variables.insert(arg.to_string(), r);
+                            Expression::Abs(_)
+                            | Expression::SizedSet(_)
+                            | Expression::UnsizedSet(_, _)
+                            | Expression::FunctionCall(_, _) => unimplemented!(),
+                            Expression::Undefined => todo!(),
+                        };
+
+                        Data::Function(ident, args, r)
+                    },
+                    _ => unreachable!()
                 }
-
-                Interpreter::eval_expression(&code, &variables, functions, std)
+            }
+            Expression::Undefined => {
+                panic!("reached undefined expression evaluation")
             }
         }
     }
