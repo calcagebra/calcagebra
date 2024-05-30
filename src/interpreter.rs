@@ -198,36 +198,7 @@ impl Interpreter {
 
                 match data {
                     Data::Function(ident, args, expr) => {
-                        let r = match expr {
-                            Expression::Binary(e1, op, e2) => {
-                                match op {
-                                    Token::Add => todo!(),
-                                    Token::Sub => todo!(),
-                                    Token::Mul => todo!(),
-                                    Token::Div => todo!(),
-                                    Token::Mod => todo!(),
-                                    Token::Pow => todo!(),
-                                    _ => unreachable!(),
-                                }
-                            }
-                            Expression::Branched(_, _, _) => todo!(),
-                            Expression::Differentiate(_) => todo!(),
-                            Expression::Identifier(ident) => {
-                                if args.contains(&ident) {
-                                    Expression::Number(1.0)
-                                } else {
-                                    Expression::Number(0.0)
-                                }
-                            }
-                            Expression::Number(_) => Expression::Number(0.0),
-
-                            Expression::Abs(_)
-                            | Expression::SizedSet(_)
-                            | Expression::UnsizedSet(_, _)
-                            | Expression::FunctionCall(_, _) => unimplemented!(),
-                            Expression::Undefined => todo!(),
-                        };
-
+                        let r = expr.differentiate(&args);
                         Data::Function(ident, args, r)
                     },
                     _ => unreachable!()

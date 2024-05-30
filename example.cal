@@ -1,2 +1,2 @@
-f x = x^2 + 4x
+f x = x^2
 print(f`)
