@@ -1,2 +1,2 @@
-f x = x^2
+f x = 3x^2
 print(f`)

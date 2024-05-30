@@ -113,7 +113,40 @@ impl Display for Expression {
             "{}",
             match self {
                 Expression::Abs(expr) => format!("|{expr}|"),
-                Expression::Binary(e1, op, e2) => format!("{e1}{op}{e2}"),
+                Expression::Binary(e1, op, e2) => {
+                    if *op == Token::Mul {
+                        if let Expression::Number(0.0) = *e1.to_owned() {
+                            String::new()
+                        } else if let Expression::Number(0.0) = *e2.to_owned() {
+                            String::new()
+                        } else if let Expression::Number(1.0) = *e1.to_owned() {
+                            format!("{e2}")
+                        } else if let Expression::Number(1.0) = *e2.to_owned() {
+                            format!("{e1}")
+                        } else {
+                            format!("{e1}{op}{e2}")
+                        }
+                    } else if *op == Token::Pow {
+                        if let Expression::Number(0.0) = *e2.to_owned() {
+                            String::from("1")
+                        } else if let Expression::Number(1.0) = *e2.to_owned() {
+                            format!("{e1}")
+                        } else {
+                            format!("{e1}{op}{e2}")
+                        }
+                    } else {
+                        let s1 = format!("{e1}");
+                        let s2 = format!("{e2}");
+
+                        if s1.is_empty() {
+                            s2
+                        } else if s2.is_empty() {
+                            s1
+                        } else {
+                            format!("{e1}{op}{e2}")
+                        }
+                    }
+                }
                 Expression::Branched(e1, e2, e3) => format!("if {e1} then {e2} else {e3} end"),
                 Expression::Differentiate(f) => format!("d/dx {f}"),
                 Expression::Identifier(ident) => ident.to_string(),
