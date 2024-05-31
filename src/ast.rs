@@ -102,6 +102,56 @@ impl Expression {
             | Expression::UnsizedSet(_, _)
             | Expression::FunctionCall(_, _) => unimplemented!(),
             Expression::Undefined => todo!(),
+        }.flatten()
+    }
+
+    pub fn flatten(&self) -> Expression {
+        match self {
+            Expression::Binary(e1, op, e2) => match (*e1.to_owned(), op, *e2.to_owned()) {
+                (Expression::Number(a), Token::Add, Expression::Number(b)) => {
+                    Expression::Number(a + b)
+                }
+                (Expression::Number(a), Token::Sub, Expression::Number(b)) => {
+                    Expression::Number(a - b)
+                }
+                (Expression::Number(a), Token::Mul, Expression::Number(b)) => {
+                    Expression::Number(a * b)
+                }
+                (Expression::Number(a), Token::Div, Expression::Number(b)) => {
+                    Expression::Number(a / b)
+                }
+                (Expression::Number(a), Token::Pow, Expression::Number(b)) => {
+                    Expression::Number(a.powf(b))
+                }
+                (Expression::Number(a), Token::Mul, Expression::Binary(b, Token::Mul, c)) => {
+                    match (*b.to_owned(), *c.to_owned()) {
+                        (Expression::Number(x), Expression::Number(y)) => {
+                            Expression::Number(a * x * y)
+                        }
+                        (Expression::Number(x), d) => Expression::Binary(
+                            Box::new(Expression::Number(x * a)),
+                            Token::Mul,
+                            Box::new(d),
+                        ),
+                        (d, Expression::Number(x)) => Expression::Binary(
+                            Box::new(Expression::Number(x * a)),
+                            Token::Mul,
+                            Box::new(d),
+                        ),
+                        _ => Expression::Binary(
+                            Box::new(Expression::Number(a)),
+                            Token::Mul,
+                            Box::new(Expression::Binary(b, Token::Mul, c)),
+                        ),
+                    }
+                }
+                _ => Expression::Binary(
+                    Box::new(e1.flatten()),
+                    op.to_owned(),
+                    Box::new(e2.flatten()),
+                ),
+            },
+            _ => self.to_owned(),
         }
     }
 }
@@ -115,21 +165,21 @@ impl Display for Expression {
                 Expression::Abs(expr) => format!("|{expr}|"),
                 Expression::Binary(e1, op, e2) => {
                     if *op == Token::Mul {
-                        if let Expression::Number(0.0) = *e1.to_owned() {
+                        if Expression::Number(0.0) == *e1.to_owned()
+                            || Expression::Number(0.0) == *e2.to_owned()
+                        {
                             String::new()
-                        } else if let Expression::Number(0.0) = *e2.to_owned() {
-                            String::new()
-                        } else if let Expression::Number(1.0) = *e1.to_owned() {
+                        } else if Expression::Number(1.0) == *e1.to_owned() {
                             format!("{e2}")
-                        } else if let Expression::Number(1.0) = *e2.to_owned() {
+                        } else if Expression::Number(1.0) == *e2.to_owned() {
                             format!("{e1}")
                         } else {
                             format!("{e1}{op}{e2}")
                         }
                     } else if *op == Token::Pow {
-                        if let Expression::Number(0.0) = *e2.to_owned() {
+                        if Expression::Number(0.0) == *e2.to_owned() {
                             String::from("1")
-                        } else if let Expression::Number(1.0) = *e2.to_owned() {
+                        } else if Expression::Number(1.0) == *e2.to_owned() {
                             format!("{e1}")
                         } else {
                             format!("{e1}{op}{e2}")
