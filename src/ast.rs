@@ -174,7 +174,7 @@ impl Display for Expression {
                         } else if Expression::Number(1.0) == *e2.to_owned() {
                             format!("{e1}")
                         } else {
-                            format!("{e1}{op}{e2}")
+                            format!("{e1}{e2}")
                         }
                     } else if *op == Token::Pow {
                         if Expression::Number(0.0) == *e2.to_owned() {
