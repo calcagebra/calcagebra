@@ -1,5 +1,6 @@
 pub mod sizedset;
 pub mod unsizedset;
+pub mod function;
 
 use std::{
     fmt::Display,
@@ -7,18 +8,15 @@ use std::{
     ops::{Add, Div, Mul, Rem, Sub},
 };
 
-use crate::{
-    ast::Expression,
-    interpreter::{Functions, Std, Variables},
-};
+use crate::interpreter::{Functions, Std, Variables};
 
-use self::{sizedset::SizedSet, unsizedset::UnsizedSet};
+use self::{function::Function, sizedset::SizedSet, unsizedset::UnsizedSet};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Data {
     Number(f32),
     Bool(bool),
-    Function(String, Vec<String>, Expression),
+    Function(Function),
     SizedSet(SizedSet),
     UnsizedSet(UnsizedSet),
 }
@@ -43,7 +41,7 @@ impl Data {
 
     pub fn to_function(&self) -> String {
         match self {
-            Data::Function(ident, _, _) => ident.to_string(),
+            Data::Function(f) => f.name.to_string(),
             _ => unimplemented!(),
         }
     }
@@ -73,12 +71,14 @@ impl Display for Data {
             match self {
                 Data::Number(n) => n.to_string(),
                 Data::Bool(b) => b.to_string(),
-                Data::Function(ident, args, expr) => format!(
-                    "{ident} {} = {expr}",
-                    args.iter()
+                Data::Function(f) => format!(
+                    "{} {} = {}",
+                    f.name,
+                    f.args.iter()
                         .map(|f| f.to_string())
                         .collect::<Vec<_>>()
-                        .join(",")
+                        .join(","),
+                    f.expr
                 ),
                 Data::SizedSet(set) => set.to_string(),
                 _ => unimplemented!(),

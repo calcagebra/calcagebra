@@ -5,15 +5,15 @@ use std::{
 
 use crate::{
     ast::{Ast, Expression},
-    data::{sizedset::SizedSet, unsizedset::UnsizedSet, Data},
+    data::{function::Function, sizedset::SizedSet, unsizedset::UnsizedSet, Data},
     standardlibrary::StandardLibrary,
     token::Token,
 };
 
 pub type Variables = HashMap<String, Data>;
 pub type Functions = HashMap<String, Data>;
-pub type Std = HashMap<String, Function>;
-pub type Function = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data;
+pub type Std = HashMap<String, StdFunction>;
+pub type StdFunction = fn(Vec<Data>, Variables, Functions, StandardLibrary) -> Data;
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -71,12 +71,10 @@ impl Interpreter {
                             self.functions.clone(),
                             self.std.clone(),
                         );
-                    } else if let Data::Function(_, args, code) =
-                        self.functions.get(&i).unwrap().clone()
-                    {
+                    } else if let Data::Function(f) = self.functions.get(&i).unwrap().clone() {
                         let variables = self.variables.clone();
 
-                        for (i, arg) in args.iter().enumerate() {
+                        for (i, arg) in f.args.iter().enumerate() {
                             let r = Interpreter::eval_expression(
                                 &exprs[i],
                                 &self.variables,
@@ -87,7 +85,7 @@ impl Interpreter {
                         }
 
                         Interpreter::eval_expression(
-                            &code,
+                            &f.expr,
                             &self.variables,
                             &self.functions,
                             &self.std.map,
@@ -96,10 +94,10 @@ impl Interpreter {
                         self.variables = variables;
                     }
                 }
-                Ast::FunctionDeclaration(name, args, code) => {
+                Ast::FunctionDeclaration(name, args, expr) => {
                     self.functions.insert(
                         name.to_string(),
-                        Data::Function(name, args.to_vec(), code.clone()),
+                        Data::Function(Function::new(name, args.to_vec(), expr.clone())),
                     );
                 }
             }
@@ -153,7 +151,7 @@ impl Interpreter {
                 if variables.get(ident).is_some() {
                     variables.get(ident).unwrap().to_owned()
                 } else if std.get(ident).is_some() {
-                    Data::Function(ident.to_string(), vec![], Expression::Undefined)
+                    Data::Function(Function::new(ident.to_string(), vec![], Expression::Undefined))
                 } else if functions.get(ident).is_some() {
                     functions.get(ident).unwrap().to_owned()
                 } else {
@@ -181,15 +179,15 @@ impl Interpreter {
                         functions.clone(),
                         StandardLibrary::from_map(std.clone()),
                     );
-                } else if let Data::Function(_, args, code) = functions.get(i).unwrap().clone() {
+                } else if let Data::Function(f) = functions.get(i).unwrap().clone() {
                     let mut variables = variables.clone();
 
-                    for (i, arg) in args.iter().enumerate() {
+                    for (i, arg) in f.args.iter().enumerate() {
                         let r = Interpreter::eval_expression(&exprs[i], &variables, functions, std);
                         variables.insert(arg.to_string(), r);
                     }
 
-                    return Interpreter::eval_expression(&code, &variables, functions, std);
+                    return Interpreter::eval_expression(&f.expr, &variables, functions, std);
                 }
                 unreachable!()
             }
@@ -197,11 +195,11 @@ impl Interpreter {
                 let data = Interpreter::eval_expression(ident, variables, functions, std);
 
                 match data {
-                    Data::Function(ident, args, expr) => {
-                        let r = expr.differentiate(&args);
-                        Data::Function(ident, args, r)
-                    },
-                    _ => unreachable!()
+                    Data::Function(f) => {
+                        let r = f.expr.differentiate(&f.args);
+                        Data::Function(Function::new(f.name, f.args, r))
+                    }
+                    _ => unreachable!(),
                 }
             }
             Expression::Undefined => {

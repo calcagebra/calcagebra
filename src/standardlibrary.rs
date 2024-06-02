@@ -77,7 +77,7 @@ impl StandardLibrary {
         self.map
             .insert("len".to_string(), |x, variables, functions, std| {
                 Data::Number(match &x[0] {
-                    Data::Number(_) | Data::Function(_, _, _) | Data::Bool(_) => 1.0,
+                    Data::Number(_) | Data::Function(_) | Data::Bool(_) => 1.0,
                     Data::SizedSet(x) => x.values.len() as f32,
                     Data::UnsizedSet(x) => x.len(&variables, &functions, &std.map),
                 })
@@ -132,7 +132,7 @@ impl StandardLibrary {
                 let mut sets = vec![];
                 let mut i = String::new();
                 for arg in x {
-                    if matches!(arg, Data::Function(_, _, _)) {
+                    if matches!(arg, Data::Function(_)) {
                         i = arg.to_function();
                         break;
                     }
@@ -152,14 +152,14 @@ impl StandardLibrary {
                         }
                     }
                     return Data::SizedSet(SizedSet::new(r));
-                } else if let Data::Function(_, args, code) = functions.get(&i).unwrap().clone() {
+                } else if let Data::Function(f) = functions.get(&i).unwrap().clone() {
                     let mut variables = variables.clone();
 
-                    for (i, arg) in args.iter().enumerate() {
+                    for (i, arg) in f.args.iter().enumerate() {
                         variables.insert(arg.to_string(), sets[i].clone());
                     }
 
-                    return Interpreter::eval_expression(&code, &variables, &functions, &std.map);
+                    return Interpreter::eval_expression(&f.expr, &variables, &functions, &std.map);
                 }
                 unreachable!()
             });
@@ -174,12 +174,12 @@ impl StandardLibrary {
                 let mut shapes = vec![];
 
                 for z in x {
-                    if let Data::Function(_, args, expr) = functions.get(&z.to_function()).unwrap()
+                    if let Data::Function(f) = functions.get(&z.to_function()).unwrap()
                     {
                         let shape = Shape::Continuous(Box::new(|y| {
                             let mut variables = variables.clone();
-                            variables.insert(args.first().unwrap().to_string(), Data::Number(y));
-                            Interpreter::eval_expression(expr, &variables, &functions, &std.map)
+                            variables.insert(f.args.first().unwrap().to_string(), Data::Number(y));
+                            Interpreter::eval_expression(&f.expr, &variables, &functions, &std.map)
                                 .to_number()
                         }));
                         shapes.push(shape);
