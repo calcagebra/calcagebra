@@ -46,7 +46,7 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }} --target-dir output/
       - run: |
-          PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any )
+          PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any')
           FILEPATH=target/${{ matrix.target }}/release/$PROJ | .name')
           if [[ -f $FILEPATH ]]; then
             cp $FILEPATH $(echo ${{ matrix.name }})
