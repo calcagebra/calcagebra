@@ -45,7 +45,7 @@ jobs:
         with:
           command: build
           args: --release --target ${{ matrix.target }} --target-dir output/
-      - run: bash -c "mkdir -p target/${{ matrix.target }}/debug && cp target/{,${{ matrix.target }}/}debug/calcagebra 2>/dev/null; cp target/${{ matrix.target }}/release/calcagebra $(echo ${{ matrix.name }})"
+      - run: bash -c "mkdir -p target/${{ matrix.target }}/release && cp target/{,${{ matrix.target }}/}release/calcagebra || true; cp target/${{ matrix.target }}/release/calcagebra $(echo ${{ matrix.name }})"
       - uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
