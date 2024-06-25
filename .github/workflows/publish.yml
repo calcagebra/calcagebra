@@ -1,7 +1,8 @@
 on:
-  push:
-    tags:
-    - '*'
+  # - push:
+  #   tags:
+  #   - '*'
+  workflow_dispatch
 
 jobs:
   release:
@@ -44,12 +45,12 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target ${{ matrix.target }} --target-dir output/
+          args: --release --target ${{ matrix.target }}
       - run: |
           PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')
           FILEPATH=target/${{ matrix.target }}/release/$PROJ
-          if [[ cp $FILEPATH $(echo ${{ matrix.name }}) ]]; then
-            
+          if [[ -f $FILEPATH ]]; then
+            cp $FILEPATH $(echo ${{ matrix.name }})
           else
             cp target/release/$PROJ $(echo ${{ matrix.name }})
           fi
