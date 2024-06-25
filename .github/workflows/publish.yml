@@ -45,6 +45,7 @@ jobs:
         with:
           command: build
           args: --release --target ${{ matrix.target }}
+      - shell: bash
       - run: |
           PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')
           FILEPATH=target/${{ matrix.target }}/release/$PROJ
