@@ -48,8 +48,8 @@ jobs:
       - run: |
           PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name')
           FILEPATH=target/${{ matrix.target }}/release/$PROJ
-          if [[ -f $FILEPATH ]]; then
-            cp $FILEPATH $(echo ${{ matrix.name }})
+          if [[ cp $FILEPATH $(echo ${{ matrix.name }}) ]]; then
+            
           else
             cp target/release/$PROJ $(echo ${{ matrix.name }})
           fi
