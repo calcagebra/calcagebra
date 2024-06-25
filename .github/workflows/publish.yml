@@ -45,7 +45,14 @@ jobs:
         with:
           command: build
           args: --release --target ${{ matrix.target }} --target-dir output/
-      - run: cp */**/$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name') $(echo ${{ matrix.name }})
+      - run: |
+          PROJ=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any )
+          FILEPATH=target/${{ matrix.target }}/release/$PROJ | .name')
+          if [[ -f $FILEPATH ]]; then
+            cp $FILEPATH $(echo ${{ matrix.name }})
+          else
+            cp target/release/$PROJ $(echo ${{ matrix.name }})
+          fi
       - uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
