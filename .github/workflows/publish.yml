@@ -6,17 +6,23 @@ on:
 jobs:
   release:
     name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-pc-windows-gnu
             name: calcagebra.exe
+            os: windows-latest
           - target: x86_64-unknown-linux-musl
             name: calcagebra
+            os: ubuntu-latest
           - target: x86_64-apple-darwin
             name: calcagebra-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            name: calcagebra-aarch64-darwin
+            os: macos-latest
     steps:
       - uses: actions/checkout@master
       - uses: actions-rs/toolchain@v1
@@ -37,7 +43,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --target ${{ matrix.target }}
       - run: cp target/release/$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].targets[] | select( .kind | map(. == "bin") | any ) | .name') $(echo ${{ matrix.name }})
       - uses: ncipollo/release-action@v1
         with:
