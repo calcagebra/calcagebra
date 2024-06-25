@@ -1,8 +1,7 @@
 on:
-  # - push:
-  #   tags:
-  #   - '*'
-  workflow_dispatch
+  push:
+    tags:
+    - '*'
 
 jobs:
   release:
