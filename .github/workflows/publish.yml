@@ -3,9 +3,6 @@ on:
     tags:
     - '*'
 
-permissions:
-  contents: write
-
 jobs:
   release:
     name: release ${{ matrix.target }}
@@ -44,6 +41,11 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - shell: bash
+        run: |
+          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            sudo apt install pkg-config libfreetype6-dev libfontconfig1-dev
+          f1
       - uses: actions-rs/cargo@v1
         with:
           command: build
