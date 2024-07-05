@@ -45,7 +45,7 @@ jobs:
         run: |
           if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             sudo apt install pkg-config libfreetype6-dev libfontconfig1-dev
-          f1
+          fi
       - uses: actions-rs/cargo@v1
         with:
           command: build
