@@ -53,7 +53,7 @@ impl Interpreter {
                     self.variables.insert(name.to_string(), r);
                 }
                 Ast::FunctionCall(i, exprs) => {
-                    if self.std.map.get(&i).is_some() {
+                    if self.std.map.contains_key(&i) {
                         let f = self.std.map.get(&i).unwrap();
                         f(
                             exprs

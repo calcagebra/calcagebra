@@ -1,7 +1,14 @@
+use plotters::backend::BitMapBackend;
+use plotters::chart::ChartBuilder;
+use plotters::drawing::IntoDrawingArea;
+use plotters::element::PathElement;
+use plotters::series::LineSeries;
+use plotters::style::{full_palette::*, Color, IntoFont, MAGENTA};
+use rand::{seq::SliceRandom, thread_rng};
 use std::io::{stdin, stdout, Write};
-use textplots::{AxisBuilder, Chart, LineStyle, Plot, Shape, TickDisplay, TickDisplayBuilder};
 
 use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{
     data::{sizedset::SizedSet, Data},
@@ -138,7 +145,7 @@ impl StandardLibrary {
                     }
                     sets.push(arg);
                 }
-                if std.map.get(&i).is_some() {
+                if std.map.contains_key(&i) {
                     let f = std.map.get(&i).unwrap();
                     let mut r = vec![];
                     for set in sets {
@@ -165,30 +172,68 @@ impl StandardLibrary {
             });
 
         self.map
-            .insert("graph".to_string(), |x, variables, functions, std| {
-                let mut binding = Chart::default();
-                let mut chart = binding
-                    .x_axis_style(LineStyle::Solid)
-                    .y_axis_style(LineStyle::Solid)
-                    .y_tick_display(TickDisplay::Sparse);
-                let mut shapes = vec![];
+            .insert("graph".to_string(), |x, mut variables, functions, std| {
+                let colors = [
+                    BLACK, BLUE, BLUE_300, BLUE_600, BLUE_900, RED, RED_300, RED_600, RED_900,
+                    GREEN, GREEN_300, GREEN_600, GREEN_900, YELLOW, YELLOW_300, YELLOW_600,
+                    YELLOW_900, MAGENTA,
+                ];
+
+                let start = SystemTime::now();
+                let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
+                let name = format!("graph-output-{duration}.png");
+
+                let root = BitMapBackend::new(&name, (640, 480))
+                    .into_drawing_area();
+
+                root.fill(&WHITE).unwrap();
+
+                let mut chart = ChartBuilder::on(&root)
+                    .caption("Graph output", ("sans-serif", 20).into_font())
+                    .margin(5)
+                    .x_label_area_size(30)
+                    .y_label_area_size(30)
+                    .build_cartesian_2d(-1f32..1f32, -1f32..1f32)
+                    .unwrap();
+
+                chart.configure_mesh().draw().unwrap();
 
                 for z in x {
-                    if let Data::Function(f) = functions.get(&z.to_function()).unwrap()
-                    {
-                        let shape = Shape::Continuous(Box::new(|y| {
-                            let mut variables = variables.clone();
-                            variables.insert(f.args.first().unwrap().to_string(), Data::Number(y));
-                            Interpreter::eval_expression(&f.expr, &variables, &functions, &std.map)
-                                .to_number()
-                        }));
-                        shapes.push(shape);
+                    if let Data::Function(f) = functions.get(&z.to_function()).unwrap() {
+                        let style = colors.choose(&mut thread_rng()).unwrap_or(&RED);
+
+                        chart
+                            .draw_series(LineSeries::new(
+                                (-50..=50).map(|x| x as f32 / 50.0).map(|x| {
+                                    variables.insert(
+                                        f.args.first().unwrap().to_string(),
+                                        Data::Number(x),
+                                    );
+                                    (
+                                        x,
+                                        Interpreter::eval_expression(
+                                            &f.expr, &variables, &functions, &std.map,
+                                        )
+                                        .to_number(),
+                                    )
+                                }),
+                                &style,
+                            ))
+                            .unwrap()
+                            .label(format!("{f}"))
+                            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], *style));
                     }
                 }
-                for shape in &shapes {
-                    chart = chart.lineplot(shape);
-                }
-                chart.nice();
+
+                chart
+                    .configure_series_labels()
+                    .background_style(WHITE.mix(0.8))
+                    .border_style(BLACK)
+                    .draw()
+                    .unwrap();
+
+                root.present().unwrap();
+
                 Data::default()
             });
     }
