@@ -6,6 +6,7 @@ use plotters::series::LineSeries;
 use plotters::style::{full_palette::*, Color, IntoFont, MAGENTA};
 use rand::{seq::SliceRandom, thread_rng};
 use std::io::{stdin, stdout, Write};
+use viuer::{print_from_file, Config};
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -183,8 +184,7 @@ impl StandardLibrary {
                 let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
                 let name = format!("graph-output-{duration}.png");
 
-                let root = BitMapBackend::new(&name, (640, 480))
-                    .into_drawing_area();
+                let root = BitMapBackend::new(&name, (640, 480)).into_drawing_area();
 
                 root.fill(&WHITE).unwrap();
 
@@ -233,6 +233,10 @@ impl StandardLibrary {
                     .unwrap();
 
                 root.present().unwrap();
+
+                let conf = Config::default();
+
+                let _ = print_from_file(&name, &conf);
 
                 Data::default()
             });
