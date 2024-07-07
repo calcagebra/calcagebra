@@ -5,14 +5,14 @@ mod lexer;
 mod parser;
 mod standardlibrary;
 mod token;
+mod repl;
 
-use rustyline::{error::ReadlineError, DefaultEditor};
-use std::{fs::read_to_string, process::exit, time::Instant};
+use std::{fs::read_to_string, time::Instant};
 
 use clap::Parser as ClapParser;
 use lexer::Lexer;
 
-use crate::{interpreter::Interpreter, parser::Parser};
+use crate::{interpreter::Interpreter, parser::Parser, repl::repl};
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -53,39 +53,7 @@ fn main() {
                 .collect::<Vec<_>>();
             return;
         }
-        println!(
-            "Welcome to calcagebra v{}\nTo exit, press CTRL+C or CTRL+D",
-            version()
-        );
-        let mut rl = DefaultEditor::new().unwrap();
-        let mut interpreter = Interpreter::new();
-        loop {
-            let readline = rl.readline("\x1b[1m\x1b[32m[In]:\x1b[0m ");
-            match readline {
-                Ok(line) => {
-                    if line.trim() == "exit" {
-                        break;
-                    }
-
-                    println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
-
-                    interpreter.run(Parser::new(Lexer::new(&line).tokens()).ast());
-                }
-                Err(ReadlineError::Interrupted) => {
-                    println!("CTRL-C");
-                    break;
-                }
-                Err(ReadlineError::Eof) => {
-                    println!("CTRL-D");
-                    break;
-                }
-                Err(err) => {
-                    println!("Error: {:?}", err);
-                    break;
-                }
-            }
-        }
-        exit(1);
+        repl();
     }
 
     let contents = read_to_string(args.input.unwrap()).unwrap();
