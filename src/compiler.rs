@@ -264,7 +264,7 @@ impl<'ctx> Compiler<'ctx> {
             } else {
                 self.emit_assignment(ident, expr)
             }
-        } else if let Ast::FunctionCall(_, _) = astnode {
+        } else if let Ast::FunctionCall(..) = astnode {
             self.emit_function_call(astnode).unwrap();
         }
     }
@@ -297,7 +297,7 @@ impl<'ctx> Compiler<'ctx> {
             Expression::FunctionCall(name, args) => {
                 self.emit_function_call(&Ast::FunctionCall(name.to_owned(), args.to_owned()))?
             }
-            Expression::Binary(_, _, _) => self.emit_binary_op(expr)?,
+            Expression::Binary(..) => self.emit_binary_op(expr)?,
             _ => unreachable!(),
         })
     }

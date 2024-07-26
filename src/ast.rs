@@ -86,7 +86,7 @@ impl Expression {
                 ),
                 _ => unimplemented!(),
             },
-            Expression::Branched(_, _, _) => todo!(),
+            Expression::Branched(..) => todo!(),
             Expression::Differentiate(expr) => expr.differentiate(args).differentiate(args),
             Expression::Identifier(ident) => {
                 if args.contains(ident) {
@@ -99,8 +99,8 @@ impl Expression {
 
             Expression::Abs(_)
             | Expression::SizedSet(_)
-            | Expression::UnsizedSet(_, _)
-            | Expression::FunctionCall(_, _) => unimplemented!(),
+            | Expression::UnsizedSet(..)
+            | Expression::FunctionCall(..) => unimplemented!(),
             Expression::Undefined => todo!(),
         }.flatten()
     }
