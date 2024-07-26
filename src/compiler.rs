@@ -134,16 +134,13 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn emit_program(&mut self, ast: &[Ast]) -> Result<(), Error> {
-        let mut function_decls = vec![];
         let mut statements = vec![];
 
-        ast.iter().for_each(|f| match f {
-            Ast::FunctionDeclaration(_, _, _) => function_decls.push(f),
-            _ => statements.push(f),
-        });
-
-        for astnode in function_decls {
-            self.emit_function_declaration(astnode)?;
+        for node in ast {
+            match node {
+                Ast::FunctionDeclaration(..) => self.emit_function_declaration(node)?,
+                _ => statements.push(node)
+            }
         }
 
         let main_function_type = self.context.f32_type().fn_type(&[], false);
