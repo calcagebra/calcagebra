@@ -93,7 +93,7 @@ impl Add for Data {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Data::Number(n), Data::Number(m)) => Data::Number(n + m),
-            (_, _) => unimplemented!(),
+            (..) => unimplemented!(),
         }
     }
 }
@@ -104,7 +104,7 @@ impl Sub for Data {
     fn sub(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Data::Number(n), Data::Number(m)) => Data::Number(n - m),
-            (_, _) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }
@@ -123,7 +123,7 @@ impl Mul for Data {
                         .collect::<Vec<Data>>(),
                 ))
             }
-            (_, _) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }
@@ -142,7 +142,7 @@ impl Div for Data {
                         .collect::<Vec<Data>>(),
                 ))
             }
-            (_, _) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }
@@ -161,7 +161,7 @@ impl Rem for Data {
                         .collect::<Vec<Data>>(),
                 ))
             }
-            (_, _) => unimplemented!(),
+            _ => unimplemented!(),
         }
     }
 }
