@@ -92,14 +92,9 @@ impl Parser {
                         .contains(*tokens.peek().unwrap())
                 {
                     (expr, tokens) = self.parse_fn(tokens, i.clone());
-                } else if tokens.peek().is_some()
-                    && *tokens.peek().unwrap() == &Token::Differentiate
-                {
-                    expr = Some(Expression::Differentiate(Box::new(Expression::Identifier(i.to_string()))));
-                    tokens.next();
                 } else {
-                    expr = Some(Expression::Identifier(i.to_string()));
-                }
+                    expr = Some(Expression::Identifier(i.to_string()))
+                };
             }
             Token::LParen => {
                 let exp;
@@ -115,9 +110,6 @@ impl Parser {
             }
             Token::If => {
                 (expr, tokens) = self.parse_if(tokens);
-            }
-            Token::LCurly => {
-                (expr, tokens) = self.parse_set(tokens);
             }
             Token::Sub => {
                 if let Token::Number(i) = tokens.peek().unwrap() {
@@ -279,98 +271,6 @@ impl Parser {
             )),
             tokens,
         )
-    }
-
-    pub fn parse_set<'a>(
-        &'a self,
-        mut tokens: Peekable<Iter<'a, Token>>,
-    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
-        let mut depth = 1;
-        let mut params = vec![];
-        let mut expression = vec![];
-
-        let mut is_unsized_set = false;
-
-        loop {
-            let token = tokens.next();
-
-            if token.is_none() {
-                break;
-            }
-
-            let token = token.unwrap();
-
-            if *token == Token::Colon && depth == 1 {
-                is_unsized_set = true;
-                let lex = expression.iter().peekable();
-                let (data, _) = self.pratt_parser(lex, 0);
-
-                params.push(data);
-                expression.clear();
-                continue;
-            }
-
-            if *token == Token::RCurly {
-                if !expression.is_empty() {
-                    let lex = expression.iter().peekable();
-                    let (data, _) = self.pratt_parser(lex, 0);
-
-                    params.push(data);
-                    expression.clear();
-                    depth -= 1;
-                    continue;
-                }
-
-                depth -= 1;
-
-                if depth == 0 {
-                    break;
-                }
-            }
-
-            if *token == Token::LCurly {
-                depth += 1;
-            }
-
-            if *token == Token::Comma && depth == 1 {
-                if !expression.is_empty() {
-                    let lex = expression.iter().peekable();
-                    let (data, _) = self.pratt_parser(lex, 0);
-
-                    params.push(data);
-
-                    expression.clear();
-                }
-                continue;
-            }
-
-            expression.push(token.to_owned());
-        }
-
-        if !expression.is_empty() {
-            let lex = expression.iter().peekable();
-            let (data, _) = self.pratt_parser(lex, 0);
-
-            params.push(data);
-            expression.clear();
-        }
-
-        if is_unsized_set {
-            let mut idents = vec![];
-            let mut conditions = vec![];
-
-            for param in params {
-                if let Expression::Identifier(_) = param {
-                    idents.push(param);
-                } else {
-                    conditions.push(param);
-                }
-            }
-
-            (Some(Expression::UnsizedSet(idents, conditions)), tokens)
-        } else {
-            (Some(Expression::SizedSet(params)), tokens)
-        }
     }
 
     fn infix_binding_power(&self, op: &Token) -> (u16, u16) {

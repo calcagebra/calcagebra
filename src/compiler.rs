@@ -1,14 +1,16 @@
-use std::{collections::HashMap, path::Path};
+use std::{borrow::Cow, collections::HashMap, ffi::CStr, path::Path};
 
 use inkwell::{
     builder::Builder,
     context::Context,
+    llvm_sys::core::{LLVMBuildFPExt, LLVMDoubleType},
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     types::BasicMetadataTypeEnum,
     values::{
-        BasicMetadataValueEnum, BasicValue, FloatValue, FunctionValue, GlobalValue, PointerValue,
+        AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, FunctionValue,
+        GlobalValue, PointerValue,
     },
     AddressSpace, FloatPredicate,
 };
@@ -42,7 +44,9 @@ pub struct Compiler<'ctx> {
     current_function: Option<FunctionValue<'ctx>>,
 
     printf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
-    scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
+    _scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
+
+    std_functions: Vec<String>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -50,22 +54,24 @@ impl<'ctx> Compiler<'ctx> {
         let module = context.create_module(module_name);
         let builder = context.create_builder();
         let printf = Compiler::create_printf(context, &module);
-        let scanf = Compiler::create_scanf(context, &module);
+        let _scanf = Compiler::create_scanf(context, &module);
+        let std_functions = vec![String::from("print")];
 
         Self {
             context,
             module,
             builder,
             printf,
-            scanf,
+            _scanf,
             current_function: None,
             variables: HashMap::default(),
             functions: HashMap::default(),
+            std_functions,
         }
     }
 
-    pub fn dump_to_stderr(&self) {
-        self.module.print_to_stderr();
+    pub fn write_ir(&self, file: String) {
+        let _ = self.module.print_to_file(file);
     }
 
     pub fn verify(&self) -> Result<(), Error> {
@@ -139,11 +145,11 @@ impl<'ctx> Compiler<'ctx> {
         for node in ast {
             match node {
                 Ast::FunctionDeclaration(..) => self.emit_function_declaration(node)?,
-                _ => statements.push(node)
+                _ => statements.push(node),
             }
         }
 
-        let main_function_type = self.context.f32_type().fn_type(&[], false);
+        let main_function_type = self.context.i32_type().fn_type(&[], false);
         let main_function = self.module.add_function("main", main_function_type, None);
 
         let bb = self.context.append_basic_block(main_function, "entry");
@@ -156,7 +162,7 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         self.builder
-            .build_return(Some(&self.context.f32_type().const_float(0.0)))
+            .build_return(Some(&self.context.i32_type().const_int(0, false)))
             .unwrap();
 
         Ok(())
@@ -166,30 +172,41 @@ impl<'ctx> Compiler<'ctx> {
         context: &'ctx Context,
         module: &Module<'ctx>,
     ) -> (FunctionValue<'ctx>, GlobalValue<'ctx>) {
-        let printf_format = "%lld\n";
+        let printf_format = "%f\n";
         let printf_format_type = context
             .i8_type()
             .array_type((printf_format.len() + 1) as u32);
-        let printf_format_global = module.add_global(printf_format_type, None, "write_format");
+        let printf_format_global = module.add_global(printf_format_type, None, "print_format");
 
         printf_format_global.set_initializer(&context.const_string(printf_format.as_bytes(), true));
 
         let printf_args = [context.ptr_type(AddressSpace::default()).into()];
 
-        let printf_type = context.f32_type().fn_type(&printf_args, true);
+        let printf_type = context.i32_type().fn_type(&printf_args, true);
         let printf_fn = module.add_function("printf", printf_type, None);
 
         (printf_fn, printf_format_global)
     }
 
-    pub fn emit_write(&mut self, value: &Expression) {
+    pub fn emit_print(&mut self, value: &Expression) {
         let value = self.emit_expression(value).unwrap();
+
+        let name = unsafe { Cow::from(CStr::from_ptr("print_value\0".as_ptr() as *const _)) };
+
+        let value = unsafe {
+            BasicValueEnum::new(LLVMBuildFPExt(
+                self.builder.as_mut_ptr(),
+                value.as_value_ref(),
+                LLVMDoubleType(),
+                name.as_ptr(),
+            ))
+        };
 
         let args: &[BasicMetadataValueEnum<'ctx>] =
             &[self.printf.1.as_pointer_value().into(), value.into()];
 
         self.builder
-            .build_call(self.printf.0, args, "write_call")
+            .build_call(self.printf.0, args, "print_call")
             .unwrap();
     }
 
@@ -197,7 +214,7 @@ impl<'ctx> Compiler<'ctx> {
         context: &'ctx Context,
         module: &Module<'ctx>,
     ) -> (FunctionValue<'ctx>, GlobalValue<'ctx>) {
-        let scanf_format = "%lld";
+        let scanf_format = "%f";
         let scanf_format_type = context
             .i8_type()
             .array_type((scanf_format.len() + 1) as u32);
@@ -207,7 +224,7 @@ impl<'ctx> Compiler<'ctx> {
 
         let scanf_args = [context.ptr_type(AddressSpace::default()).into()];
 
-        let scanf_type = context.f32_type().fn_type(&scanf_args, true);
+        let scanf_type = context.i32_type().fn_type(&scanf_args, true);
         let scanf_fn = module.add_function("scanf", scanf_type, None);
 
         (scanf_fn, scanf_format_global)
@@ -324,12 +341,21 @@ impl<'ctx> Compiler<'ctx> {
     pub fn emit_function_call(&mut self, astnode: &Ast) -> Result<FloatValue<'ctx>, Error> {
         match astnode {
             Ast::FunctionCall(name, args) => {
-                let function = self.functions.get(name).cloned().unwrap();
+                if self.std_functions.contains(name) {
+                    match name.as_str() {
+                        "print" => self.emit_print(&args[0]),
+                        _ => unimplemented!(),
+                    }
+
+                    return Ok(self.context.f32_type().const_float(0.0));
+                }
 
                 let exprs: Vec<BasicMetadataValueEnum<'ctx>> = args
                     .iter()
                     .map(|arg| self.emit_expression(arg).map(Into::into))
                     .collect::<Result<_, _>>()?;
+
+                let function = self.functions.get(name).cloned().unwrap();
 
                 let retval =
                     self.builder

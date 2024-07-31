@@ -1,11 +1,7 @@
 mod ast;
 mod compiler;
-mod data;
-mod interpreter;
 mod lexer;
 mod parser;
-mod repl;
-mod standardlibrary;
 mod token;
 
 use std::{
@@ -20,15 +16,11 @@ use clap::Parser as ClapParser;
 use compiler::Compiler;
 use lexer::Lexer;
 
-use crate::{interpreter::Interpreter, parser::Parser, repl::repl};
+use crate::parser::Parser;
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Compile the code
-    #[clap(long, value_parser)]
-    compile: bool,
-
     /// Output debug information
     #[clap(short, long, value_parser)]
     debug: bool,
@@ -64,20 +56,6 @@ fn main() {
     let args = Args::parse();
     let main = Instant::now();
 
-    if args.input.is_none() {
-        if args.globals {
-            println!("calcagebra v{}\n", version());
-            let _ = Interpreter::new()
-                .init_globals()
-                .variables
-                .iter()
-                .map(|(a, b)| println!("{a} {b}"))
-                .collect::<Vec<_>>();
-            return;
-        }
-        repl();
-    }
-
     let contents = read_to_string(args.input.clone().unwrap()).unwrap();
 
     let tokens = Lexer::new(&contents).tokens();
@@ -98,15 +76,6 @@ fn main() {
         return;
     }
 
-    if !args.compile {
-        Interpreter::new().run(ast);
-        if args.debug || args.time {
-            let duration = main.elapsed();
-            println!("\nTIME: {duration:?}");
-        }
-        return;
-    }
-
     let name = args.input.unwrap();
     let module_name = Path::new(&name)
         .file_name()
@@ -123,7 +92,7 @@ fn main() {
     codegen.emit_program(&ast).unwrap();
 
     if args.emit_ir {
-        codegen.dump_to_stderr();
+        codegen.write_ir(format!("{module_name}.ll"));
         return;
     }
 
