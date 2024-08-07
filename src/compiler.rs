@@ -1,16 +1,15 @@
-use std::{borrow::Cow, collections::HashMap, ffi::CStr, path::Path};
+use std::{collections::HashMap, path::Path};
 
 use inkwell::{
     builder::Builder,
     context::Context,
-    llvm_sys::core::{LLVMBuildFPExt, LLVMDoubleType},
     module::Module,
     passes::PassBuilderOptions,
     targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     types::BasicMetadataTypeEnum,
     values::{
-        AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, FunctionValue,
-        GlobalValue, PointerValue,
+        BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, GlobalValue,
+        PointerValue,
     },
     AddressSpace, FloatPredicate,
 };
@@ -56,6 +55,15 @@ impl<'ctx> Compiler<'ctx> {
         let printf = Compiler::create_printf(context, &module);
         let _scanf = Compiler::create_scanf(context, &module);
         let std_functions = vec![String::from("print")];
+
+        let f64_type = context.f64_type();
+
+        let di_intrinsic_type = f64_type.fn_type(&[f64_type.into(), f64_type.into()], false);
+        let intrinsic_type = f64_type.fn_type(&[f64_type.into()], false);
+
+        module.add_function("llvm.pow.f64", di_intrinsic_type, None);
+        module.add_function("llvm.sqrt.f64", intrinsic_type, None);
+        module.add_function("llvm.fabs.f64", intrinsic_type, None);
 
         Self {
             context,
@@ -191,17 +199,6 @@ impl<'ctx> Compiler<'ctx> {
     pub fn emit_print(&mut self, value: &Expression) {
         let value = self.emit_expression(value).unwrap();
 
-        let name = unsafe { Cow::from(CStr::from_ptr("print_value\0".as_ptr() as *const _)) };
-
-        let value = unsafe {
-            BasicValueEnum::new(LLVMBuildFPExt(
-                self.builder.as_mut_ptr(),
-                value.as_value_ref(),
-                LLVMDoubleType(),
-                name.as_ptr(),
-            ))
-        };
-
         let args: &[BasicMetadataValueEnum<'ctx>] =
             &[self.printf.1.as_pointer_value().into(), value.into()];
 
@@ -235,10 +232,10 @@ impl<'ctx> Compiler<'ctx> {
             if let Ast::FunctionDeclaration(name, args, _) = function {
                 let function_params = args
                     .iter()
-                    .map(|_| self.context.f32_type().into())
+                    .map(|_| self.context.f64_type().into())
                     .collect::<Vec<BasicMetadataTypeEnum<'ctx>>>();
 
-                let function_type = self.context.f32_type().fn_type(&function_params, false);
+                let function_type = self.context.f64_type().fn_type(&function_params, false);
 
                 let llvm_function = self.module.add_function(name, function_type, None);
 
@@ -261,7 +258,7 @@ impl<'ctx> Compiler<'ctx> {
             for (idx, arg) in args.iter().enumerate() {
                 let value = function.get_nth_param(idx as u32).unwrap();
 
-                let alloca_ptr = self.builder.build_alloca(self.context.f32_type(), arg)?;
+                let alloca_ptr = self.builder.build_alloca(self.context.f64_type(), arg)?;
 
                 self.builder.build_store(alloca_ptr, value)?;
                 self.variables
@@ -287,7 +284,7 @@ impl<'ctx> Compiler<'ctx> {
     }
 
     pub fn emit_declaration(&mut self, name: &String, expr: &Expression) {
-        let float_type = self.context.f32_type();
+        let float_type = self.context.f64_type();
 
         let alloca_ptr = self.builder.build_alloca(float_type, name).unwrap();
 
@@ -307,15 +304,31 @@ impl<'ctx> Compiler<'ctx> {
         self.builder.build_store(variable.ptr, val).unwrap();
     }
 
-    pub fn emit_expression(&mut self, expr: &ast::Expression) -> Result<FloatValue<'ctx>, Error> {
+    pub fn emit_expression(
+        &mut self,
+        expr: &ast::Expression,
+    ) -> Result<BasicValueEnum<'ctx>, Error> {
         Ok(match expr {
+            Expression::Abs(expr) => {
+                let arg = self.emit_expression(expr).unwrap().into();
+                self.builder
+                    .build_direct_call(
+                        self.module.get_function("llvm.fabs.f64").unwrap(),
+                        &[arg],
+                        "ret",
+                    )
+                    .unwrap()
+                    .try_as_basic_value()
+                    .left()
+                    .unwrap()
+            }
             Expression::Number(value) => self.emit_float(*value),
             Expression::Identifier(var) => self.emit_variable(var)?,
             Expression::FunctionCall(name, args) => {
                 self.emit_function_call(&Ast::FunctionCall(name.to_owned(), args.to_owned()))?
             }
             Expression::Binary(..) => self.emit_binary_op(expr)?,
-            _ => unreachable!(),
+            Expression::Branched(..) => self.emit_branched_expr(expr)?,
         })
     }
 
@@ -324,21 +337,24 @@ impl<'ctx> Compiler<'ctx> {
         self.builder.build_return(Some(&retval)).unwrap();
     }
 
-    pub fn emit_float(&mut self, value: f32) -> FloatValue<'ctx> {
-        self.context.f32_type().const_float(value as f64)
+    pub fn emit_float(&mut self, value: f64) -> BasicValueEnum<'ctx> {
+        self.context
+            .f64_type()
+            .const_float(value)
+            .as_basic_value_enum()
     }
 
-    pub fn emit_variable(&mut self, name: &str) -> Result<FloatValue<'ctx>, Error> {
+    pub fn emit_variable(&mut self, name: &str) -> Result<BasicValueEnum<'ctx>, Error> {
         let variable = self.variables.get(name).unwrap();
 
         let value = self
             .builder
-            .build_load(self.context.f32_type(), variable.ptr, name)?;
+            .build_load(self.context.f64_type(), variable.ptr, name)?;
 
-        Ok(value.into_float_value())
+        Ok(value)
     }
 
-    pub fn emit_function_call(&mut self, astnode: &Ast) -> Result<FloatValue<'ctx>, Error> {
+    pub fn emit_function_call(&mut self, astnode: &Ast) -> Result<BasicValueEnum<'ctx>, Error> {
         match astnode {
             Ast::FunctionCall(name, args) => {
                 if self.std_functions.contains(name) {
@@ -347,7 +363,11 @@ impl<'ctx> Compiler<'ctx> {
                         _ => unimplemented!(),
                     }
 
-                    return Ok(self.context.f32_type().const_float(0.0));
+                    return Ok(self
+                        .context
+                        .f64_type()
+                        .const_float(0.0)
+                        .as_basic_value_enum());
                 }
 
                 let exprs: Vec<BasicMetadataValueEnum<'ctx>> = args
@@ -361,59 +381,99 @@ impl<'ctx> Compiler<'ctx> {
                     self.builder
                         .build_call(function.ptr, &exprs, &format!("{}_call", &name))?;
 
-                Ok(retval.try_as_basic_value().unwrap_left().into_float_value())
+                Ok(retval.try_as_basic_value().unwrap_left())
             }
             _ => unreachable!(),
         }
     }
 
-    pub fn emit_binary_op(&mut self, binary_op: &Expression) -> Result<FloatValue<'ctx>, Error> {
+    pub fn emit_binary_op(
+        &mut self,
+        binary_op: &Expression,
+    ) -> Result<BasicValueEnum<'ctx>, Error> {
         if let Expression::Binary(lhs, op, rhs) = binary_op {
-            let left = self.emit_expression(lhs)?;
-            let right = self.emit_expression(rhs)?;
+            let left = self.emit_expression(lhs)?.into_float_value();
+            let right = self.emit_expression(rhs)?.into_float_value();
 
             let result = match op {
-                Token::Add => self.builder.build_float_add(left, right, "add")?,
-                Token::Sub => self.builder.build_float_sub(left, right, "sub")?,
-                Token::Mul => self.builder.build_float_mul(left, right, "mul")?,
-                Token::Div => self.builder.build_float_div(left, right, "div")?,
-                Token::Mod => self.builder.build_float_rem(left, right, "mod")?,
-                Token::Eq => self
+                Token::Add => self
+                    .builder
+                    .build_float_add(left, right, "add")?
+                    .as_basic_value_enum(),
+                Token::Sub => self
+                    .builder
+                    .build_float_sub(left, right, "sub")?
+                    .as_basic_value_enum(),
+                Token::Mul => self
+                    .builder
+                    .build_float_mul(left, right, "mul")?
+                    .as_basic_value_enum(),
+                Token::Div => self
+                    .builder
+                    .build_float_div(left, right, "div")?
+                    .as_basic_value_enum(),
+                Token::Pow => self
+                    .builder
+                    .build_direct_call(
+                        self.module.get_function("llvm.pow.f64").unwrap(),
+                        &[left.into(), right.into()],
+                        "ret",
+                    )
+                    .unwrap()
+                    .try_as_basic_value()
+                    .left()
+                    .unwrap(),
+                Token::Rem => self
+                    .builder
+                    .build_float_rem(left, right, "mod")?
+                    .as_basic_value_enum(),
+                Token::IsEq => self
                     .builder
                     .build_float_compare(FloatPredicate::OEQ, left, right, "eq")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
+                    .as_basic_value_enum(),
                 Token::NEq => self
                     .builder
                     .build_float_compare(FloatPredicate::ONE, left, right, "neq")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
+                    .as_basic_value_enum(),
                 Token::Lt => self
                     .builder
                     .build_float_compare(FloatPredicate::OLT, left, right, "lt")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
+                    .as_basic_value_enum(),
                 Token::LtEq => self
                     .builder
                     .build_float_compare(FloatPredicate::OLE, left, right, "lte")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
+                    .as_basic_value_enum(),
                 Token::Gt => self
                     .builder
                     .build_float_compare(FloatPredicate::OGT, left, right, "gt")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
+                    .as_basic_value_enum(),
                 Token::GtEq => self
                     .builder
                     .build_float_compare(FloatPredicate::OGE, left, right, "gte")?
-                    .as_basic_value_enum()
-                    .into_float_value(),
-                _ => unreachable!(),
+                    .as_basic_value_enum(),
+                _ => unreachable!("{op:?}"),
             };
 
             Ok(result)
         } else {
-            unimplemented!()
+            unreachable!()
+        }
+    }
+
+    pub fn emit_branched_expr(
+        &mut self,
+        branched_expr: &Expression,
+    ) -> Result<BasicValueEnum<'ctx>, Error> {
+        if let Expression::Branched(condition, expr1, expr2) = branched_expr {
+            let condition = self.emit_expression(condition)?;
+            let expr1 = self.emit_expression(expr1)?;
+            let expr2 = self.emit_expression(expr2)?;
+
+            Ok(self
+                .builder
+                .build_select(condition.into_int_value(), expr1, expr2, "select")?)
+        } else {
+            unreachable!()
         }
     }
 }

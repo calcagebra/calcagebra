@@ -16,7 +16,7 @@ pub enum Expression {
     Binary(Box<Expression>, Token, Box<Expression>),
     Branched(Box<Expression>, Box<Expression>, Box<Expression>),
     Identifier(String),
-    Number(f32),
+    Number(f64),
     FunctionCall(String, Vec<Expression>),
 }
 

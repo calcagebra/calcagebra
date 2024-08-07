@@ -93,7 +93,6 @@ fn main() {
 
     if args.emit_ir {
         codegen.write_ir(format!("{module_name}.ll"));
-        return;
     }
 
     codegen.verify().unwrap();

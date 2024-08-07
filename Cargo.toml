@@ -7,11 +7,6 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "3.1.18", features = ["derive"] }
-plotters = "0.3.6"
-rand = "0.8.5"
-rustyline = { version = "14.0.0", features = ["derive"] }
-syntect = "5.2.0"
-viuer = "0.7.1"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm18-0"] }
 thiserror = "1.0.62"
 

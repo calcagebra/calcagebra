@@ -88,7 +88,7 @@ impl Parser {
             Token::Identifier(i) => {
                 if tokens.peek().is_some()
                     && self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
-                    && ![Token::RParen, Token::VLine, Token::Differentiate]
+                    && ![Token::RParen, Token::Abs, Token::Differentiate]
                         .contains(*tokens.peek().unwrap())
                 {
                     (expr, tokens) = self.parse_fn(tokens, i.clone());
@@ -102,7 +102,7 @@ impl Parser {
                 expr = Some(exp);
                 tokens.next();
             }
-            Token::VLine => {
+            Token::Abs => {
                 let exp;
                 (exp, tokens) = self.pratt_parser(tokens, 0);
                 expr = Some(Expression::Abs(Box::new(exp)));
@@ -124,7 +124,7 @@ impl Parser {
         loop {
             let op = tokens.peek();
 
-            if op.is_none() || [Token::RParen, Token::VLine].contains(op.unwrap()) {
+            if op.is_none() || [Token::RParen, Token::Abs].contains(op.unwrap()) {
                 break;
             }
 
@@ -276,7 +276,7 @@ impl Parser {
     fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
         match op {
             Token::Add | Token::Sub => (1, 2),
-            Token::Mul | Token::Div | Token::Mod => (3, 4),
+            Token::Mul | Token::Div | Token::Rem => (3, 4),
             Token::Pow => (5, 6),
             Token::Differentiate => (7, 8),
             Token::IsEq
