@@ -23,18 +23,30 @@ entry:
   store double %0, ptr %x, align 8
   %x1 = load double, ptr %x, align 8
   %eq = fcmp oeq double %x1, 1.000000e+00
+  %retvalue = alloca double, align 8
+  br i1 %eq, label %btrue, label %bfalse
+
+btrue:                                            ; preds = %entry
+  store double 1.000000e+00, ptr %retvalue, align 8
+  br label %end
+
+bfalse:                                           ; preds = %entry
   %x2 = load double, ptr %x, align 8
   %x3 = load double, ptr %x, align 8
   %sub = fsub double %x3, 1.000000e+00
   %f_call = call double @f(double %sub)
   %mul = fmul double %x2, %f_call
-  %select = select i1 %eq, double 1.000000e+00, double %mul
-  ret double %select
+  store double %mul, ptr %retvalue, align 8
+  br label %end
+
+end:                                              ; preds = %bfalse, %btrue
+  %ret = load double, ptr %retvalue, align 8
+  ret double %ret
 }
 
 define i32 @main() {
 entry:
-  %f_call = call double @f(double 2.000000e+00)
+  %f_call = call double @f(double 5.000000e+00)
   %print_call = call i32 (ptr, ...) @printf(ptr @print_format, double %f_call)
   ret i32 0
 }

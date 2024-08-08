@@ -89,7 +89,7 @@ fn main() {
     let mut codegen = Compiler::new(&llvm_context, module_name);
 
     codegen.declare_functions(&ast);
-    codegen.emit_program(&ast).unwrap();
+    codegen.emit_main(&ast).unwrap();
 
     if args.emit_ir {
         codegen.write_ir(format!("{module_name}.ll"));

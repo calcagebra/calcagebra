@@ -44,8 +44,6 @@ pub struct Compiler<'ctx> {
 
     printf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
     _scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
-
-    std_functions: Vec<String>,
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -54,7 +52,6 @@ impl<'ctx> Compiler<'ctx> {
         let builder = context.create_builder();
         let printf = Compiler::create_printf(context, &module);
         let _scanf = Compiler::create_scanf(context, &module);
-        let std_functions = vec![String::from("print")];
 
         let f64_type = context.f64_type();
 
@@ -74,7 +71,6 @@ impl<'ctx> Compiler<'ctx> {
             current_function: None,
             variables: HashMap::default(),
             functions: HashMap::default(),
-            std_functions,
         }
     }
 
@@ -104,8 +100,7 @@ impl<'ctx> Compiler<'ctx> {
                 inkwell::OptimizationLevel::Default,
                 RelocMode::PIC,
                 CodeModel::Default,
-            )
-            .unwrap();
+            ).unwrap();
 
         Ok(target_machine)
     }
@@ -147,7 +142,7 @@ impl<'ctx> Compiler<'ctx> {
         Ok(())
     }
 
-    pub fn emit_program(&mut self, ast: &[Ast]) -> Result<(), Error> {
+    pub fn emit_main(&mut self, ast: &[Ast]) -> Result<(), Error> {
         let mut statements = vec![];
 
         for node in ast {
@@ -166,12 +161,12 @@ impl<'ctx> Compiler<'ctx> {
         self.current_function = Some(main_function);
 
         for astnode in statements {
-            self.emit_statement(astnode);
+            self.emit_statement(astnode)?;
         }
 
         self.builder
             .build_return(Some(&self.context.i32_type().const_int(0, false)))
-            .unwrap();
+            ?;
 
         Ok(())
     }
@@ -265,43 +260,49 @@ impl<'ctx> Compiler<'ctx> {
                     .insert(arg.clone(), Variable { ptr: alloca_ptr });
             }
 
-            self.emit_return(expr);
+            self.emit_return(expr)?;
         }
 
         Ok(())
     }
 
-    pub fn emit_statement(&mut self, astnode: &Ast) {
+    pub fn emit_statement(&mut self, astnode: &Ast) -> Result<(), Error> {
         if let Ast::Assignment(ident, expr) = astnode {
             if !self.variables.contains_key(ident) {
-                self.emit_declaration(ident, expr)
+                self.emit_declaration(ident, expr)?;
             } else {
-                self.emit_assignment(ident, expr)
+                self.emit_assignment(ident, expr)?;
             }
         } else if let Ast::FunctionCall(..) = astnode {
-            self.emit_function_call(astnode).unwrap();
+            self.emit_function_call(astnode)?;
         }
+
+        Ok(())
     }
 
-    pub fn emit_declaration(&mut self, name: &String, expr: &Expression) {
+    pub fn emit_declaration(&mut self, name: &String, expr: &Expression) -> Result<(), Error> {
         let float_type = self.context.f64_type();
 
-        let alloca_ptr = self.builder.build_alloca(float_type, name).unwrap();
+        let alloca_ptr = self.builder.build_alloca(float_type, name)?;
 
         self.variables
             .insert(name.to_owned(), Variable { ptr: alloca_ptr });
 
-        let init_val = self.emit_expression(expr).unwrap();
+        let init_val = self.emit_expression(expr)?;
 
-        self.builder.build_store(alloca_ptr, init_val).unwrap();
+        self.builder.build_store(alloca_ptr, init_val)?;
+
+        Ok(())
     }
 
-    pub fn emit_assignment(&mut self, name: &String, expr: &Expression) {
+    pub fn emit_assignment(&mut self, name: &String, expr: &Expression) -> Result<(), Error> {
         let variable = self.variables.get(name).unwrap().clone();
 
-        let val = self.emit_expression(expr).unwrap();
+        let val = self.emit_expression(expr)?;
 
-        self.builder.build_store(variable.ptr, val).unwrap();
+        self.builder.build_store(variable.ptr, val)?;
+
+        Ok(())
     }
 
     pub fn emit_expression(
@@ -310,14 +311,14 @@ impl<'ctx> Compiler<'ctx> {
     ) -> Result<BasicValueEnum<'ctx>, Error> {
         Ok(match expr {
             Expression::Abs(expr) => {
-                let arg = self.emit_expression(expr).unwrap().into();
+                let arg = self.emit_expression(expr)?.into();
                 self.builder
                     .build_direct_call(
                         self.module.get_function("llvm.fabs.f64").unwrap(),
                         &[arg],
                         "ret",
                     )
-                    .unwrap()
+                    ?
                     .try_as_basic_value()
                     .left()
                     .unwrap()
@@ -332,9 +333,11 @@ impl<'ctx> Compiler<'ctx> {
         })
     }
 
-    pub fn emit_return(&mut self, retval: &ast::Expression) {
-        let retval = self.emit_expression(retval).unwrap();
-        self.builder.build_return(Some(&retval)).unwrap();
+    pub fn emit_return(&mut self, retval: &ast::Expression) -> Result<(), Error> {
+        let retval = self.emit_expression(retval)?;
+        self.builder.build_return(Some(&retval))?;
+
+        Ok(())
     }
 
     pub fn emit_float(&mut self, value: f64) -> BasicValueEnum<'ctx> {
@@ -357,12 +360,8 @@ impl<'ctx> Compiler<'ctx> {
     pub fn emit_function_call(&mut self, astnode: &Ast) -> Result<BasicValueEnum<'ctx>, Error> {
         match astnode {
             Ast::FunctionCall(name, args) => {
-                if self.std_functions.contains(name) {
-                    match name.as_str() {
-                        "print" => self.emit_print(&args[0]),
-                        _ => unimplemented!(),
-                    }
-
+                if name == "print" {
+                    self.emit_print(&args[0]);
                     return Ok(self
                         .context
                         .f64_type()
@@ -419,7 +418,7 @@ impl<'ctx> Compiler<'ctx> {
                         &[left.into(), right.into()],
                         "ret",
                     )
-                    .unwrap()
+                    ?
                     .try_as_basic_value()
                     .left()
                     .unwrap(),
@@ -465,13 +464,40 @@ impl<'ctx> Compiler<'ctx> {
         branched_expr: &Expression,
     ) -> Result<BasicValueEnum<'ctx>, Error> {
         if let Expression::Branched(condition, expr1, expr2) = branched_expr {
-            let condition = self.emit_expression(condition)?;
-            let expr1 = self.emit_expression(expr1)?;
-            let expr2 = self.emit_expression(expr2)?;
+            let btrue = self
+                .context
+                .append_basic_block(self.current_function.unwrap(), "btrue");
+            let bfalse = self
+                .context
+                .append_basic_block(self.current_function.unwrap(), "bfalse");
+            let end = self
+                .context
+                .append_basic_block(self.current_function.unwrap(), "end");
 
-            Ok(self
-                .builder
-                .build_select(condition.into_int_value(), expr1, expr2, "select")?)
+            let condition = self.emit_expression(condition)?;
+            let float_type = self.context.f64_type();
+
+            let alloca_ptr = self.builder.build_alloca(float_type, "retvalue")?;
+
+            self.builder
+                .build_conditional_branch(condition.into_int_value(), btrue, bfalse)
+                ?;
+
+            self.builder.position_at_end(btrue);
+            let value = self.emit_expression(expr1)?;
+            self.builder.build_store(alloca_ptr, value)?;
+            self.builder.build_unconditional_branch(end)?;
+
+            self.builder.position_at_end(bfalse);
+            let value = self.emit_expression(expr2)?;
+            self.builder.build_store(alloca_ptr, value)?;
+            self.builder.build_unconditional_branch(end)?;
+
+            self.builder.position_at_end(end);
+
+            let retvalue = self.builder.build_load(float_type, alloca_ptr, "ret")?;
+
+            Ok(retvalue)
         } else {
             unreachable!()
         }
