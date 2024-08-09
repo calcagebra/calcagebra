@@ -43,7 +43,7 @@ pub struct Compiler<'ctx> {
     current_function: Option<FunctionValue<'ctx>>,
 
     printf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
-    _scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
+    scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
 }
 
 impl<'ctx> Compiler<'ctx> {
@@ -51,7 +51,7 @@ impl<'ctx> Compiler<'ctx> {
         let module = context.create_module(module_name);
         let builder = context.create_builder();
         let printf = Compiler::create_printf(context, &module);
-        let _scanf = Compiler::create_scanf(context, &module);
+        let scanf = Compiler::create_scanf(context, &module);
 
         let f64_type = context.f64_type();
 
@@ -67,7 +67,7 @@ impl<'ctx> Compiler<'ctx> {
             module,
             builder,
             printf,
-            _scanf,
+            scanf,
             current_function: None,
             variables: HashMap::default(),
             functions: HashMap::default(),
@@ -100,7 +100,8 @@ impl<'ctx> Compiler<'ctx> {
                 inkwell::OptimizationLevel::Default,
                 RelocMode::PIC,
                 CodeModel::Default,
-            ).unwrap();
+            )
+            .unwrap();
 
         Ok(target_machine)
     }
@@ -165,8 +166,7 @@ impl<'ctx> Compiler<'ctx> {
         }
 
         self.builder
-            .build_return(Some(&self.context.i32_type().const_int(0, false)))
-            ?;
+            .build_return(Some(&self.context.i32_type().const_int(0, false)))?;
 
         Ok(())
     }
@@ -175,7 +175,7 @@ impl<'ctx> Compiler<'ctx> {
         context: &'ctx Context,
         module: &Module<'ctx>,
     ) -> (FunctionValue<'ctx>, GlobalValue<'ctx>) {
-        let printf_format = "%f\n";
+        let printf_format = "%lf\n";
         let printf_format_type = context
             .i8_type()
             .array_type((printf_format.len() + 1) as u32);
@@ -206,7 +206,7 @@ impl<'ctx> Compiler<'ctx> {
         context: &'ctx Context,
         module: &Module<'ctx>,
     ) -> (FunctionValue<'ctx>, GlobalValue<'ctx>) {
-        let scanf_format = "%f";
+        let scanf_format = "%lf";
         let scanf_format_type = context
             .i8_type()
             .array_type((scanf_format.len() + 1) as u32);
@@ -216,10 +216,25 @@ impl<'ctx> Compiler<'ctx> {
 
         let scanf_args = [context.ptr_type(AddressSpace::default()).into()];
 
-        let scanf_type = context.i32_type().fn_type(&scanf_args, true);
+        let scanf_type = context.f64_type().fn_type(&scanf_args, true);
         let scanf_fn = module.add_function("scanf", scanf_type, None);
 
         (scanf_fn, scanf_format_global)
+    }
+
+    pub fn emit_read(&mut self) -> Result<BasicValueEnum<'ctx>, Error> {
+        let result_value = self
+            .builder
+            .build_alloca(self.context.i64_type(), "read_result")?;
+
+        let args: &[BasicMetadataValueEnum<'ctx>] =
+            &[self.scanf.1.as_pointer_value().into(), result_value.into()];
+
+        self.builder.build_call(self.scanf.0, args, "read_call")?;
+
+        Ok(self
+            .builder
+            .build_load(self.context.i64_type(), result_value, "read_result")?)
     }
 
     pub fn declare_functions(&mut self, functions: &Vec<Ast>) {
@@ -317,8 +332,7 @@ impl<'ctx> Compiler<'ctx> {
                         self.module.get_function("llvm.fabs.f64").unwrap(),
                         &[arg],
                         "ret",
-                    )
-                    ?
+                    )?
                     .try_as_basic_value()
                     .left()
                     .unwrap()
@@ -367,6 +381,8 @@ impl<'ctx> Compiler<'ctx> {
                         .f64_type()
                         .const_float(0.0)
                         .as_basic_value_enum());
+                } else if name == "read" {
+                    return self.emit_read();
                 }
 
                 let exprs: Vec<BasicMetadataValueEnum<'ctx>> = args
@@ -417,8 +433,7 @@ impl<'ctx> Compiler<'ctx> {
                         self.module.get_function("llvm.pow.f64").unwrap(),
                         &[left.into(), right.into()],
                         "ret",
-                    )
-                    ?
+                    )?
                     .try_as_basic_value()
                     .left()
                     .unwrap(),
@@ -480,8 +495,7 @@ impl<'ctx> Compiler<'ctx> {
             let alloca_ptr = self.builder.build_alloca(float_type, "retvalue")?;
 
             self.builder
-                .build_conditional_branch(condition.into_int_value(), btrue, bfalse)
-                ?;
+                .build_conditional_branch(condition.into_int_value(), btrue, bfalse)?;
 
             self.builder.position_at_end(btrue);
             let value = self.emit_expression(expr1)?;

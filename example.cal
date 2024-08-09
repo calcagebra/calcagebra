@@ -1,4 +1,9 @@
 fib x = if x <= 1 then x else fib(x-1) + fib(x-2) end
 
-print(fib(30))
+input = read()
+// 30
+
+value = fib(input)
+
+print(value)
 // 832040.000000

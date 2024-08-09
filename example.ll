@@ -1,12 +1,12 @@
 ; ModuleID = 'example'
 source_filename = "example"
 
-@print_format = global [4 x i8] c"%f\0A\00"
-@read_format = global [3 x i8] c"%f\00"
+@print_format = global [5 x i8] c"%lf\0A\00"
+@read_format = global [4 x i8] c"%lf\00"
 
 declare i32 @printf(ptr, ...)
 
-declare i32 @scanf(ptr, ...)
+declare double @scanf(ptr, ...)
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare double @llvm.pow.f64(double, double) #0
@@ -49,8 +49,17 @@ end:                                              ; preds = %bfalse, %btrue
 
 define i32 @main() {
 entry:
-  %fib_call = call double @fib(double 3.000000e+01)
-  %print_call = call i32 (ptr, ...) @printf(ptr @print_format, double %fib_call)
+  %input = alloca double, align 8
+  %read_result = alloca i64, align 8
+  %read_call = call double (ptr, ...) @scanf(ptr @read_format, ptr %read_result)
+  %read_result1 = load i64, ptr %read_result, align 4
+  store i64 %read_result1, ptr %input, align 4
+  %value = alloca double, align 8
+  %input2 = load double, ptr %input, align 8
+  %fib_call = call double @fib(double %input2)
+  store double %fib_call, ptr %value, align 8
+  %value3 = load double, ptr %value, align 8
+  %print_call = call i32 (ptr, ...) @printf(ptr @print_format, double %value3)
   ret i32 0
 }
 
