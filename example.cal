@@ -1,3 +1,4 @@
-f x = if x == 1 then 1 else x*f(x-1) end
+fib x = if x <= 1 then x else fib(x-1) + fib(x-2) end
 
-print(f(5))
+print(fib(30))
+// 832040.000000

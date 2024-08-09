@@ -8,11 +8,11 @@ use std::{
     ffi::OsStr,
     fs::{self, read_to_string},
     path::{Path, PathBuf},
-    process::{exit, Command},
+    process::{exit, Command, Stdio},
     time::Instant,
 };
 
-use clap::Parser as ClapParser;
+use clap::{command, Parser as ClapParser, Subcommand};
 use compiler::Compiler;
 use lexer::Lexer;
 
@@ -22,28 +22,36 @@ use crate::parser::Parser;
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Output debug information
-    #[clap(short, long, value_parser)]
+    #[clap(short, long, value_parser, global = true)]
     debug: bool,
 
-    /// Only run the lexer and parser
-    #[clap(long, value_parser)]
-    dry_run: bool,
-
     /// Emit llvm ir
-    #[clap(long, value_parser)]
+    #[clap(short, long, value_parser, global = true)]
     emit_ir: bool,
 
     /// Print the time elapsed while executing code
-    #[clap(short, long, value_parser)]
+    #[clap(short, long, value_parser, global = true)]
     time: bool,
 
-    /// Print the characters used as globals
-    #[clap(short, long, value_parser)]
-    globals: bool,
+    #[command(subcommand)]
+    command: Subcommands,
+}
 
-    /// The path of file which is to be executed
-    #[clap()]
-    input: Option<String>,
+#[derive(Debug, Subcommand)]
+enum Subcommands {
+    /// Build calcagebra binary and then execute it
+    #[command(arg_required_else_help = true)]
+    Run {
+        /// Name of the file to run
+        name: String,
+    },
+
+    /// Compile calcagebra code
+    #[command(arg_required_else_help = true)]
+    Build {
+        /// Name of the file to build
+        name: String,
+    },
 }
 
 macro_rules! os {
@@ -56,7 +64,12 @@ fn main() {
     let args = Args::parse();
     let main = Instant::now();
 
-    let contents = read_to_string(args.input.clone().unwrap()).unwrap();
+    let (input, run) = match args.command {
+        Subcommands::Run { name } => (name, true),
+        Subcommands::Build { name } => (name, false),
+    };
+
+    let contents = read_to_string(input.clone()).unwrap();
 
     let tokens = Lexer::new(&contents).tokens();
 
@@ -72,12 +85,7 @@ fn main() {
         println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
     }
 
-    if args.dry_run {
-        return;
-    }
-
-    let name = args.input.unwrap();
-    let module_name = Path::new(&name)
+    let module_name = Path::new(&input)
         .file_name()
         .expect("no filename")
         .to_str()
@@ -117,12 +125,13 @@ fn main() {
 
     let output_file = PathBuf::from(module_name.to_owned());
 
+    let binding = output_file.clone();
     let mut link_params = vec![
         object_file.as_os_str(),
         os!("-target"),
         target_triple.as_ref(),
         os!("-o"),
-        output_file.as_ref(),
+        binding.as_ref(),
     ];
 
     if on_windows {
@@ -140,6 +149,20 @@ fn main() {
     }
 
     let _ = fs::remove_file(object_file);
+
+    if run {
+        let mut child = Command::new(format!("./{}", output_file.display()))
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+        let status = child.wait().unwrap();
+
+        if !status.success() {
+            eprintln!("Run failed");
+            exit(1);
+        }
+    }
 
     if args.debug || args.time {
         let duration = main.elapsed();
