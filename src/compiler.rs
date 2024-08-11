@@ -237,6 +237,30 @@ impl<'ctx> Compiler<'ctx> {
             .build_load(self.context.i64_type(), result_value, "read_result")?)
     }
 
+    pub fn declare_globals(&mut self, variables: &Vec<Ast>) {
+        for variable in variables {
+            if let Ast::Assignment(name, expr) = variable {
+                if self.variables.contains_key(name) {
+                    continue;
+                }
+                let float_type = self.context.f64_type();
+
+                let alloca_ptr = self.module.add_global(float_type, None, name);
+
+                self.variables.insert(
+                    name.to_owned(),
+                    Variable {
+                        ptr: alloca_ptr.as_pointer_value(),
+                    },
+                );
+
+                let init_val = self.emit_expression(expr).unwrap();
+
+                alloca_ptr.set_initializer(&init_val);
+            }
+        }
+    }
+
     pub fn declare_functions(&mut self, functions: &Vec<Ast>) {
         for function in functions {
             if let Ast::FunctionDeclaration(name, args, _) = function {
@@ -283,29 +307,10 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn emit_statement(&mut self, astnode: &Ast) -> Result<(), Error> {
         if let Ast::Assignment(ident, expr) = astnode {
-            if !self.variables.contains_key(ident) {
-                self.emit_declaration(ident, expr)?;
-            } else {
-                self.emit_assignment(ident, expr)?;
-            }
+            self.emit_assignment(ident, expr)?;
         } else if let Ast::FunctionCall(..) = astnode {
             self.emit_function_call(astnode)?;
         }
-
-        Ok(())
-    }
-
-    pub fn emit_declaration(&mut self, name: &String, expr: &Expression) -> Result<(), Error> {
-        let float_type = self.context.f64_type();
-
-        let alloca_ptr = self.builder.build_alloca(float_type, name)?;
-
-        self.variables
-            .insert(name.to_owned(), Variable { ptr: alloca_ptr });
-
-        let init_val = self.emit_expression(expr)?;
-
-        self.builder.build_store(alloca_ptr, init_val)?;
 
         Ok(())
     }

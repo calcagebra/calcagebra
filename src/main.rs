@@ -96,6 +96,7 @@ fn main() {
     let llvm_context = inkwell::context::Context::create();
     let mut codegen = Compiler::new(&llvm_context, module_name);
 
+    codegen.declare_globals(&ast);
     codegen.declare_functions(&ast);
     codegen.emit_main(&ast).unwrap();
 
