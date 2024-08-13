@@ -1,5 +1,0 @@
-x = 5
-
-f y = if y < x then 0 else 1 end
-
-print(f(5))
