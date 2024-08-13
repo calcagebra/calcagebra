@@ -1,0 +1,2 @@
+tasks:
+  - before: sudo bash install-deps.sh

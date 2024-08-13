@@ -165,7 +165,7 @@ if [[ -z "`apt-key list 2> /dev/null | grep -i llvm`" ]]; then
 fi
 add-apt-repository "${REPO_NAME}"
 apt-get update
-PKG="clang-$LLVM_VERSION lldb-$LLVM_VERSION lld-$LLVM_VERSION clangd-$LLVM_VERSION libpolly-$LLVM_VERSION-dev"
+PKG="upx mold clang-$LLVM_VERSION lldb-$LLVM_VERSION lld-$LLVM_VERSION clangd-$LLVM_VERSION libpolly-$LLVM_VERSION-dev"
 if [[ $ALL -eq 1 ]]; then
     # same as in test-install.sh
     # No worries if we have dups
