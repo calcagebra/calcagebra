@@ -133,6 +133,7 @@ fn main() {
         target_triple.as_ref(),
         os!("-o"),
         binding.as_ref(),
+        os!("-lm")
     ];
 
     if on_windows {

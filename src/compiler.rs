@@ -41,6 +41,7 @@ pub struct Compiler<'ctx> {
     functions: HashMap<String, Function<'ctx>>,
 
     current_function: Option<FunctionValue<'ctx>>,
+    standard_functions: Vec<&'ctx str>,
 
     printf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
     scanf: (FunctionValue<'ctx>, GlobalValue<'ctx>),
@@ -52,6 +53,9 @@ impl<'ctx> Compiler<'ctx> {
         let builder = context.create_builder();
         let printf = Compiler::create_printf(context, &module);
         let scanf = Compiler::create_scanf(context, &module);
+        let standard_functions = vec![
+            "print", "read", "round", "ceil", "floor", "log", "sin", "cos", "tan", "sqrt",
+        ];
 
         let f64_type = context.f64_type();
 
@@ -59,8 +63,15 @@ impl<'ctx> Compiler<'ctx> {
         let intrinsic_type = f64_type.fn_type(&[f64_type.into()], false);
 
         module.add_function("llvm.pow.f64", di_intrinsic_type, None);
-        module.add_function("llvm.sqrt.f64", intrinsic_type, None);
         module.add_function("llvm.fabs.f64", intrinsic_type, None);
+        module.add_function("llvm.round.f64", intrinsic_type, None);
+        module.add_function("llvm.ceil.f64", intrinsic_type, None);
+        module.add_function("llvm.floor.f64", intrinsic_type, None);
+        module.add_function("llvm.log.f64", intrinsic_type, None);
+        module.add_function("llvm.sin.f64", intrinsic_type, None);
+        module.add_function("llvm.cos.f64", intrinsic_type, None);
+        module.add_function("llvm.tan.f64", intrinsic_type, None);
+        module.add_function("llvm.sqrt.f64", intrinsic_type, None);
 
         Self {
             context,
@@ -69,6 +80,7 @@ impl<'ctx> Compiler<'ctx> {
             printf,
             scanf,
             current_function: None,
+            standard_functions,
             variables: HashMap::default(),
             functions: HashMap::default(),
         }
@@ -97,7 +109,7 @@ impl<'ctx> Compiler<'ctx> {
                 &target_triple,
                 "generic",
                 "",
-                inkwell::OptimizationLevel::Default,
+                inkwell::OptimizationLevel::Aggressive,
                 RelocMode::PIC,
                 CodeModel::Default,
             )
@@ -239,7 +251,7 @@ impl<'ctx> Compiler<'ctx> {
 
     pub fn declare_globals(&mut self, variables: &Vec<Ast>) {
         for variable in variables {
-            if let Ast::Assignment(name, expr) = variable {
+            if let Ast::Assignment(name, _) = variable {
                 if self.variables.contains_key(name) {
                     continue;
                 }
@@ -254,7 +266,11 @@ impl<'ctx> Compiler<'ctx> {
                     },
                 );
 
-                let init_val = self.emit_expression(expr).unwrap();
+                let init_val = self
+                    .context
+                    .f64_type()
+                    .const_float(0.0)
+                    .as_basic_value_enum();
 
                 alloca_ptr.set_initializer(&init_val);
             }
@@ -379,15 +395,8 @@ impl<'ctx> Compiler<'ctx> {
     pub fn emit_function_call(&mut self, astnode: &Ast) -> Result<BasicValueEnum<'ctx>, Error> {
         match astnode {
             Ast::FunctionCall(name, args) => {
-                if name == "print" {
-                    self.emit_print(&args[0]);
-                    return Ok(self
-                        .context
-                        .f64_type()
-                        .const_float(0.0)
-                        .as_basic_value_enum());
-                } else if name == "read" {
-                    return self.emit_read();
+                if self.standard_functions.contains(&name.as_str()) {
+                    return self.emit_standard_function_call(name, args);
                 }
 
                 let exprs: Vec<BasicMetadataValueEnum<'ctx>> = args
@@ -404,6 +413,47 @@ impl<'ctx> Compiler<'ctx> {
                 Ok(retval.try_as_basic_value().unwrap_left())
             }
             _ => unreachable!(),
+        }
+    }
+
+    pub fn emit_standard_function_call(
+        &mut self,
+        name: &str,
+        args: &[Expression],
+    ) -> Result<BasicValueEnum<'ctx>, Error> {
+        let default_return_value = self
+            .context
+            .f64_type()
+            .const_float(0.0)
+            .as_basic_value_enum();
+
+        match name {
+            "print" => {
+                self.emit_print(&args[0]);
+                Ok(default_return_value)
+            }
+            "read" => self.emit_read(),
+            "round" | "ceil" | "floor" | "log" | "sin" | "cos" | "tan" | "sqrt" => {
+                let intrinsic = self
+                    .module
+                    .get_function(&format!("llvm.{name}.f64"))
+                    .unwrap();
+                let args: Vec<BasicMetadataValueEnum<'ctx>> = args
+                    .iter()
+                    .map(|arg| self.emit_expression(arg).map(Into::into))
+                    .collect::<Result<_, _>>()?;
+
+                let res = self
+                    .builder
+                    .build_direct_call(intrinsic, &args, "ret")?
+                    .try_as_basic_value()
+                    .left()
+                    .unwrap();
+
+                Ok(res)
+            }
+
+            _ => unimplemented!(),
         }
     }
 
