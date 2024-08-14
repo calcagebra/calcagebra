@@ -1,6 +1,6 @@
 [package]
 name = "calcagebra"
-version = "1.11.0"
+version = "2.0.0-dev"
 edition = "2021"
 
 [dependencies]
