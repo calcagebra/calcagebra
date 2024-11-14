@@ -102,6 +102,9 @@ impl Parser {
                 expr = Some(exp);
                 tokens.next();
             }
+            Token::LCurly => {
+                (expr, tokens) = self.parse_set(tokens);
+            }
             Token::Abs => {
                 let exp;
                 (exp, tokens) = self.pratt_parser(tokens, 0);
@@ -271,6 +274,57 @@ impl Parser {
             )),
             tokens,
         )
+    }
+
+    pub fn parse_set<'a>(
+        &'a self,
+        mut tokens: Peekable<Iter<'a, Token>>,
+    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+        let mut values = vec![];
+        let mut expression = vec![];
+
+        loop {
+            let token = if tokens.peek().is_none() {
+                if !expression.is_empty() {
+                    let lex = expression.iter().peekable();
+                    let (data, _) = self.pratt_parser(lex, 0);
+
+                    values.push(data);
+                }
+                break;
+            } else {
+                tokens.next().unwrap()
+            };
+
+            match *token {
+                Token::LCurly => {
+                    unimplemented!("set nesting")
+                }
+                Token::RCurly => {
+                    if !expression.is_empty() {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        values.push(data);
+                    }
+                    break;
+                }
+                Token::Comma => {
+                    if !expression.is_empty() {
+                        let lex = expression.iter().peekable();
+                        let (data, _) = self.pratt_parser(lex, 0);
+
+                        values.push(data);
+                        expression.clear();
+                    }
+                }
+                _ => {
+                    expression.push(token.to_owned());
+                }
+            }
+        }
+
+        (Some(Expression::SizedSet(values)), tokens)
     }
 
     fn infix_binding_power(&self, op: &Token) -> (u16, u16) {

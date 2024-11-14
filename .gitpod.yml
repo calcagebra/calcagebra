@@ -1,2 +1,2 @@
 tasks:
-  - before: sudo bash scripts/install-deps.sh
+  - command: sudo bash scripts/install-deps.sh
