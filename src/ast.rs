@@ -2,7 +2,7 @@ use crate::token::Token;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
-pub enum Ast {
+pub enum AstNode {
     Assignment(String, Expression),
     FunctionCall(String, Vec<Expression>),
     FunctionDeclaration(String, Vec<String>, Expression),

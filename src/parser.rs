@@ -1,7 +1,7 @@
 use std::{iter::Peekable, slice::Iter};
 
 use crate::{
-    ast::{Ast, Expression},
+    ast::{AstNode, Expression},
     token::Token,
 };
 
@@ -14,7 +14,7 @@ impl Parser {
         Self { tokens }
     }
 
-    pub fn ast(&self) -> Vec<Ast> {
+    pub fn ast(&self) -> Vec<AstNode> {
         let mut ast = vec![];
         let lines = &self.tokens;
 
@@ -34,7 +34,7 @@ impl Parser {
 
                 let expr = self.pratt_parser(tokens, 0).0;
 
-                ast.push(Ast::Assignment(name.to_string(), expr));
+                ast.push(AstNode::Assignment(name.to_string(), expr));
             } else {
                 let name = match identifier {
                     Token::Identifier(name) => name,
@@ -60,13 +60,13 @@ impl Parser {
                     }
                     tokens.next();
                     let expr = self.pratt_parser(tokens, 0).0;
-                    ast.push(Ast::FunctionDeclaration(name.to_string(), args, expr));
+                    ast.push(AstNode::FunctionDeclaration(name.to_string(), args, expr));
                 } else {
                     let (args, _) = self.pratt_parser(line.iter().peekable(), 0);
 
                     match args {
                         Expression::FunctionCall(name, args) => {
-                            ast.push(Ast::FunctionCall(name.to_string(), args))
+                            ast.push(AstNode::FunctionCall(name.to_string(), args))
                         }
                         _ => unreachable!(),
                     }

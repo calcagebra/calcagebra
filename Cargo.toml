@@ -5,8 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"] }
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm18-0"] }
-thiserror = "1.0.62"
+cranelift = { version = "0.114.0", features = ["module", "jit", "native"] }
 
 [profile.release]
 opt-level = 'z'
