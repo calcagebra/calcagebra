@@ -25,15 +25,12 @@ pub enum Token {
     Div,
     Pow,
     Rem,
-    Differentiate,
 
     Comma,
     Belongs,
     Colon,
     LParen,
     RParen,
-    LCurly,
-    RCurly,
     Abs,
 }
 
@@ -60,15 +57,12 @@ impl Token {
             "/" => Token::Div,
             "^" => Token::Pow,
             "%" => Token::Rem,
-            "`" => Token::Differentiate,
 
             "," => Token::Comma,
             "E" => Token::Belongs,
             ":" => Token::Colon,
             "(" => Token::LParen,
             ")" => Token::RParen,
-            "{" => Token::LCurly,
-            "}" => Token::RCurly,
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
                     Token::Number(token.parse::<f64>().unwrap())
@@ -105,14 +99,11 @@ impl Display for Token {
                 Token::Div => "/".to_string(),
                 Token::Pow => "^".to_string(),
                 Token::Rem => "%".to_string(),
-                Token::Differentiate => "`".to_string(),
                 Token::Comma => ",".to_string(),
                 Token::Belongs => "E".to_string(),
                 Token::Colon => ":".to_string(),
                 Token::LParen => "(".to_string(),
                 Token::RParen => ")".to_string(),
-                Token::LCurly => "{".to_string(),
-                Token::RCurly => "}".to_string(),
                 Token::Abs => "|".to_string(),
             }
         )

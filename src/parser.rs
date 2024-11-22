@@ -1,347 +1,287 @@
 use std::{iter::Peekable, slice::Iter};
 
 use crate::{
-    ast::{AstNode, Expression},
-    token::Token,
+	ast::{AstNode, Expression},
+	token::Token,
 };
 
 pub struct Parser {
-    tokens: Vec<Vec<Token>>,
+	tokens: Vec<Vec<Token>>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<Vec<Token>>) -> Self {
-        Self { tokens }
-    }
+	pub fn new(tokens: Vec<Vec<Token>>) -> Self {
+		Self { tokens }
+	}
 
-    pub fn ast(&self) -> Vec<AstNode> {
-        let mut ast = vec![];
-        let lines = &self.tokens;
+	pub fn ast(&self) -> Vec<AstNode> {
+		let mut ast = vec![];
+		let lines = &self.tokens;
 
-        for line in lines {
-            let mut tokens = line.iter().peekable();
+		for line in lines {
+			let mut tokens = line.iter().peekable();
 
-            let identifier = tokens.next().unwrap();
+			let identifier = tokens.next().unwrap();
 
-            let is_eq = **tokens.peek().unwrap() == Token::Eq;
+			let is_eq = **tokens.peek().unwrap() == Token::Eq;
 
-            if is_eq {
-                tokens.next();
-                let mut name = "";
-                if let Token::Identifier(str) = identifier {
-                    name = str;
-                }
+			if is_eq {
+				tokens.next();
+				let mut name = "";
+				if let Token::Identifier(str) = identifier {
+					name = str;
+				}
 
-                let expr = self.pratt_parser(tokens, 0).0;
+				let expr = self.pratt_parser(tokens, 0).0;
 
-                ast.push(AstNode::Assignment(name.to_string(), expr));
-            } else {
-                let name = match identifier {
-                    Token::Identifier(name) => name,
-                    _ => unreachable!(),
-                };
+				ast.push(AstNode::Assignment(name.to_string(), expr));
+			} else {
+				let name = match identifier {
+					Token::Identifier(name) => name,
+					_ => unreachable!(),
+				};
 
-                if line.contains(&Token::Eq) {
-                    let mut args = vec![];
+				if line.contains(&Token::Eq) {
+					let mut args = vec![];
 
-                    loop {
-                        let t = tokens.peek();
+					loop {
+						let t = tokens.peek();
 
-                        if t.is_none() || **t.unwrap() == Token::Eq {
-                            break;
-                        }
+						if t.is_none() || **t.unwrap() == Token::Eq {
+							break;
+						}
 
-                        let t = tokens.next().unwrap();
+						let t = tokens.next().unwrap();
 
-                        args.push(match t {
-                            Token::Identifier(i) => i.to_string(),
-                            _ => unreachable!(),
-                        })
-                    }
-                    tokens.next();
-                    let expr = self.pratt_parser(tokens, 0).0;
-                    ast.push(AstNode::FunctionDeclaration(name.to_string(), args, expr));
-                } else {
-                    let (args, _) = self.pratt_parser(line.iter().peekable(), 0);
+						args.push(match t {
+							Token::Identifier(i) => i.to_string(),
+							_ => unreachable!(),
+						})
+					}
+					tokens.next();
+					let expr = self.pratt_parser(tokens, 0).0;
+					ast.push(AstNode::FunctionDeclaration(name.to_string(), args, expr));
+				} else {
+					let (args, _) = self.pratt_parser(line.iter().peekable(), 0);
 
-                    match args {
-                        Expression::FunctionCall(name, args) => {
-                            ast.push(AstNode::FunctionCall(name.to_string(), args))
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-            }
-        }
+					match args {
+						Expression::FunctionCall(name, args) => {
+							ast.push(AstNode::FunctionCall(name.to_string(), args))
+						}
+						_ => unreachable!(),
+					}
+				}
+			}
+		}
 
-        ast
-    }
+		ast
+	}
 
-    pub fn pratt_parser<'a>(
-        &'a self,
-        mut tokens: Peekable<Iter<'a, Token>>,
-        prec: u16,
-    ) -> (Expression, Peekable<Iter<Token>>) {
-        let token = tokens.next().unwrap();
-        let mut expr: Option<Expression> = None;
-        match token {
-            Token::Identifier(i) => {
-                if tokens.peek().is_some()
-                    && self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
-                    && ![Token::RParen, Token::Abs, Token::Differentiate]
-                        .contains(*tokens.peek().unwrap())
-                {
-                    (expr, tokens) = self.parse_fn(tokens, i.clone());
-                } else {
-                    expr = Some(Expression::Identifier(i.to_string()))
-                };
-            }
-            Token::LParen => {
-                let exp;
-                (exp, tokens) = self.pratt_parser(tokens, 0);
-                expr = Some(exp);
-                tokens.next();
-            }
-            Token::LCurly => {
-                (expr, tokens) = self.parse_set(tokens);
-            }
-            Token::Abs => {
-                let exp;
-                (exp, tokens) = self.pratt_parser(tokens, 0);
-                expr = Some(Expression::Abs(Box::new(exp)));
-                tokens.next();
-            }
-            Token::If => {
-                (expr, tokens) = self.parse_if(tokens);
-            }
-            Token::Sub => {
-                if let Token::Number(i) = tokens.peek().unwrap() {
-                    expr = Some(Expression::Number(-i));
-                    tokens.next();
-                }
-            }
-            Token::Number(n) => expr = Some(Expression::Number(*n)),
-            _ => {}
-        };
+	pub fn pratt_parser<'a>(
+		&'a self,
+		mut tokens: Peekable<Iter<'a, Token>>,
+		prec: u16,
+	) -> (Expression, Peekable<Iter<Token>>) {
+		let token = tokens.next().unwrap();
+		let mut expr: Option<Expression> = None;
+		match token {
+			Token::Identifier(i) => {
+				if tokens.peek().is_some()
+					&& self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
+					&& ![Token::RParen, Token::Abs].contains(*tokens.peek().unwrap())
+				{
+					(expr, tokens) = self.parse_fn(tokens, i.clone());
+				} else {
+					expr = Some(Expression::Identifier(i.to_string()))
+				};
+			}
+			Token::LParen => {
+				let exp;
+				(exp, tokens) = self.pratt_parser(tokens, 0);
+				expr = Some(exp);
+				tokens.next();
+			}
+			Token::Abs => {
+				let exp;
+				(exp, tokens) = self.pratt_parser(tokens, 0);
+				expr = Some(Expression::Abs(Box::new(exp)));
+				tokens.next();
+			}
+			Token::If => {
+				(expr, tokens) = self.parse_if(tokens);
+			}
+			Token::Sub => {
+				if let Token::Number(i) = tokens.peek().unwrap() {
+					expr = Some(Expression::Number(-i));
+					tokens.next();
+				}
+			}
+			Token::Number(n) => expr = Some(Expression::Number(*n)),
+			_ => {}
+		};
 
-        loop {
-            let op = tokens.peek();
+		loop {
+			let op = tokens.peek();
 
-            if op.is_none() || [Token::RParen, Token::Abs].contains(op.unwrap()) {
-                break;
-            }
+			if op.is_none() || [Token::RParen, Token::Abs].contains(op.unwrap()) {
+				break;
+			}
 
-            let (lbp, rbp) = self.infix_binding_power(op.unwrap());
+			let (lbp, rbp) = self.infix_binding_power(op.unwrap());
 
-            if lbp < prec {
-                break;
-            }
+			if lbp < prec {
+				break;
+			}
 
-            let op = tokens.next().unwrap();
+			let op = tokens.next().unwrap();
 
-            let rhs;
-            (rhs, tokens) = self.pratt_parser(tokens, rbp);
-            expr = Some(Expression::Binary(
-                Box::new(expr.unwrap()),
-                op.clone(),
-                Box::new(rhs),
-            ));
-        }
+			let rhs;
+			(rhs, tokens) = self.pratt_parser(tokens, rbp);
+			expr = Some(Expression::Binary(
+				Box::new(expr.unwrap()),
+				op.clone(),
+				Box::new(rhs),
+			));
+		}
 
-        (expr.unwrap(), tokens)
-    }
+		(expr.unwrap(), tokens)
+	}
 
-    pub fn parse_fn<'a>(
-        &'a self,
-        mut tokens: Peekable<Iter<'a, Token>>,
-        i: String,
-    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
-        let mut depth = 0;
-        let mut params = vec![];
-        let mut expression = vec![];
+	pub fn parse_fn<'a>(
+		&'a self,
+		mut tokens: Peekable<Iter<'a, Token>>,
+		i: String,
+	) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+		let mut depth = 0;
+		let mut params = vec![];
+		let mut expression = vec![];
 
-        tokens.next();
+		tokens.next();
 
-        loop {
-            let token = tokens.next();
+		loop {
+			let token = tokens.next();
 
-            if token.is_none() {
-                break;
-            }
+			if token.is_none() {
+				break;
+			}
 
-            let token = token.unwrap();
-            if *token == Token::RParen {
-                if depth == 0 {
-                    if !expression.is_empty() && depth == 0 {
-                        let lex = expression.iter().peekable();
-                        let (data, _) = self.pratt_parser(lex, 0);
+			let token = token.unwrap();
+			if *token == Token::RParen {
+				if depth == 0 {
+					if !expression.is_empty() && depth == 0 {
+						let lex = expression.iter().peekable();
+						let (data, _) = self.pratt_parser(lex, 0);
 
-                        params.push(data);
-                        expression.clear();
-                    }
-                    break;
-                }
-                depth -= 1;
-            }
+						params.push(data);
+						expression.clear();
+					}
+					break;
+				}
+				depth -= 1;
+			}
 
-            if *token == Token::RCurly {
-                depth -= 1;
-            }
+			if *token == Token::LParen {
+				depth += 1;
+			}
 
-            if *token == Token::LParen || *token == Token::LCurly {
-                depth += 1;
-            }
+			if *token == Token::Comma && depth == 0 {
+				let lex = expression.iter().peekable();
+				let (data, _) = self.pratt_parser(lex, 0);
 
-            if *token == Token::Comma && depth == 0 {
-                let lex = expression.iter().peekable();
-                let (data, _) = self.pratt_parser(lex, 0);
+				params.push(data);
 
-                params.push(data);
+				expression.clear();
+				continue;
+			}
 
-                expression.clear();
-                continue;
-            }
+			expression.push(token.to_owned());
+		}
+		if !expression.is_empty() {
+			let lex = expression.iter().peekable();
+			let (data, _) = self.pratt_parser(lex, 0);
 
-            expression.push(token.to_owned());
-        }
-        if !expression.is_empty() {
-            let lex = expression.iter().peekable();
-            let (data, _) = self.pratt_parser(lex, 0);
+			params.push(data);
+			expression.clear();
+		}
 
-            params.push(data);
-            expression.clear();
-        }
+		(
+			Some(Expression::FunctionCall(i.to_string(), params)),
+			tokens,
+		)
+	}
 
-        (
-            Some(Expression::FunctionCall(i.to_string(), params)),
-            tokens,
-        )
-    }
+	pub fn parse_if<'a>(
+		&'a self,
+		mut tokens: Peekable<Iter<'a, Token>>,
+	) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+		let mut depth = 1;
+		let mut params = vec![];
+		let mut expression = vec![];
 
-    pub fn parse_if<'a>(
-        &'a self,
-        mut tokens: Peekable<Iter<'a, Token>>,
-    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
-        let mut depth = 1;
-        let mut params = vec![];
-        let mut expression = vec![];
+		loop {
+			let token = tokens.next();
 
-        loop {
-            let token = tokens.next();
+			if token.is_none() {
+				break;
+			}
 
-            if token.is_none() {
-                break;
-            }
+			let token = token.unwrap();
 
-            let token = token.unwrap();
+			if *token == Token::Then || *token == Token::Else {
+				let lex = expression.iter().peekable();
+				let (data, _) = self.pratt_parser(lex, 0);
 
-            if *token == Token::Then || *token == Token::Else {
-                let lex = expression.iter().peekable();
-                let (data, _) = self.pratt_parser(lex, 0);
+				params.push(data);
+				expression.clear();
+				continue;
+			}
 
-                params.push(data);
-                expression.clear();
-                continue;
-            }
+			if *token == Token::If {
+				depth += 1;
+			}
 
-            if *token == Token::If {
-                depth += 1;
-            }
+			if *token == Token::End {
+				depth -= 1;
+				if depth == 0 {
+					break;
+				}
+			}
 
-            if *token == Token::End {
-                depth -= 1;
-                if depth == 0 {
-                    break;
-                }
-            }
+			expression.push(token.to_owned());
+		}
 
-            expression.push(token.to_owned());
-        }
+		if !expression.is_empty() {
+			let lex = expression.iter().peekable();
+			let (data, _) = self.pratt_parser(lex, 0);
 
-        if !expression.is_empty() {
-            let lex = expression.iter().peekable();
-            let (data, _) = self.pratt_parser(lex, 0);
+			params.push(data);
+			expression.clear();
+		}
 
-            params.push(data);
-            expression.clear();
-        }
+		(
+			Some(Expression::Branched(
+				Box::new(params[0].clone()),
+				Box::new(params[1].clone()),
+				Box::new(params[2].clone()),
+			)),
+			tokens,
+		)
+	}
 
-        (
-            Some(Expression::Branched(
-                Box::new(params[0].clone()),
-                Box::new(params[1].clone()),
-                Box::new(params[2].clone()),
-            )),
-            tokens,
-        )
-    }
-
-    pub fn parse_set<'a>(
-        &'a self,
-        mut tokens: Peekable<Iter<'a, Token>>,
-    ) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
-        let mut values = vec![];
-        let mut expression = vec![];
-
-        loop {
-            let token = if tokens.peek().is_none() {
-                if !expression.is_empty() {
-                    let lex = expression.iter().peekable();
-                    let (data, _) = self.pratt_parser(lex, 0);
-
-                    values.push(data);
-                }
-                break;
-            } else {
-                tokens.next().unwrap()
-            };
-
-            match *token {
-                Token::LCurly => {
-                    unimplemented!("set nesting")
-                }
-                Token::RCurly => {
-                    if !expression.is_empty() {
-                        let lex = expression.iter().peekable();
-                        let (data, _) = self.pratt_parser(lex, 0);
-
-                        values.push(data);
-                    }
-                    break;
-                }
-                Token::Comma => {
-                    if !expression.is_empty() {
-                        let lex = expression.iter().peekable();
-                        let (data, _) = self.pratt_parser(lex, 0);
-
-                        values.push(data);
-                        expression.clear();
-                    }
-                }
-                _ => {
-                    expression.push(token.to_owned());
-                }
-            }
-        }
-
-        (Some(Expression::SizedSet(values)), tokens)
-    }
-
-    fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
-        match op {
-            Token::Add | Token::Sub => (1, 2),
-            Token::Mul | Token::Div | Token::Rem => (3, 4),
-            Token::Pow => (5, 6),
-            Token::Differentiate => (7, 8),
-            Token::IsEq
-            | Token::NEq
-            | Token::Gt
-            | Token::Lt
-            | Token::GtEq
-            | Token::LtEq
-            | Token::Belongs => (9, 10),
-            Token::If | Token::Then | Token::Else | Token::End => (11, 12),
-            _ => (0, 0),
-        }
-    }
+	fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
+		match op {
+			Token::Add | Token::Sub => (1, 2),
+			Token::Mul | Token::Div | Token::Rem => (3, 4),
+			Token::Pow => (5, 6),
+			Token::IsEq
+			| Token::NEq
+			| Token::Gt
+			| Token::Lt
+			| Token::GtEq
+			| Token::LtEq
+			| Token::Belongs => (7, 8),
+			Token::If | Token::Then | Token::Else | Token::End => (9, 10),
+			_ => (0, 0),
+		}
+	}
 }

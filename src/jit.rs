@@ -377,7 +377,6 @@ impl Translator<'_> {
 				let call = self.builder.ins().call(local_callee, &arg_values);
 				*self.builder.inst_results(call).first().unwrap()
 			}
-			Expression::SizedSet(vec) => todo!(),
 		}
 	}
 }
