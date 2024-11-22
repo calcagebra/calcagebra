@@ -3,6 +3,7 @@ mod jit;
 mod lexer;
 mod parser;
 mod token;
+mod repl;
 
 use core::mem;
 use std::{fs::read_to_string, time::Instant};
@@ -10,6 +11,7 @@ use std::{fs::read_to_string, time::Instant};
 use clap::{command, Parser as ClapParser, Subcommand};
 use jit::Jit;
 use lexer::Lexer;
+use repl::repl;
 
 use crate::parser::Parser;
 
@@ -40,15 +42,23 @@ enum Subcommands {
 		/// Name of the file to run
 		name: String,
 	},
+
+	Repl
 }
 
 fn main() {
 	let args = Args::parse();
 	let main = Instant::now();
+	
 
 	let input = match args.command {
 		Subcommands::Run { name } => name,
+		Subcommands::Repl => String::new(),
 	};
+
+	if input.is_empty() {
+        repl();
+    }
 
 	let contents = read_to_string(input.clone()).unwrap();
 

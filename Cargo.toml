@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"] }
 cranelift = { version = "0.114.0", features = ["module", "jit", "native"] }
+rustyline = { version = "14.0.0", features = ["derive"] }
+syntect = "5.2.0"
 
 [profile.release]
 opt-level = 'z'

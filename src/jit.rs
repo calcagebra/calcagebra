@@ -123,8 +123,6 @@ impl Jit {
 						eprintln!("Verifier errors: {}", errors);
 					}
 
-					println!("{}", self.ctx.func.display());
-
 					let id = self
 						.module
 						.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
@@ -201,8 +199,6 @@ impl Jit {
 		if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
 			eprintln!("Verifier errors: {}", errors);
 		}
-
-		println!("{}", self.ctx.func.display());
 
 		let id = self
 			.module
