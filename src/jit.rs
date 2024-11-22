@@ -8,7 +8,10 @@ use cranelift::{
 	prelude::*,
 };
 
-use crate::ast::{AstNode, Expression};
+use crate::{
+	ast::{AstNode, Expression},
+	token::Token,
+};
 
 /// The basic JIT class.
 pub struct JIT {
@@ -31,26 +34,36 @@ pub struct JIT {
 
 // Prints a value used by the compiled code. Our JIT exposes this
 // function to compiled code with the name "print".
-unsafe extern fn print_internal(value: f64) -> f64 {
+unsafe extern "C" fn print_std(value: f64) -> f64 {
 	println!("{}", value);
 	0.0
+}
+
+unsafe extern "C" fn pow_std(a: f64, b: f64) -> f64 {
+	a.powf(b)
 }
 
 impl Default for JIT {
 	fn default() -> Self {
 		let mut flag_builder = settings::builder();
+
 		flag_builder.set("use_colocated_libcalls", "false").unwrap();
 		flag_builder.set("is_pic", "false").unwrap();
+
 		let isa_builder = builder().unwrap_or_else(|msg| {
 			panic!("host machine is not supported: {}", msg);
 		});
+
 		let isa = isa_builder
 			.finish(settings::Flags::new(flag_builder))
 			.unwrap();
+
 		let mut builder = JITBuilder::with_isa(isa, default_libcall_names());
 
-		let print_addr = print_internal as *const u8;
+		let print_addr = print_std as *const u8;
 		builder.symbol("print", print_addr);
+		let pow_addr: *const u8 = pow_std as *const u8;
+		builder.symbol("pow", pow_addr);
 
 		let module = JITModule::new(builder);
 		Self {
@@ -161,15 +174,123 @@ struct Translator<'a> {
 }
 
 impl Translator<'_> {
-	fn translate(&mut self, ast: Vec<AstNode>) -> Result<(), String> {
-		Ok(())
-	}
-
 	pub fn translate_expr(&mut self, expr: Expression) -> Value {
 		match expr {
-			Expression::Abs(expression) => todo!(),
-			Expression::Binary(expression, token, expression1) => todo!(),
-			Expression::Branched(expression, expression1, expression2) => todo!(),
+			Expression::Abs(expression) => {
+				let data = self.translate_expr(*expression);
+				self.builder.ins().fabs(data)
+			}
+			Expression::Binary(lhs, op, rhs) => {
+				let ld = self.translate_expr(*lhs);
+				let rd = self.translate_expr(*rhs);
+
+				match op {
+					Token::Add => self.builder.ins().fadd(ld, rd),
+					Token::Sub => self.builder.ins().fsub(ld, rd),
+					Token::Mul => self.builder.ins().fmul(ld, rd),
+					Token::Div => self.builder.ins().fdiv(ld, rd),
+					Token::Pow => {
+						let arg_values = [ld, rd];
+						let mut sig = self.module.make_signature();
+
+						for _arg in &arg_values {
+							sig.params.push(AbiParam::new(self.ty));
+						}
+
+						sig.returns.push(AbiParam::new(self.ty));
+
+						let callee = self
+							.module
+							.declare_function("pow", Linkage::Local, &sig)
+							.expect("problem declaring function");
+
+						let local_callee: ir::FuncRef =
+							self.module.declare_func_in_func(callee, self.builder.func);
+
+						let call = self.builder.ins().call(local_callee, &arg_values);
+
+						*self.builder.inst_results(call).first().unwrap()
+					}
+					Token::Rem => {
+						let ild = self
+							.builder
+							.ins()
+							.fcvt_to_sint(self.module.target_config().pointer_type(), ld);
+
+						let ird = self
+							.builder
+							.ins()
+							.fcvt_to_sint(self.module.target_config().pointer_type(), rd);
+
+						let rem = self.builder.ins().srem(ild, ird);
+
+						self.builder.ins().fcvt_from_sint(self.ty, rem)
+					}
+					Token::IsEq => {
+						let cmp = self.builder.ins().fcmp(FloatCC::Equal, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					Token::NEq => {
+						let cmp = self.builder.ins().fcmp(FloatCC::NotEqual, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					Token::Lt => {
+						let cmp = self.builder.ins().fcmp(FloatCC::LessThan, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					Token::LtEq => {
+						let cmp = self.builder.ins().fcmp(FloatCC::LessThanOrEqual, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					Token::Gt => {
+						let cmp = self.builder.ins().fcmp(FloatCC::GreaterThan, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					Token::GtEq => {
+						let cmp = self.builder.ins().fcmp(FloatCC::GreaterThanOrEqual, ld, rd);
+						self.builder.ins().fcvt_from_sint(self.ty, cmp)
+					}
+					_ => unreachable!("{op:?}"),
+				}
+			}
+			Expression::Branched(condition, then_body, else_body) => {
+				let condition_value = self.translate_expr(*condition);
+				let icondition_value = self
+					.builder
+					.ins()
+					.fcvt_to_sint(self.module.target_config().pointer_type(), condition_value);
+
+				let then_block = self.builder.create_block();
+				let else_block = self.builder.create_block();
+				let merge_block = self.builder.create_block();
+
+				self.builder.append_block_param(merge_block, self.ty);
+
+				self
+					.builder
+					.ins()
+					.brif(icondition_value, then_block, &[], else_block, &[]);
+
+				self.builder.switch_to_block(then_block);
+				self.builder.seal_block(then_block);
+				let then_return = self.translate_expr(*then_body);
+
+				self.builder.ins().jump(merge_block, &[then_return]);
+
+				self.builder.switch_to_block(else_block);
+				self.builder.seal_block(else_block);
+				let else_return = self.translate_expr(*else_body);
+
+				self.builder.ins().jump(merge_block, &[else_return]);
+
+				self.builder.switch_to_block(merge_block);
+
+				self.builder.seal_block(merge_block);
+
+				let phi = self.builder.block_params(merge_block)[0];
+
+				phi
+			}
 			Expression::Identifier(ident) => {
 				let variable = self.variables.get(&ident).expect("variable not defined");
 				self.builder.use_var(*variable)

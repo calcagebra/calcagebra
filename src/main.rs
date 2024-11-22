@@ -5,7 +5,7 @@ mod parser;
 mod token;
 
 use core::mem;
-use std::{fs::read_to_string, path::Path, time::Instant};
+use std::{fs::read_to_string, time::Instant};
 
 use clap::{command, Parser as ClapParser, Subcommand};
 use jit::JIT;
@@ -65,14 +65,6 @@ fn main() {
 		let duration = main.elapsed();
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
-
-	let module_name = Path::new(&input)
-		.file_name()
-		.expect("no filename")
-		.to_str()
-		.expect("invalid filename")
-		.strip_suffix(".cal")
-		.unwrap_or("<unknown>");
 
 	let mut jit = JIT::default();
 

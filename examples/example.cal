@@ -1,1 +1,7 @@
-print(5)
+a = 10
+
+b = if a == 10 then 9 else 8 end
+
+c = if b == 9 then 8 else 7 end
+
+print(c)
