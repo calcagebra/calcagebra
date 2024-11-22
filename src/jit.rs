@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use codegen::{ir, verify_function};
 use cranelift::{
 	jit::{JITBuilder, JITModule},
-	module::{default_libcall_names, DataDescription, Linkage, Module},
+	module::{default_libcall_names, Linkage, Module},
 	native::builder,
 	prelude::*,
 };
@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// The basic JIT class.
-pub struct JIT {
+pub struct Jit {
 	/// The function builder context, which is reused across multiple
 	/// FunctionBuilder instances.
 	builder_context: FunctionBuilderContext,
@@ -24,16 +24,13 @@ pub struct JIT {
 	/// context per thread, though this isn't in the simple demo here.
 	ctx: codegen::Context,
 
-	/// The data description, which is to data objects what `ctx` is to functions.
-	data_description: DataDescription,
-
 	/// The module, with the jit backend, which manages the JIT'd
 	/// functions.
 	module: JITModule,
 }
 
-// Prints a value used by the compiled code. Our JIT exposes this
-// function to compiled code with the name "print".
+// Standard library functions
+
 unsafe extern "C" fn print_std(value: f64) -> f64 {
 	println!("{}", value);
 	0.0
@@ -43,7 +40,7 @@ unsafe extern "C" fn pow_std(a: f64, b: f64) -> f64 {
 	a.powf(b)
 }
 
-impl Default for JIT {
+impl Default for Jit {
 	fn default() -> Self {
 		let mut flag_builder = settings::builder();
 
@@ -69,15 +66,80 @@ impl Default for JIT {
 		Self {
 			builder_context: FunctionBuilderContext::new(),
 			ctx: module.make_context(),
-			data_description: DataDescription::new(),
 			module,
 		}
 	}
 }
 
-impl JIT {
+impl Jit {
 	pub fn execute(&mut self, ast: Vec<AstNode>) -> Result<*const u8, String> {
 		let ty = types::F64;
+
+		let mut filtered_ast = vec![];
+
+		for node in ast {
+			match node {
+				AstNode::FunctionDeclaration(name, params, expr) => {
+					for _p in &params {
+						self.ctx.func.signature.params.push(AbiParam::new(ty));
+					}
+
+					self.ctx.func.signature.returns.push(AbiParam::new(ty));
+
+					let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
+					let entry_block = builder.create_block();
+
+					builder.append_block_params_for_function_params(entry_block);
+					builder.switch_to_block(entry_block);
+					builder.seal_block(entry_block);
+
+					let mut variables = HashMap::new();
+					let mut index = 0;
+
+					for (i, name) in params.iter().enumerate() {
+						let val = builder.block_params(entry_block)[i];
+						let var = Variable::new(index);
+						if !variables.contains_key(name) {
+							variables.insert(name.into(), var);
+							builder.declare_var(var, ty);
+							index += 1;
+						}
+						builder.def_var(var, val);
+					}
+
+					let mut trans = Translator {
+						ty,
+						builder,
+						variables,
+						module: &mut self.module,
+					};
+
+					let ret_value = trans.translate_expr(expr);
+					trans.builder.ins().return_(&[ret_value]);
+
+					trans.builder.finalize();
+
+					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
+						eprintln!("Verifier errors: {}", errors);
+					}
+
+					println!("{}", self.ctx.func.display());
+
+					let id = self
+						.module
+						.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
+						.map_err(|e| e.to_string())?;
+
+					self
+						.module
+						.define_function(id, &mut self.ctx)
+						.map_err(|e| e.to_string())?;
+
+					self.module.clear_context(&mut self.ctx);
+				}
+				_ => filtered_ast.push(node),
+			}
+		}
 
 		let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 		let entry_block = builder.create_block();
@@ -86,59 +148,55 @@ impl JIT {
 		builder.switch_to_block(entry_block);
 		builder.seal_block(entry_block);
 
-		let mut translator = Translator {
+		let mut trans = Translator {
 			ty,
 			builder,
 			variables: HashMap::new(),
 			module: &mut self.module,
 		};
 
-		for node in ast {
+		for node in filtered_ast {
 			match node {
 				AstNode::Assignment(name, expression) => {
-					let idx = translator.variables.len();
+					let idx = trans.variables.len();
 					let var = Variable::new(idx);
-					translator.variables.insert(name.to_string(), var);
-					translator.builder.declare_var(var, ty);
+					trans.variables.insert(name.to_string(), var);
+					trans.builder.declare_var(var, ty);
 
-					let val = translator.translate_expr(expression);
+					let val = trans.translate_expr(expression);
 
-					translator.builder.def_var(var, val);
+					trans.builder.def_var(var, val);
 				}
 				AstNode::FunctionCall(ident, args) => {
-					let standard_functions = ["print"].map(String::from);
+					let mut sig = trans.module.make_signature();
 
-					if standard_functions.contains(&ident) {
-						let mut sig = translator.module.make_signature();
-
-						for _arg in &args {
-							sig.params.push(AbiParam::new(translator.ty));
-						}
-
-						sig.returns.push(AbiParam::new(translator.ty));
-
-						let callee = translator
-							.module
-							.declare_function(&ident, Linkage::Local, &sig)
-							.expect("problem declaring function");
-
-						let local_callee: ir::FuncRef = translator
-							.module
-							.declare_func_in_func(callee, translator.builder.func);
-
-						let mut arg_values = Vec::new();
-						for arg in args {
-							arg_values.push(translator.translate_expr(arg))
-						}
-						let call = translator.builder.ins().call(local_callee, &arg_values);
-						assert!(!translator.builder.inst_results(call).is_empty());
+					for _arg in &args {
+						sig.params.push(AbiParam::new(trans.ty));
 					}
+
+					sig.returns.push(AbiParam::new(trans.ty));
+
+					let callee = trans
+						.module
+						.declare_function(&ident, Linkage::Local, &sig)
+						.expect("problem declaring function");
+
+					let local_callee: ir::FuncRef = trans
+						.module
+						.declare_func_in_func(callee, trans.builder.func);
+
+					let mut arg_values = Vec::new();
+					for arg in args {
+						arg_values.push(trans.translate_expr(arg))
+					}
+					let call = trans.builder.ins().call(local_callee, &arg_values);
+					assert!(!trans.builder.inst_results(call).is_empty());
 				}
-				AstNode::FunctionDeclaration(_, vec, expression) => todo!(),
+				AstNode::FunctionDeclaration(..) => {}
 			}
 		}
 
-		translator.builder.ins().return_(&[]);
+		trans.builder.ins().return_(&[]);
 
 		if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
 			eprintln!("Verifier errors: {}", errors);
@@ -296,7 +354,29 @@ impl Translator<'_> {
 				self.builder.use_var(*variable)
 			}
 			Expression::Number(n) => self.builder.ins().f64const(n),
-			Expression::FunctionCall(_, vec) => todo!(),
+			Expression::FunctionCall(ident, args) => {
+				let mut sig = self.module.make_signature();
+
+				for _arg in &args {
+					sig.params.push(AbiParam::new(self.ty));
+				}
+
+				sig.returns.push(AbiParam::new(self.ty));
+
+				let callee = self
+					.module
+					.declare_function(&ident, Linkage::Local, &sig)
+					.expect("problem declaring function");
+
+				let local_callee: ir::FuncRef = self.module.declare_func_in_func(callee, self.builder.func);
+
+				let mut arg_values = Vec::new();
+				for arg in args {
+					arg_values.push(self.translate_expr(arg))
+				}
+				let call = self.builder.ins().call(local_callee, &arg_values);
+				*self.builder.inst_results(call).first().unwrap()
+			}
 			Expression::SizedSet(vec) => todo!(),
 		}
 	}

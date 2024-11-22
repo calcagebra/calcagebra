@@ -8,7 +8,7 @@ use core::mem;
 use std::{fs::read_to_string, time::Instant};
 
 use clap::{command, Parser as ClapParser, Subcommand};
-use jit::JIT;
+use jit::Jit;
 use lexer::Lexer;
 
 use crate::parser::Parser;
@@ -66,7 +66,7 @@ fn main() {
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let mut jit = JIT::default();
+	let mut jit = Jit::default();
 
 	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast).unwrap())() };
 
