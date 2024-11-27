@@ -196,6 +196,7 @@ impl Jit {
 					assert!(!trans.builder.inst_results(call).is_empty());
 				}
 				AstNode::FunctionDeclaration(..) => {}
+				AstNode::ImportFrom(lib, items) => println!("{lib} {items:?}"),
 			}
 		}
 

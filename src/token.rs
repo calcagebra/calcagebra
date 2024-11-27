@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
     Number(f64),
@@ -9,6 +7,8 @@ pub enum Token {
     Then,
     Else,
     End,
+    Import,
+    From,
 
     Eq,
 
@@ -31,6 +31,8 @@ pub enum Token {
     Colon,
     LParen,
     RParen,
+    LCurly,
+    RCurly,
     Abs,
 }
 
@@ -41,6 +43,8 @@ impl Token {
             "then" => Token::Then,
             "else" => Token::Else,
             "end" => Token::End,
+            "import" => Token::Import,
+            "from" => Token::From,
 
             "=" => Token::Eq,
             "!=" => Token::NEq,
@@ -63,6 +67,8 @@ impl Token {
             ":" => Token::Colon,
             "(" => Token::LParen,
             ")" => Token::RParen,
+            "{" => Token::LCurly,
+            "}" => Token::RCurly,
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
                     Token::Number(token.parse::<f64>().unwrap())
@@ -71,41 +77,5 @@ impl Token {
                 }
             }
         }
-    }
-}
-
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Token::Number(n) => n.to_string(),
-                Token::Identifier(ident) => ident.to_string(),
-                Token::If => "if".to_string(),
-                Token::Then => "then".to_string(),
-                Token::Else => "else".to_string(),
-                Token::End => "end".to_string(),
-                Token::Eq => "=".to_string(),
-                Token::NEq => "!=".to_string(),
-                Token::IsEq => "==".to_string(),
-                Token::Gt => ">".to_string(),
-                Token::Lt => "<".to_string(),
-                Token::GtEq => ">=".to_string(),
-                Token::LtEq => "<=".to_string(),
-                Token::Add => "+".to_string(),
-                Token::Sub => "-".to_string(),
-                Token::Mul => "*".to_string(),
-                Token::Div => "/".to_string(),
-                Token::Pow => "^".to_string(),
-                Token::Rem => "%".to_string(),
-                Token::Comma => ",".to_string(),
-                Token::Belongs => "E".to_string(),
-                Token::Colon => ":".to_string(),
-                Token::LParen => "(".to_string(),
-                Token::RParen => ")".to_string(),
-                Token::Abs => "|".to_string(),
-            }
-        )
     }
 }

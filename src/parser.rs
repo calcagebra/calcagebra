@@ -23,9 +23,32 @@ impl Parser {
 
 			let identifier = tokens.next().unwrap();
 
-			let is_eq = **tokens.peek().unwrap() == Token::Eq;
+			if *identifier == Token::Import {
+				assert!(*tokens.next().unwrap() == Token::LCurly);
 
-			if is_eq {
+				let mut items = vec![];
+
+				loop {
+					if **tokens.peek().unwrap() == Token::RCurly {
+						tokens.next();
+						break;
+					}
+
+					match tokens.next().unwrap() {
+						Token::Identifier(ident) => items.push(ident.to_owned()),
+						_ => unreachable!(),
+					}
+				}
+
+				assert!(*tokens.next().unwrap() == Token::From);
+
+				let lib = match tokens.next().unwrap() {
+					Token::Identifier(ident) => ident.to_owned(),
+					_ => unreachable!(),
+				};
+
+				ast.push(AstNode::ImportFrom(lib, items));
+			} else if **tokens.peek().unwrap() == Token::Eq {
 				tokens.next();
 				let mut name = "";
 				if let Token::Identifier(str) = identifier {
