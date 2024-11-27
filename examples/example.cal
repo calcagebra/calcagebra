@@ -1,5 +1,3 @@
-a = read()
+f(x) = x*2
 
-b = ln(a)
-
-print(b)
+print(f(read()))

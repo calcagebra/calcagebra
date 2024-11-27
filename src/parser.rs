@@ -51,6 +51,11 @@ impl Parser {
 							break;
 						}
 
+						if [Token::LParen, Token::RParen].contains(t.unwrap()) {
+							tokens.next();
+							continue;
+						}
+
 						let t = tokens.next().unwrap();
 
 						args.push(match t {
