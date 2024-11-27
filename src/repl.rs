@@ -81,11 +81,9 @@ pub fn repl() {
 	let mut rl = Editor::with_config(config).unwrap();
 	rl.set_helper(Some(h));
 
-	let mut code = String::new();
+	let mut jit = Jit::default();
 
 	loop {
-		let mut jit = Jit::default();
-
 		"\x1b[1m\x1b[32m[In]:\x1b[0m "
 			.clone_into(&mut rl.helper_mut().expect("No helper").colored_prompt);
 
@@ -99,13 +97,10 @@ pub fn repl() {
 
 				println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
-				code += "\n";
-				code += &line;
-
 				unsafe {
 					mem::transmute::<*const u8, fn()>(
 						jit
-							.execute(Parser::new(Lexer::new(&code).tokens()).ast())
+							.execute(Parser::new(Lexer::new(&line).tokens()).ast())
 							.unwrap(),
 					)()
 				};

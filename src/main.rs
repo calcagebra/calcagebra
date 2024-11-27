@@ -4,6 +4,7 @@ mod lexer;
 mod parser;
 mod token;
 mod repl;
+mod standardlibrary;
 
 use core::mem;
 use std::{fs::read_to_string, time::Instant};
@@ -21,10 +22,6 @@ struct Args {
 	/// Output debug information
 	#[clap(short, long, value_parser, global = true)]
 	debug: bool,
-
-	/// Emit llvm ir
-	#[clap(short, long, value_parser, global = true)]
-	emit_ir: bool,
 
 	/// Print the time elapsed while executing code
 	#[clap(short, long, value_parser, global = true)]

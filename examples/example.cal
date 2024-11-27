@@ -1,3 +1,5 @@
-f x = x + 10
+a = read()
 
-print(f(5))
+b = ln(a)
+
+print(b)

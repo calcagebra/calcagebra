@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use codegen::{ir, verify_function};
+use codegen::verify_function;
 use cranelift::{
 	jit::{JITBuilder, JITModule},
 	module::{default_libcall_names, Linkage, Module},
@@ -10,6 +10,7 @@ use cranelift::{
 
 use crate::{
 	ast::{AstNode, Expression},
+	standardlibrary::*,
 	token::Token,
 };
 
@@ -29,17 +30,6 @@ pub struct Jit {
 	module: JITModule,
 }
 
-// Standard library functions
-
-unsafe extern "C" fn print_std(value: f64) -> f64 {
-	println!("{}", value);
-	0.0
-}
-
-unsafe extern "C" fn pow_std(a: f64, b: f64) -> f64 {
-	a.powf(b)
-}
-
 impl Default for Jit {
 	fn default() -> Self {
 		let mut flag_builder = settings::builder();
@@ -57,10 +47,25 @@ impl Default for Jit {
 
 		let mut builder = JITBuilder::with_isa(isa, default_libcall_names());
 
-		let print_addr = print_std as *const u8;
-		builder.symbol("print", print_addr);
-		let pow_addr: *const u8 = pow_std as *const u8;
-		builder.symbol("pow", pow_addr);
+		// IO
+		builder.symbol("print", print as *const u8);
+		builder.symbol("read", read as *const u8);
+
+		// MATH
+		builder.symbol("round", round as *const u8);
+		builder.symbol("ceil", ceil as *const u8);
+		builder.symbol("floor", floor as *const u8);
+		builder.symbol("ln", ln as *const u8);
+		builder.symbol("log10", log10 as *const u8);
+		builder.symbol("log", log as *const u8);
+		builder.symbol("log10", log10 as *const u8);
+		builder.symbol("sin", sin as *const u8);
+		builder.symbol("cos", cos as *const u8);
+		builder.symbol("tan", tan as *const u8);
+		builder.symbol("sqrt", sqrt as *const u8);
+		builder.symbol("cbrt", cbrt as *const u8);
+		builder.symbol("nrt", nrt as *const u8);
+		builder.symbol("pow", pow as *const u8);
 
 		let module = JITModule::new(builder);
 		Self {
@@ -179,7 +184,7 @@ impl Jit {
 						.declare_function(&ident, Linkage::Local, &sig)
 						.expect("problem declaring function");
 
-					let local_callee: ir::FuncRef = trans
+					let local_callee = trans
 						.module
 						.declare_func_in_func(callee, trans.builder.func);
 
@@ -258,8 +263,7 @@ impl Translator<'_> {
 							.declare_function("pow", Linkage::Local, &sig)
 							.expect("problem declaring function");
 
-						let local_callee: ir::FuncRef =
-							self.module.declare_func_in_func(callee, self.builder.func);
+						let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
 
 						let call = self.builder.ins().call(local_callee, &arg_values);
 
@@ -364,7 +368,7 @@ impl Translator<'_> {
 					.declare_function(&ident, Linkage::Local, &sig)
 					.expect("problem declaring function");
 
-				let local_callee: ir::FuncRef = self.module.declare_func_in_func(callee, self.builder.func);
+				let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
 
 				let mut arg_values = Vec::new();
 				for arg in args {
