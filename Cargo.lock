@@ -116,7 +116,7 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
 name = "calcagebra"
-version = "2.0.0-dev"
+version = "2.0.0-rc3"
 dependencies = [
  "clap",
  "cranelift",
