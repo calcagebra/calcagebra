@@ -1,89 +1,88 @@
 mod ast;
-mod data;
-mod interpreter;
+mod jit;
 mod lexer;
 mod parser;
-mod standardlibrary;
 mod token;
 mod repl;
+mod standardlibrary;
 
+use core::mem;
 use std::{fs::read_to_string, time::Instant};
 
-use clap::Parser as ClapParser;
+use clap::{command, Parser as ClapParser, Subcommand};
+use jit::Jit;
 use lexer::Lexer;
+use repl::repl;
 
-use crate::{interpreter::Interpreter, parser::Parser, repl::repl};
+use crate::parser::Parser;
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    /// Output debug information
-    #[clap(short, long, value_parser)]
-    debug: bool,
+	/// Output debug information
+	#[clap(short, long, value_parser, global = true)]
+	debug: bool,
 
-    /// Only run the lexer and parser
-    #[clap(long, value_parser)]
-    dry_run: bool,
+	/// Print the time elapsed while executing code
+	#[clap(short, long, value_parser, global = true)]
+	time: bool,
 
-    /// Print the time elapsed while executing code
-    #[clap(short, long, value_parser)]
-    time: bool,
+	#[command(subcommand)]
+	command: Subcommands,
+}
 
-    /// Print the characters used as globals
-    #[clap(short, long, value_parser)]
-    globals: bool,
+#[derive(Debug, Subcommand)]
+enum Subcommands {
+	/// Build calcagebra binary and then execute it
+	#[command(arg_required_else_help = true)]
+	Run {
+		/// Name of the file to run
+		name: String,
+	},
 
-    /// The path of file which is to be executed
-    #[clap()]
-    input: Option<String>,
+	Repl
 }
 
 fn main() {
-    let args = Args::parse();
-    let main = Instant::now();
+	let args = Args::parse();
+	let main = Instant::now();
+	
 
-    if args.input.is_none() {
-        if args.globals {
-            println!("calcagebra v{}\n", version());
-            let _ = Interpreter::new()
-                .init_globals()
-                .variables
-                .iter()
-                .map(|(a, b)| println!("{a} {b}"))
-                .collect::<Vec<_>>();
-            return;
-        }
+	let input = match args.command {
+		Subcommands::Run { name } => name,
+		Subcommands::Repl => String::new(),
+	};
+
+	if input.is_empty() {
         repl();
     }
 
-    let contents = read_to_string(args.input.unwrap()).unwrap();
+	let contents = read_to_string(input.clone()).unwrap();
 
-    let tokens = Lexer::new(&contents).tokens();
+	let tokens = Lexer::new(&contents).tokens();
 
-    if args.debug {
-        let duration = main.elapsed();
-        println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
-    }
+	if args.debug {
+		let duration = main.elapsed();
+		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
+	}
 
-    let ast = Parser::new(tokens).ast();
+	let ast = Parser::new(tokens).ast();
 
-    if args.debug {
-        let duration = main.elapsed();
-        println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
-    }
+	if args.debug {
+		let duration = main.elapsed();
+		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
+	}
 
-    if args.dry_run {
-        return;
-    }
+	let mut jit = Jit::default();
 
-    Interpreter::new().run(ast);
+	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast).unwrap())() };
 
-    if args.debug || args.time {
-        let duration = main.elapsed();
-        println!("\nTIME: {duration:?}");
-    }
+	if args.debug || args.time {
+		let duration = main.elapsed();
+		println!("\nTIME: {duration:?}");
+	}
 }
 
 pub fn version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+	env!("CARGO_PKG_VERSION").to_string()
 }

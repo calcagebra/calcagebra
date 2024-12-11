@@ -1,4 +1,0 @@
-f x = x
-g x = x^2
-h x = x^3
-graph(f, g, h)

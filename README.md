@@ -8,9 +8,9 @@ Download the binary for your OS from the [releases page.](https://github.com/meg
 
 ## Commands
 
-* `calcagebra`: Open the REPL, use CTRL+C/CTRL+D to exit the repl.
-* `calcagebra INPUT`: Run the contents of the file, if a directory is provided or file is not present then an error is thrown.
-* `calcagebra version`: Print the verson of [calcagebra](https://github.com/megatank58/calcabegra).
+* `calcagebra repl`: Open the REPL, use CTRL+C/CTRL+D to exit the repl.
+* `calcagebra run INPUT`: Run the contents of the file, if a directory is provided or file is not present then an error is thrown.
+* `calcagebra --version`: Print the verson of [calcagebra](https://github.com/megatank58/calcabegra).
 
 ## Syntax
 
@@ -23,8 +23,7 @@ An expression can be one of the following types:
 * Branched: `if expr then expr else expr end`
 * Identifier: `[a-zA-Z.$]+`
 * Number: `[0-9.]+`
-* SizedSet: `{([0-9.],?)+}`
-* FunctionCall: `identifier exprs`
+* FunctionCall: `identifier(exprs)`
 
 Note: Multiple exprs should always be seperated by a `,`. `*` operator is optional between `identifier` and `number`, `6x^2 + 5x + 1` is perfectly valid code.
 
@@ -34,7 +33,7 @@ Assignments follow the `name = value` structure, variables can be reassigned wit
 
 ### Function Declaration
 
-Functions are declared by the `name params = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
+Functions are declared by the `name(params) = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
 
 ### Function Calls
 
@@ -68,7 +67,7 @@ print(a)
 ### Graph
 Print the graph of a function to stdout.
 ```hs
-f x = nrt(x^2,2)
+f(x) = nrt(x^2,2)
 graph(f)
 ```
 
