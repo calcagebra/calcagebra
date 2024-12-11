@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use codegen::verify_function;
 use cranelift::{
 	jit::{JITBuilder, JITModule},
-	module::{default_libcall_names, Linkage, Module},
+	module::{default_libcall_names, FuncId, Linkage, Module},
 	native::builder,
 	prelude::*,
 };
@@ -66,6 +66,7 @@ impl Default for Jit {
 		builder.symbol("cbrt", cbrt as *const u8);
 		builder.symbol("nrt", nrt as *const u8);
 		builder.symbol("pow", pow as *const u8);
+		builder.symbol("graph", graph as *const u8);
 
 		let module = JITModule::new(builder);
 		Self {
@@ -81,6 +82,7 @@ impl Jit {
 		let ty = types::F64;
 
 		let mut filtered_ast = vec![];
+		let mut functions = HashMap::new();
 
 		for node in ast {
 			match node {
@@ -116,6 +118,7 @@ impl Jit {
 						ty,
 						builder,
 						variables,
+						functions: HashMap::new(),
 						module: &mut self.module,
 					};
 
@@ -133,12 +136,20 @@ impl Jit {
 						.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
 						.map_err(|e| e.to_string())?;
 
+					functions.insert(name, id);
+
 					self
 						.module
 						.define_function(id, &mut self.ctx)
 						.map_err(|e| e.to_string())?;
 
 					self.module.clear_context(&mut self.ctx);
+
+					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
+						eprintln!("Verifier errors: {}", errors);
+					}
+
+					self.module.finalize_definitions().unwrap();
 				}
 				_ => filtered_ast.push(node),
 			}
@@ -155,6 +166,7 @@ impl Jit {
 			ty,
 			builder,
 			variables: HashMap::new(),
+			functions,
 			module: &mut self.module,
 		};
 
@@ -196,7 +208,6 @@ impl Jit {
 					assert!(!trans.builder.inst_results(call).is_empty());
 				}
 				AstNode::FunctionDeclaration(..) => {}
-				AstNode::ImportFrom(lib, items) => println!("{lib} {items:?}"),
 			}
 		}
 
@@ -230,6 +241,7 @@ struct Translator<'a> {
 	ty: types::Type,
 	builder: FunctionBuilder<'a>,
 	variables: HashMap<String, Variable>,
+	functions: HashMap<String, FuncId>,
 	module: &'a mut JITModule,
 }
 
@@ -351,8 +363,15 @@ impl Translator<'_> {
 				phi
 			}
 			Expression::Identifier(ident) => {
-				let variable = self.variables.get(&ident).expect("variable not defined");
-				self.builder.use_var(*variable)
+				if self.variables.contains_key(&ident) {
+					self.builder.use_var(*self.variables.get(&ident).unwrap())
+				} else {
+					let func_ptr = self
+						.module
+						.get_finalized_function(*self.functions.get(&ident).unwrap());
+			
+					self.builder.ins().f64const(func_ptr as u64 as f64)
+				}
 			}
 			Expression::Number(n) => self.builder.ins().f64const(n),
 			Expression::FunctionCall(ident, args) => {

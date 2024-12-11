@@ -3,7 +3,6 @@ use crate::token::Token;
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum AstNode {
-    ImportFrom(String, Vec<String>),
     Assignment(String, Expression),
     FunctionCall(String, Vec<Expression>),
     FunctionDeclaration(String, Vec<String>, Expression),

@@ -7,8 +7,6 @@ pub enum Token {
     Then,
     Else,
     End,
-    Import,
-    From,
 
     Eq,
 
@@ -43,8 +41,6 @@ impl Token {
             "then" => Token::Then,
             "else" => Token::Else,
             "end" => Token::End,
-            "import" => Token::Import,
-            "from" => Token::From,
 
             "=" => Token::Eq,
             "!=" => Token::NEq,

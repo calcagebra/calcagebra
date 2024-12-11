@@ -67,7 +67,7 @@ print(a)
 ### Graph
 Print the graph of a function to stdout.
 ```hs
-f x = nrt(x^2,2)
+f(x) = nrt(x^2,2)
 graph(f)
 ```
 
