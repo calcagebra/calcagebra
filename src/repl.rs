@@ -97,6 +97,8 @@ pub fn repl() {
 
 				println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
+				jit.renew();
+
 				unsafe {
 					mem::transmute::<*const u8, fn()>(
 						jit

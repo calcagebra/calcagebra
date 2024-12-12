@@ -28,6 +28,11 @@ pub struct Jit {
 	/// The module, with the jit backend, which manages the JIT'd
 	/// functions.
 	module: JITModule,
+
+	variables: HashMap<String, (Variable, Option<Expression>)>,
+	functions: HashMap<String, FuncId>,
+
+	counter: isize,
 }
 
 impl Default for Jit {
@@ -72,7 +77,10 @@ impl Default for Jit {
 		Self {
 			builder_context: FunctionBuilderContext::new(),
 			ctx: module.make_context(),
+			variables: HashMap::new(),
+			functions: HashMap::new(),
 			module,
+			counter: 0,
 		}
 	}
 }
@@ -82,7 +90,7 @@ impl Jit {
 		let ty = types::F64;
 
 		let mut filtered_ast = vec![];
-		let mut functions = HashMap::new();
+		let mut functions = self.functions.clone();
 
 		for node in ast {
 			match node {
@@ -107,7 +115,7 @@ impl Jit {
 						let val = builder.block_params(entry_block)[i];
 						let var = Variable::new(index);
 						if !variables.contains_key(name) {
-							variables.insert(name.into(), var);
+							variables.insert(name.into(), (var, None));
 							builder.declare_var(var, ty);
 							index += 1;
 						}
@@ -122,7 +130,7 @@ impl Jit {
 						module: &mut self.module,
 					};
 
-					let ret_value = trans.translate_expr(expr);
+					let ret_value = trans.translate_expr(&expr);
 					trans.builder.ins().return_(&[ret_value]);
 
 					trans.builder.finalize();
@@ -143,11 +151,11 @@ impl Jit {
 						.define_function(id, &mut self.ctx)
 						.map_err(|e| e.to_string())?;
 
-					self.module.clear_context(&mut self.ctx);
-
 					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
 						eprintln!("Verifier errors: {}", errors);
 					}
+
+					self.module.clear_context(&mut self.ctx);
 
 					self.module.finalize_definitions().unwrap();
 				}
@@ -170,15 +178,29 @@ impl Jit {
 			module: &mut self.module,
 		};
 
+		for (name, (variable, expression)) in &self.variables {
+			let val = trans.translate_expr(expression.as_ref().unwrap());
+
+			trans
+				.variables
+				.insert(name.to_string(), (*variable, expression.clone()));
+			trans.builder.declare_var(*variable, ty);
+
+			trans.builder.def_var(*variable, val);
+		}
+
 		for node in filtered_ast {
 			match node {
 				AstNode::Assignment(name, expression) => {
 					let idx = trans.variables.len();
 					let var = Variable::new(idx);
-					trans.variables.insert(name.to_string(), var);
-					trans.builder.declare_var(var, ty);
 
-					let val = trans.translate_expr(expression);
+					let val = trans.translate_expr(&expression);
+
+					trans
+						.variables
+						.insert(name.to_string(), (var, Some(expression)));
+					trans.builder.declare_var(var, ty);
 
 					trans.builder.def_var(var, val);
 				}
@@ -202,7 +224,7 @@ impl Jit {
 
 					let mut arg_values = Vec::new();
 					for arg in args {
-						arg_values.push(trans.translate_expr(arg))
+						arg_values.push(trans.translate_expr(&arg))
 					}
 					let call = trans.builder.ins().call(local_callee, &arg_values);
 					assert!(!trans.builder.inst_results(call).is_empty());
@@ -213,13 +235,20 @@ impl Jit {
 
 		trans.builder.ins().return_(&[]);
 
+		self.functions = trans.functions;
+		self.variables = trans.variables;
+
 		if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
 			eprintln!("Verifier errors: {}", errors);
 		}
 
 		let id = self
 			.module
-			.declare_function("main", Linkage::Export, &self.ctx.func.signature)
+			.declare_function(
+				&format!("main{}", self.counter),
+				Linkage::Export,
+				&self.ctx.func.signature,
+			)
 			.map_err(|e| e.to_string())?;
 
 		self
@@ -231,30 +260,33 @@ impl Jit {
 
 		self.module.finalize_definitions().unwrap();
 
-		let code = self.module.get_finalized_function(id);
+		Ok(self.module.get_finalized_function(id))
+	}
 
-		Ok(code)
+	pub fn renew(&mut self) {
+		self.counter += 1;
+		self.builder_context = FunctionBuilderContext::new();
 	}
 }
 
 struct Translator<'a> {
 	ty: types::Type,
 	builder: FunctionBuilder<'a>,
-	variables: HashMap<String, Variable>,
+	variables: HashMap<String, (Variable, Option<Expression>)>,
 	functions: HashMap<String, FuncId>,
 	module: &'a mut JITModule,
 }
 
 impl Translator<'_> {
-	pub fn translate_expr(&mut self, expr: Expression) -> Value {
+	pub fn translate_expr(&mut self, expr: &Expression) -> Value {
 		match expr {
 			Expression::Abs(expression) => {
-				let data = self.translate_expr(*expression);
+				let data = self.translate_expr(expression);
 				self.builder.ins().fabs(data)
 			}
 			Expression::Binary(lhs, op, rhs) => {
-				let ld = self.translate_expr(*lhs);
-				let rd = self.translate_expr(*rhs);
+				let ld = self.translate_expr(lhs);
+				let rd = self.translate_expr(rhs);
 
 				match op {
 					Token::Add => self.builder.ins().fadd(ld, rd),
@@ -325,7 +357,7 @@ impl Translator<'_> {
 				}
 			}
 			Expression::Branched(condition, then_body, else_body) => {
-				let condition_value = self.translate_expr(*condition);
+				let condition_value = self.translate_expr(condition);
 				let icondition_value = self
 					.builder
 					.ins()
@@ -344,13 +376,13 @@ impl Translator<'_> {
 
 				self.builder.switch_to_block(then_block);
 				self.builder.seal_block(then_block);
-				let then_return = self.translate_expr(*then_body);
+				let then_return = self.translate_expr(then_body);
 
 				self.builder.ins().jump(merge_block, &[then_return]);
 
 				self.builder.switch_to_block(else_block);
 				self.builder.seal_block(else_block);
-				let else_return = self.translate_expr(*else_body);
+				let else_return = self.translate_expr(else_body);
 
 				self.builder.ins().jump(merge_block, &[else_return]);
 
@@ -363,21 +395,21 @@ impl Translator<'_> {
 				phi
 			}
 			Expression::Identifier(ident) => {
-				if self.variables.contains_key(&ident) {
-					self.builder.use_var(*self.variables.get(&ident).unwrap())
+				if self.variables.contains_key(ident) {
+					self.builder.use_var(self.variables.get(ident).unwrap().0)
 				} else {
 					let func_ptr = self
 						.module
-						.get_finalized_function(*self.functions.get(&ident).unwrap());
-			
+						.get_finalized_function(*self.functions.get(ident).unwrap());
+
 					self.builder.ins().f64const(func_ptr as u64 as f64)
 				}
 			}
-			Expression::Number(n) => self.builder.ins().f64const(n),
+			Expression::Number(n) => self.builder.ins().f64const(*n),
 			Expression::FunctionCall(ident, args) => {
 				let mut sig = self.module.make_signature();
 
-				for _arg in &args {
+				for _arg in args {
 					sig.params.push(AbiParam::new(self.ty));
 				}
 
@@ -385,7 +417,7 @@ impl Translator<'_> {
 
 				let callee = self
 					.module
-					.declare_function(&ident, Linkage::Local, &sig)
+					.declare_function(ident, Linkage::Local, &sig)
 					.expect("problem declaring function");
 
 				let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
