@@ -2,9 +2,9 @@ mod ast;
 mod jit;
 mod lexer;
 mod parser;
-mod token;
 mod repl;
 mod standardlibrary;
+mod token;
 
 use core::mem;
 use std::{fs::read_to_string, time::Instant};
@@ -13,8 +13,7 @@ use clap::{command, Parser as ClapParser, Subcommand};
 use jit::Jit;
 use lexer::Lexer;
 use repl::repl;
-
-use crate::parser::Parser;
+use parser::Parser;
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -40,13 +39,12 @@ enum Subcommands {
 		name: String,
 	},
 
-	Repl
+	Repl,
 }
 
 fn main() {
 	let args = Args::parse();
 	let main = Instant::now();
-	
 
 	let input = match args.command {
 		Subcommands::Run { name } => name,
@@ -54,8 +52,8 @@ fn main() {
 	};
 
 	if input.is_empty() {
-        repl();
-    }
+		repl();
+	}
 
 	let contents = read_to_string(input.clone()).unwrap();
 
@@ -75,7 +73,7 @@ fn main() {
 
 	let mut jit = Jit::default();
 
-	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast).unwrap())() };
+	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast, args.debug).unwrap())() };
 
 	if args.debug || args.time {
 		let duration = main.elapsed();
@@ -85,4 +83,30 @@ fn main() {
 
 pub fn version() -> String {
 	env!("CARGO_PKG_VERSION").to_string()
+}
+
+mod tests {
+	#[test]
+	fn example() {
+		use super::jit::Jit;
+		use super::lexer::Lexer;
+		use super::parser::Parser;
+
+		use core::mem;
+		use std::fs::read_to_string;
+
+		let contents = read_to_string("examples/example.cal").unwrap();
+
+		let tokens = Lexer::new(&contents).tokens();
+
+		println!("LEXER: {tokens:?}\n");
+
+		let ast = Parser::new(tokens).ast();
+
+		println!("AST: {ast:?}\n");
+
+		let mut jit = Jit::default();
+
+		unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast, false).unwrap())() };
+	}
 }

@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-    Number(f64),
+    Float(f64),
+    Integer(i64),
     Identifier(String),
 
     If,
@@ -67,7 +68,16 @@ impl Token {
             "}" => Token::RCurly,
             _ => {
                 if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-                    Token::Number(token.parse::<f64>().unwrap())
+                    let try_integer = token.parse::<i64>();
+                    let try_float = token.parse::<f64>();
+                    
+                    if let Ok(n) = try_integer {
+                        Token::Integer(n)
+                    } else if let Ok(f) = try_float {
+                        Token::Float(f)
+                    } else {
+                        panic!("could not lex number: `{}`", token);
+                    }
                 } else {
                     Token::Identifier(token)
                 }

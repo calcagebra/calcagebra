@@ -108,7 +108,7 @@ impl<'a> Lexer<'a> {
                 break;
             }
 
-            if let Token::Number(_) = tokens[i] {
+            if let Token::Integer(_) = tokens[i] {
                 if let Token::Identifier(_) = tokens[i + 1] {
                     r.push(Token::Mul);
                 }

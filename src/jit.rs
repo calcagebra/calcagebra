@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 use codegen::verify_function;
 use cranelift::{
@@ -9,10 +9,24 @@ use cranelift::{
 };
 
 use crate::{
-	ast::{AstNode, Expression},
+	ast::{AstNode, AstType, Expression},
 	standardlibrary::*,
 	token::Token,
 };
+
+#[derive(Clone, Debug)]
+pub struct VariableWrapper {
+	pub id: Variable,
+	pub code: Option<Expression>, // Code used to initialise this variable with a value, only used in REPL
+	pub datatype: AstType,
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionWrapper {
+	pub id: FuncId,
+	pub params: Vec<AstType>,
+	pub return_type: AstType,
+}
 
 /// The basic JIT class.
 pub struct Jit {
@@ -29,8 +43,8 @@ pub struct Jit {
 	/// functions.
 	module: JITModule,
 
-	variables: HashMap<String, (Variable, Option<Expression>)>,
-	functions: HashMap<String, FuncId>,
+	variables: HashMap<String, VariableWrapper>,
+	functions: HashMap<String, FunctionWrapper>,
 
 	counter: isize,
 }
@@ -55,6 +69,10 @@ impl Default for Jit {
 		// IO
 		builder.symbol("print", print as *const u8);
 		builder.symbol("read", read as *const u8);
+
+		// TYPES
+		builder.symbol("toi", toi as *const u8);
+		builder.symbol("tof", tof as *const u8);
 
 		// MATH
 		builder.symbol("round", round as *const u8);
@@ -86,20 +104,28 @@ impl Default for Jit {
 }
 
 impl Jit {
-	pub fn execute(&mut self, ast: Vec<AstNode>) -> Result<*const u8, String> {
-		let ty = types::F64;
-
+	pub fn execute(&mut self, ast: Vec<AstNode>, debug: bool) -> Result<*const u8, String> {
 		let mut filtered_ast = vec![];
 		let mut functions = self.functions.clone();
 
 		for node in ast {
 			match node {
-				AstNode::FunctionDeclaration(name, params, expr) => {
-					for _p in &params {
-						self.ctx.func.signature.params.push(AbiParam::new(ty));
+				AstNode::FunctionDeclaration(name, params, return_type, expr) => {
+					for p in &params {
+						self
+							.ctx
+							.func
+							.signature
+							.params
+							.push(AbiParam::new(p.1.resolve()));
 					}
 
-					self.ctx.func.signature.returns.push(AbiParam::new(ty));
+					self
+						.ctx
+						.func
+						.signature
+						.returns
+						.push(AbiParam::new(return_type.resolve()));
 
 					let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
 					let entry_block = builder.create_block();
@@ -110,33 +136,54 @@ impl Jit {
 
 					let mut variables = HashMap::new();
 					let mut index = 0;
+					let param_types = params.iter().map(|param| param.1).collect::<Vec<AstType>>();
 
-					for (i, name) in params.iter().enumerate() {
-						let val = builder.block_params(entry_block)[i];
+					for param in params {
+						let val = builder.block_params(entry_block)[index];
 						let var = Variable::new(index);
-						if !variables.contains_key(name) {
-							variables.insert(name.into(), (var, None));
-							builder.declare_var(var, ty);
+						if let Entry::Vacant(e) = variables.entry(param.0) {
+							e.insert(VariableWrapper {
+								id: var,
+								code: None,
+								datatype: param.1,
+							});
+							builder.declare_var(var, param.1.resolve());
 							index += 1;
 						}
 						builder.def_var(var, val);
 					}
 
 					let mut trans = Translator {
-						ty,
 						builder,
 						variables,
 						functions: HashMap::new(),
 						module: &mut self.module,
 					};
 
-					let ret_value = trans.translate_expr(&expr);
+					let (mut ret_value, datatype) = trans.translate_expr(&expr);
+
+					if datatype != return_type {
+						ret_value = match (datatype, return_type) {
+							(AstType::Int, AstType::Float) => {
+								trans.builder.ins().fcvt_from_sint(types::F64, ret_value)
+							}
+							(AstType::Float, AstType::Int) => {
+								trans.builder.ins().fcvt_to_sint(types::I64, ret_value)
+							}
+							_ => unreachable!(),
+						}
+					}
+
 					trans.builder.ins().return_(&[ret_value]);
 
 					trans.builder.finalize();
 
+					if debug {
+						println!("{}", self.ctx.func);
+					}
+
 					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
-						eprintln!("Verifier errors: {}", errors);
+						eprintln!("Verifier errors in function: {}", errors);
 					}
 
 					let id = self
@@ -144,7 +191,14 @@ impl Jit {
 						.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
 						.map_err(|e| e.to_string())?;
 
-					functions.insert(name, id);
+					functions.insert(
+						name,
+						FunctionWrapper {
+							id,
+							params: param_types,
+							return_type,
+						},
+					);
 
 					self
 						.module
@@ -171,47 +225,59 @@ impl Jit {
 		builder.seal_block(entry_block);
 
 		let mut trans = Translator {
-			ty,
 			builder,
 			variables: HashMap::new(),
 			functions,
 			module: &mut self.module,
 		};
 
-		for (name, (variable, expression)) in &self.variables {
-			let val = trans.translate_expr(expression.as_ref().unwrap());
+		for (name, vw) in &self.variables {
+			let (val, _) = trans.translate_expr(vw.code.as_ref().unwrap());
 
-			trans
-				.variables
-				.insert(name.to_string(), (*variable, expression.clone()));
-			trans.builder.declare_var(*variable, ty);
+			trans.variables.insert(name.to_string(), vw.clone());
+			trans.builder.declare_var(vw.id, vw.datatype.resolve());
 
-			trans.builder.def_var(*variable, val);
+			trans.builder.def_var(vw.id, val);
 		}
 
 		for node in filtered_ast {
 			match node {
-				AstNode::Assignment(name, expression) => {
+				AstNode::Assignment((name, datatype), expression) => {
 					let idx = trans.variables.len();
 					let var = Variable::new(idx);
 
-					let val = trans.translate_expr(&expression);
+					let (val, _) = trans.translate_expr(&expression);
 
-					trans
-						.variables
-						.insert(name.to_string(), (var, Some(expression)));
-					trans.builder.declare_var(var, ty);
+					trans.variables.insert(
+						name.to_string(),
+						VariableWrapper {
+							id: var,
+							code: Some(expression),
+							datatype,
+						},
+					);
+					trans.builder.declare_var(var, datatype.resolve());
 
 					trans.builder.def_var(var, val);
 				}
 				AstNode::FunctionCall(ident, args) => {
 					let mut sig = trans.module.make_signature();
 
-					for _arg in &args {
-						sig.params.push(AbiParam::new(trans.ty));
-					}
+					if let Some(f) = trans.functions.get(&ident) {
+						for (i, _arg) in args.iter().enumerate() {
+							sig.params.push(AbiParam::new(f.params[i].resolve()));
+						}
 
-					sig.returns.push(AbiParam::new(trans.ty));
+						sig.returns.push(AbiParam::new(f.return_type.resolve()));
+					} else {
+						let type_map = type_map(&ident);
+						
+						for (i, _arg) in args.iter().enumerate() {
+							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
+						}
+
+						sig.returns.push(AbiParam::new(type_map.1.resolve()));
+					};
 
 					let callee = trans
 						.module
@@ -223,10 +289,13 @@ impl Jit {
 						.declare_func_in_func(callee, trans.builder.func);
 
 					let mut arg_values = Vec::new();
+
 					for arg in args {
-						arg_values.push(trans.translate_expr(&arg))
+						arg_values.push(trans.translate_expr(&arg).0)
 					}
+
 					let call = trans.builder.ins().call(local_callee, &arg_values);
+
 					assert!(!trans.builder.inst_results(call).is_empty());
 				}
 				AstNode::FunctionDeclaration(..) => {}
@@ -238,8 +307,12 @@ impl Jit {
 		self.functions = trans.functions;
 		self.variables = trans.variables;
 
+		if debug {
+			println!("{}", self.ctx.func);
+		}
+
 		if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
-			eprintln!("Verifier errors: {}", errors);
+			eprintln!("Verifier errors in IR: {}", errors);
 		}
 
 		let id = self
@@ -270,94 +343,135 @@ impl Jit {
 }
 
 struct Translator<'a> {
-	ty: types::Type,
 	builder: FunctionBuilder<'a>,
-	variables: HashMap<String, (Variable, Option<Expression>)>,
-	functions: HashMap<String, FuncId>,
+	variables: HashMap<String, VariableWrapper>,
+	functions: HashMap<String, FunctionWrapper>,
 	module: &'a mut JITModule,
 }
 
 impl Translator<'_> {
-	pub fn translate_expr(&mut self, expr: &Expression) -> Value {
+	pub fn translate_expr(&mut self, expr: &Expression) -> (Value, AstType) {
 		match expr {
 			Expression::Abs(expression) => {
-				let data = self.translate_expr(expression);
-				self.builder.ins().fabs(data)
+				let (data, datatype) = self.translate_expr(expression);
+				(self.builder.ins().fabs(data), datatype)
 			}
 			Expression::Binary(lhs, op, rhs) => {
-				let ld = self.translate_expr(lhs);
-				let rd = self.translate_expr(rhs);
+				let (ld, lt) = self.translate_expr(lhs);
+				let (rd, rt) = self.translate_expr(rhs);
 
-				match op {
-					Token::Add => self.builder.ins().fadd(ld, rd),
-					Token::Sub => self.builder.ins().fsub(ld, rd),
-					Token::Mul => self.builder.ins().fmul(ld, rd),
-					Token::Div => self.builder.ins().fdiv(ld, rd),
-					Token::Pow => {
-						let arg_values = [ld, rd];
-						let mut sig = self.module.make_signature();
+				let mut sorted_types = [lt, rt];
+				sorted_types.sort();
+				let return_type = sorted_types[0];
 
-						for _arg in &arg_values {
-							sig.params.push(AbiParam::new(self.ty));
+				(
+					match (op, return_type) {
+						(Token::Add, AstType::Int) => self.builder.ins().iadd(ld, rd),
+						(Token::Add, AstType::Float) => self.builder.ins().fadd(ld, rd),
+						(Token::Sub, AstType::Int) => self.builder.ins().isub(ld, rd),
+						(Token::Sub, AstType::Float) => self.builder.ins().fsub(ld, rd),
+						(Token::Mul, AstType::Int) => self.builder.ins().imul(ld, rd),
+						(Token::Mul, AstType::Float) => self.builder.ins().fmul(ld, rd),
+						(Token::Div, AstType::Int) => {
+							let value = self.builder.ins().fdiv(ld, rd);
+							self
+								.builder
+								.ins()
+								.fcvt_to_sint(self.module.target_config().pointer_type(), value)
 						}
+						(Token::Div, AstType::Float) => self.builder.ins().fdiv(ld, rd),
+						(Token::Pow, t) => {
+							let ild = if lt == AstType::Int {
+								self.builder.ins().fcvt_from_sint(types::F64, ld)
+							} else {
+								ld
+							};
 
-						sig.returns.push(AbiParam::new(self.ty));
+							let ird = if rt == AstType::Int {
+								self.builder.ins().fcvt_from_sint(types::F64, rd)
+							} else {
+								rd
+							};
 
-						let callee = self
-							.module
-							.declare_function("pow", Linkage::Local, &sig)
-							.expect("problem declaring function");
+							let arg_values = [ild, ird];
+							let mut sig = self.module.make_signature();
 
-						let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
+							for _arg in &arg_values {
+								sig.params.push(AbiParam::new(types::F64));
+							}
 
-						let call = self.builder.ins().call(local_callee, &arg_values);
+							sig.returns.push(AbiParam::new(types::F64));
 
-						*self.builder.inst_results(call).first().unwrap()
-					}
-					Token::Rem => {
-						let ild = self
-							.builder
-							.ins()
-							.fcvt_to_sint(self.module.target_config().pointer_type(), ld);
+							let callee = self
+								.module
+								.declare_function("pow", Linkage::Local, &sig)
+								.expect("problem declaring function");
 
-						let ird = self
-							.builder
-							.ins()
-							.fcvt_to_sint(self.module.target_config().pointer_type(), rd);
+							let local_callee = self.module.declare_func_in_func(callee, self.builder.func);
 
-						let rem = self.builder.ins().srem(ild, ird);
+							let call = self.builder.ins().call(local_callee, &arg_values);
 
-						self.builder.ins().fcvt_from_sint(self.ty, rem)
-					}
-					Token::IsEq => {
-						let cmp = self.builder.ins().fcmp(FloatCC::Equal, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					Token::NEq => {
-						let cmp = self.builder.ins().fcmp(FloatCC::NotEqual, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					Token::Lt => {
-						let cmp = self.builder.ins().fcmp(FloatCC::LessThan, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					Token::LtEq => {
-						let cmp = self.builder.ins().fcmp(FloatCC::LessThanOrEqual, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					Token::Gt => {
-						let cmp = self.builder.ins().fcmp(FloatCC::GreaterThan, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					Token::GtEq => {
-						let cmp = self.builder.ins().fcmp(FloatCC::GreaterThanOrEqual, ld, rd);
-						self.builder.ins().fcvt_from_sint(self.ty, cmp)
-					}
-					_ => unreachable!("{op:?}"),
-				}
+							let value = *self.builder.inst_results(call).first().unwrap();
+
+							match t {
+								AstType::Int => self
+									.builder
+									.ins()
+									.fcvt_to_sint(self.module.target_config().pointer_type(), value),
+								AstType::Float => value,
+							}
+						}
+						(Token::Rem, t) => {
+							let ild = self
+								.builder
+								.ins()
+								.fcvt_to_sint(self.module.target_config().pointer_type(), ld);
+
+							let ird = self
+								.builder
+								.ins()
+								.fcvt_to_sint(self.module.target_config().pointer_type(), rd);
+
+							let rem = self.builder.ins().srem(ild, ird);
+
+							let value = self.builder.ins().fcvt_from_sint(types::F64, rem);
+
+							match t {
+								AstType::Int => value,
+								AstType::Float => self.builder.ins().fcvt_from_sint(types::F64, value),
+							}
+						}
+						(Token::IsEq, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::Equal, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						(Token::NEq, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::NotEqual, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						(Token::Lt, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::LessThan, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						(Token::LtEq, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::LessThanOrEqual, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						(Token::Gt, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::GreaterThan, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						(Token::GtEq, _) => {
+							let cmp = self.builder.ins().fcmp(FloatCC::GreaterThanOrEqual, ld, rd);
+							self.builder.ins().fcvt_from_sint(types::F64, cmp)
+						}
+						_ => unreachable!("{op:?}"),
+					},
+					return_type,
+				)
 			}
 			Expression::Branched(condition, then_body, else_body) => {
-				let condition_value = self.translate_expr(condition);
+				let (condition_value, _) = self.translate_expr(condition);
 				let icondition_value = self
 					.builder
 					.ins()
@@ -367,7 +481,7 @@ impl Translator<'_> {
 				let else_block = self.builder.create_block();
 				let merge_block = self.builder.create_block();
 
-				self.builder.append_block_param(merge_block, self.ty);
+				self.builder.append_block_param(merge_block, types::F64);
 
 				self
 					.builder
@@ -376,13 +490,13 @@ impl Translator<'_> {
 
 				self.builder.switch_to_block(then_block);
 				self.builder.seal_block(then_block);
-				let then_return = self.translate_expr(then_body);
+				let (then_return, tr) = self.translate_expr(then_body);
 
 				self.builder.ins().jump(merge_block, &[then_return]);
 
 				self.builder.switch_to_block(else_block);
 				self.builder.seal_block(else_block);
-				let else_return = self.translate_expr(else_body);
+				let (else_return, er) = self.translate_expr(else_body);
 
 				self.builder.ins().jump(merge_block, &[else_return]);
 
@@ -392,28 +506,52 @@ impl Translator<'_> {
 
 				let phi = self.builder.block_params(merge_block)[0];
 
-				phi
+				assert!(er == tr);
+
+				(phi, tr)
 			}
 			Expression::Identifier(ident) => {
 				if self.variables.contains_key(ident) {
-					self.builder.use_var(self.variables.get(ident).unwrap().0)
+					let var = self.variables.get(ident).unwrap();
+					(self.builder.use_var(var.id), var.datatype)
 				} else {
 					let func_ptr = self
 						.module
-						.get_finalized_function(*self.functions.get(ident).unwrap());
+						.get_finalized_function(self.functions.get(ident).unwrap().id);
 
-					self.builder.ins().f64const(func_ptr as u64 as f64)
+					(
+						self.builder.ins().f64const(func_ptr as u64 as f64),
+						AstType::Float,
+					)
 				}
 			}
-			Expression::Number(n) => self.builder.ins().f64const(*n),
+			Expression::Integer(n) => (
+				self.builder.ins().iconst(AstType::Int.resolve(), *n),
+				AstType::Int,
+			),
+			Expression::Float(n) => (self.builder.ins().f64const(*n), AstType::Float),
 			Expression::FunctionCall(ident, args) => {
 				let mut sig = self.module.make_signature();
 
-				for _arg in args {
-					sig.params.push(AbiParam::new(self.ty));
-				}
+				let return_type = if let Some(f) = self.functions.get(ident) {
+						for (i, _arg) in args.iter().enumerate() {
+							sig.params.push(AbiParam::new(f.params[i].resolve()));
+						}
 
-				sig.returns.push(AbiParam::new(self.ty));
+						sig.returns.push(AbiParam::new(f.return_type.resolve()));
+
+						f.return_type
+					} else {
+						let type_map = type_map(ident);
+						
+						for (i, _arg) in args.iter().enumerate() {
+							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
+						}
+
+						sig.returns.push(AbiParam::new(type_map.1.resolve()));
+
+						type_map.1
+					};
 
 				let callee = self
 					.module
@@ -424,10 +562,13 @@ impl Translator<'_> {
 
 				let mut arg_values = Vec::new();
 				for arg in args {
-					arg_values.push(self.translate_expr(arg))
+					arg_values.push(self.translate_expr(arg).0)
 				}
 				let call = self.builder.ins().call(local_callee, &arg_values);
-				*self.builder.inst_results(call).first().unwrap()
+				(
+					*self.builder.inst_results(call).first().unwrap(),
+					return_type,
+				)
 			}
 		}
 	}

@@ -102,7 +102,7 @@ pub fn repl() {
 				unsafe {
 					mem::transmute::<*const u8, fn()>(
 						jit
-							.execute(Parser::new(Lexer::new(&line).tokens()).ast())
+							.execute(Parser::new(Lexer::new(&line).tokens()).ast(), false)
 							.unwrap(),
 					)()
 				};

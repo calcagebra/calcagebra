@@ -8,9 +8,22 @@ use plotters::style::{full_palette::*, Color, IntoFont};
 use std::io::{stdin, stdout, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::ast::AstType;
+pub fn type_map(f: &str) -> (Vec<AstType>, AstType) {
+	match f {
+		"read" => (vec![], AstType::Float),
+		"tof" => (vec![AstType::Int], AstType::Float),
+		"toi" => (vec![AstType::Float], AstType::Int),
+		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
+		| "cbrt" | "graph" => (vec![AstType::Float], AstType::Float),
+		"log" | "nrt" | "pow" => (vec![AstType::Float, AstType::Float], AstType::Float),
+		_ => unimplemented!("type map not implemented for: {f}"),
+	}
+}
+
 // IO
-pub extern "C" fn print(value: f64) -> f64 {
-	println!("{}", value);
+pub extern "C" fn print(a: f64) -> f64 {
+	println!("{}", a);
 	0.0
 }
 
@@ -22,6 +35,15 @@ pub extern "C" fn read() -> f64 {
 	stdin().read_line(&mut buf).unwrap();
 
 	buf.trim_end().parse::<f64>().unwrap()
+}
+
+// TYPES
+pub extern "C" fn toi(a: f64) -> i64 {
+	a as i64
+}
+
+pub extern "C" fn tof(a: i64) -> f64 {
+	a as f64
 }
 
 // MATH
@@ -77,8 +99,7 @@ pub extern "C" fn pow(a: f64, b: f64) -> f64 {
 	a.powf(b)
 }
 
-pub extern "C" fn graph(f: f64) {
-
+pub extern "C" fn graph(f: f64) -> f64 {
 	let start = SystemTime::now();
 	let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
 	let name = format!("graph-output-{duration}.png");
@@ -113,17 +134,11 @@ pub extern "C" fn graph(f: f64) {
 		.legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], *style));
 
 	chart
-		.draw_series(LineSeries::new(
-			(-10..=10).map(|x| (x as f32, 0.0)),
-			&BLACK,
-		))
+		.draw_series(LineSeries::new((-10..=10).map(|x| (x as f32, 0.0)), &BLACK))
 		.unwrap();
 
 	chart
-		.draw_series(LineSeries::new(
-			(-10..=10).map(|x| (0.0, x as f32)),
-			&BLACK,
-		))
+		.draw_series(LineSeries::new((-10..=10).map(|x| (0.0, x as f32)), &BLACK))
 		.unwrap();
 
 	chart
@@ -134,4 +149,6 @@ pub extern "C" fn graph(f: f64) {
 		.unwrap();
 
 	root.present().unwrap();
+
+	0.0
 }

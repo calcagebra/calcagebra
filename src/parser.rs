@@ -1,7 +1,7 @@
 use std::{iter::Peekable, slice::Iter};
 
 use crate::{
-	ast::{AstNode, Expression},
+	ast::{AstNode, AstType, Expression},
 	token::Token,
 };
 
@@ -23,6 +23,18 @@ impl Parser {
 
 			let identifier = tokens.next().unwrap();
 
+			let datatype = if **tokens.peek().unwrap() == Token::Colon {
+				tokens.next();
+
+				if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+					AstType::parse(ident)
+				} else {
+					panic!("expected identifier token got {:?}", tokens.next().unwrap());
+				}
+			} else {
+				AstType::Float
+			};
+
 			if **tokens.peek().unwrap() == Token::Eq {
 				tokens.next();
 				let mut name = "";
@@ -32,7 +44,7 @@ impl Parser {
 
 				let expr = self.pratt_parser(tokens, 0).0;
 
-				ast.push(AstNode::Assignment(name.to_string(), expr));
+				ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
 			} else {
 				let name = match identifier {
 					Token::Identifier(name) => name,
@@ -40,30 +52,68 @@ impl Parser {
 				};
 
 				if line.contains(&Token::Eq) {
+					assert!(*tokens.next().unwrap() == Token::LParen);
+
 					let mut args = vec![];
 
 					loop {
 						let t = tokens.peek();
 
-						if t.is_none() || **t.unwrap() == Token::Eq {
+						if t.is_none() {
 							break;
 						}
 
-						if [Token::LParen, Token::RParen].contains(t.unwrap()) {
+						if Token::RParen == **t.unwrap() {
 							tokens.next();
-							continue;
+							break;
 						}
 
 						let t = tokens.next().unwrap();
 
-						args.push(match t {
-							Token::Identifier(i) => i.to_string(),
-							_ => unreachable!(),
-						})
+						let datatype = if **tokens.peek().unwrap() == Token::Colon {
+							tokens.next();
+
+							if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+								tokens.next();
+								AstType::parse(ident)
+							} else {
+								panic!("expected identifier token got {:?}", tokens.next().unwrap());
+							}
+						} else {
+							AstType::Float
+						};
+
+						args.push((
+							match t {
+								Token::Identifier(i) => i.to_string(),
+								_ => unreachable!(),
+							},
+							datatype,
+						));
 					}
-					tokens.next();
+
+					let return_type = if **tokens.peek().unwrap() == Token::Colon {
+						tokens.next();
+
+						if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+							tokens.next();
+							AstType::parse(ident)
+						} else {
+							panic!("expected identifier token got {:?}", tokens.next().unwrap());
+						}
+					} else {
+						AstType::Float
+					};
+
+					assert!(*tokens.next().unwrap() == Token::Eq);
+
 					let expr = self.pratt_parser(tokens, 0).0;
-					ast.push(AstNode::FunctionDeclaration(name.to_string(), args, expr));
+					ast.push(AstNode::FunctionDeclaration(
+						name.to_string(),
+						args,
+						return_type,
+						expr,
+					));
 				} else {
 					let (args, _) = self.pratt_parser(line.iter().peekable(), 0);
 
@@ -114,12 +164,17 @@ impl Parser {
 				(expr, tokens) = self.parse_if(tokens);
 			}
 			Token::Sub => {
-				if let Token::Number(i) = tokens.peek().unwrap() {
-					expr = Some(Expression::Number(-i));
+				if let Token::Integer(i) = tokens.peek().unwrap() {
+					expr = Some(Expression::Integer(-i));
+					tokens.next();
+				}
+				if let Token::Float(i) = tokens.peek().unwrap() {
+					expr = Some(Expression::Float(-i));
 					tokens.next();
 				}
 			}
-			Token::Number(n) => expr = Some(Expression::Number(*n)),
+			Token::Integer(n) => expr = Some(Expression::Integer(*n)),
+			Token::Float(n) => expr = Some(Expression::Float(*n)),
 			_ => {}
 		};
 
