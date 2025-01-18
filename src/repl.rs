@@ -10,7 +10,7 @@ use std::{
 };
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
-use crate::{jit::Jit, lexer::Lexer, parser::Parser, version};
+use crate::{errors::ErrorReporter, jit::Jit, lexer::Lexer, parser::Parser, version};
 
 #[derive(Helper, Completer, Hinter, Validator)]
 struct HighlightHelper {
@@ -97,12 +97,18 @@ pub fn repl() {
 
 				println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
+				let mut reporter = ErrorReporter::new();
+				reporter.add_file("REPL", &line);
+
 				jit.renew();
 
 				unsafe {
 					mem::transmute::<*const u8, fn()>(
 						jit
-							.execute(Parser::new(Lexer::new(&line).tokens()).ast(), false)
+							.execute(
+								Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast(),
+								false,
+							)
 							.unwrap(),
 					)()
 				};

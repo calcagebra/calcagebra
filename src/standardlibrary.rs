@@ -12,8 +12,8 @@ use crate::ast::AstType;
 pub fn type_map(f: &str) -> (Vec<AstType>, AstType) {
 	match f {
 		"read" => (vec![], AstType::Float),
-		"tof" => (vec![AstType::Int], AstType::Float),
-		"toi" => (vec![AstType::Float], AstType::Int),
+		"float" => (vec![AstType::Int], AstType::Float),
+		"int" => (vec![AstType::Float], AstType::Int),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
 		| "cbrt" | "graph" => (vec![AstType::Float], AstType::Float),
 		"log" | "nrt" | "pow" => (vec![AstType::Float, AstType::Float], AstType::Float),
@@ -38,11 +38,11 @@ pub extern "C" fn read() -> f64 {
 }
 
 // TYPES
-pub extern "C" fn toi(a: f64) -> i64 {
+pub extern "C" fn int(a: f64) -> i64 {
 	a as i64
 }
 
-pub extern "C" fn tof(a: i64) -> f64 {
+pub extern "C" fn float(a: i64) -> f64 {
 	a as f64
 }
 

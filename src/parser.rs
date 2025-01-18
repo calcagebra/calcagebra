@@ -2,16 +2,23 @@ use std::{iter::Peekable, slice::Iter};
 
 use crate::{
 	ast::{AstNode, AstType, Expression},
-	token::Token,
+	errors::ErrorReporter,
+	token::{Token, TokenInfo},
 };
 
 pub struct Parser {
-	tokens: Vec<Vec<Token>>,
+	file: String,
+	tokens: Vec<Vec<TokenInfo>>,
+	reporter: ErrorReporter,
 }
 
 impl Parser {
-	pub fn new(tokens: Vec<Vec<Token>>) -> Self {
-		Self { tokens }
+	pub fn new(file: &str, tokens: Vec<Vec<TokenInfo>>, reporter: ErrorReporter) -> Self {
+		Self {
+			file: file.to_string(),
+			tokens,
+			reporter,
+		}
 	}
 
 	pub fn ast(&self) -> Vec<AstNode> {
@@ -23,10 +30,11 @@ impl Parser {
 
 			let identifier = tokens.next().unwrap();
 
-			let datatype = if **tokens.peek().unwrap() == Token::Colon {
+			let datatype = if tokens.peek().unwrap().token == Token::Colon {
 				tokens.next();
 
-				if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+					tokens.next();
 					AstType::parse(ident)
 				} else {
 					panic!("expected identifier token got {:?}", tokens.next().unwrap());
@@ -35,24 +43,37 @@ impl Parser {
 				AstType::Float
 			};
 
-			if **tokens.peek().unwrap() == Token::Eq {
+			if tokens.peek().unwrap().token == Token::Eq {
 				tokens.next();
 				let mut name = "";
-				if let Token::Identifier(str) = identifier {
+				if let Token::Identifier(str) = &identifier.token {
 					name = str;
 				}
 
 				let expr = self.pratt_parser(tokens, 0).0;
 
+				let expr_type = expr.infer_datatype();
+
+				if expr_type.is_some() && expr_type.unwrap() != datatype {
+					self
+						.reporter
+						.type_error(&self.file, 1..=2, (datatype, expr_type.unwrap()));
+				}
+
 				ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
 			} else {
-				let name = match identifier {
+				let name = match &identifier.token {
 					Token::Identifier(name) => name,
 					_ => unreachable!(),
 				};
 
-				if line.contains(&Token::Eq) {
-					assert!(*tokens.next().unwrap() == Token::LParen);
+				if line
+					.iter()
+					.map(|f| &f.token)
+					.collect::<Vec<&Token>>()
+					.contains(&&Token::Eq)
+				{
+					assert!(tokens.next().unwrap().token == Token::LParen);
 
 					let mut args = vec![];
 
@@ -63,17 +84,17 @@ impl Parser {
 							break;
 						}
 
-						if Token::RParen == **t.unwrap() {
+						if Token::RParen == t.unwrap().token {
 							tokens.next();
 							break;
 						}
 
 						let t = tokens.next().unwrap();
 
-						let datatype = if **tokens.peek().unwrap() == Token::Colon {
+						let datatype = if tokens.peek().unwrap().token == Token::Colon {
 							tokens.next();
 
-							if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 								tokens.next();
 								AstType::parse(ident)
 							} else {
@@ -84,7 +105,7 @@ impl Parser {
 						};
 
 						args.push((
-							match t {
+							match &t.token {
 								Token::Identifier(i) => i.to_string(),
 								_ => unreachable!(),
 							},
@@ -92,10 +113,10 @@ impl Parser {
 						));
 					}
 
-					let return_type = if **tokens.peek().unwrap() == Token::Colon {
+					let return_type = if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
 
-						if let Token::Identifier(ident) = *tokens.peek().unwrap() {
+						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
 							AstType::parse(ident)
 						} else {
@@ -105,7 +126,7 @@ impl Parser {
 						AstType::Float
 					};
 
-					assert!(*tokens.next().unwrap() == Token::Eq);
+					assert!(tokens.next().unwrap().token == Token::Eq);
 
 					let expr = self.pratt_parser(tokens, 0).0;
 					ast.push(AstNode::FunctionDeclaration(
@@ -132,16 +153,16 @@ impl Parser {
 
 	pub fn pratt_parser<'a>(
 		&'a self,
-		mut tokens: Peekable<Iter<'a, Token>>,
+		mut tokens: Peekable<Iter<'a, TokenInfo>>,
 		prec: u16,
-	) -> (Expression, Peekable<Iter<Token>>) {
-		let token = tokens.next().unwrap();
+	) -> (Expression, Peekable<Iter<TokenInfo>>) {
+		let token = &tokens.next().unwrap().token;
 		let mut expr: Option<Expression> = None;
 		match token {
 			Token::Identifier(i) => {
 				if tokens.peek().is_some()
-					&& self.infix_binding_power(tokens.peek().unwrap()) == (0, 0)
-					&& ![Token::RParen, Token::Abs].contains(*tokens.peek().unwrap())
+					&& self.infix_binding_power(&tokens.peek().unwrap().token) == (0, 0)
+					&& ![Token::RParen, Token::Abs].contains(&tokens.peek().unwrap().token)
 				{
 					(expr, tokens) = self.parse_fn(tokens, i.clone());
 				} else {
@@ -164,11 +185,11 @@ impl Parser {
 				(expr, tokens) = self.parse_if(tokens);
 			}
 			Token::Sub => {
-				if let Token::Integer(i) = tokens.peek().unwrap() {
+				if let Token::Integer(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Integer(-i));
 					tokens.next();
 				}
-				if let Token::Float(i) = tokens.peek().unwrap() {
+				if let Token::Float(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Float(-i));
 					tokens.next();
 				}
@@ -181,11 +202,11 @@ impl Parser {
 		loop {
 			let op = tokens.peek();
 
-			if op.is_none() || [Token::RParen, Token::Abs].contains(op.unwrap()) {
+			if op.is_none() || [Token::RParen, Token::Abs].contains(&op.unwrap().token) {
 				break;
 			}
 
-			let (lbp, rbp) = self.infix_binding_power(op.unwrap());
+			let (lbp, rbp) = self.infix_binding_power(&op.unwrap().token);
 
 			if lbp < prec {
 				break;
@@ -197,7 +218,7 @@ impl Parser {
 			(rhs, tokens) = self.pratt_parser(tokens, rbp);
 			expr = Some(Expression::Binary(
 				Box::new(expr.unwrap()),
-				op.clone(),
+				op.token.clone(),
 				Box::new(rhs),
 			));
 		}
@@ -207,9 +228,9 @@ impl Parser {
 
 	pub fn parse_fn<'a>(
 		&'a self,
-		mut tokens: Peekable<Iter<'a, Token>>,
+		mut tokens: Peekable<Iter<'a, TokenInfo>>,
 		i: String,
-	) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+	) -> (Option<Expression>, Peekable<Iter<'a, TokenInfo>>) {
 		let mut depth = 0;
 		let mut params = vec![];
 		let mut expression = vec![];
@@ -217,13 +238,14 @@ impl Parser {
 		tokens.next();
 
 		loop {
-			let token = tokens.next();
+			let tokeninfo = tokens.next();
 
-			if token.is_none() {
+			if tokeninfo.is_none() {
 				break;
 			}
 
-			let token = token.unwrap();
+			let token = &tokeninfo.unwrap().token.clone();
+
 			if *token == Token::RParen {
 				if depth == 0 {
 					if !expression.is_empty() && depth == 0 {
@@ -252,7 +274,7 @@ impl Parser {
 				continue;
 			}
 
-			expression.push(token.to_owned());
+			expression.push(tokeninfo.unwrap().to_owned());
 		}
 		if !expression.is_empty() {
 			let lex = expression.iter().peekable();
@@ -270,20 +292,20 @@ impl Parser {
 
 	pub fn parse_if<'a>(
 		&'a self,
-		mut tokens: Peekable<Iter<'a, Token>>,
-	) -> (Option<Expression>, Peekable<Iter<'a, Token>>) {
+		mut tokens: Peekable<Iter<'a, TokenInfo>>,
+	) -> (Option<Expression>, Peekable<Iter<'a, TokenInfo>>) {
 		let mut depth = 1;
 		let mut params = vec![];
 		let mut expression = vec![];
 
 		loop {
-			let token = tokens.next();
+			let tokeninfo = tokens.next();
 
-			if token.is_none() {
+			if tokeninfo.is_none() {
 				break;
 			}
 
-			let token = token.unwrap();
+			let token = &tokeninfo.unwrap().token;
 
 			if *token == Token::Then || *token == Token::Else {
 				let lex = expression.iter().peekable();
@@ -305,7 +327,7 @@ impl Parser {
 				}
 			}
 
-			expression.push(token.to_owned());
+			expression.push(tokeninfo.unwrap().to_owned());
 		}
 
 		if !expression.is_empty() {

@@ -1,120 +1,164 @@
-use crate::token::Token;
+use crate::token::{Token, TokenInfo};
+use std::ops::RangeInclusive;
 
 pub struct Lexer<'a> {
-    contents: &'a str,
+	contents: &'a str,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(contents: &'a str) -> Self {
-        Self { contents }
-    }
+	pub fn new(contents: &'a str) -> Self {
+		Self { contents }
+	}
 
-    pub fn tokens(&self) -> Vec<Vec<Token>> {
-        self.contents
-            .lines()
-            .map(|line| {
-                if !line.starts_with("//") {
-                    self.tokenize_line(line)
-                } else {
-                    vec![]
-                }
-            })
-            .filter(|x| !x.is_empty())
-            .collect()
-    }
+	pub fn tokens(&self) -> Vec<Vec<TokenInfo>> {
+		self
+			.contents
+			.lines()
+			.enumerate()
+			.map(|(i, line)| {
+				if !line.starts_with("//") {
+					self.tokenize_line(line, i)
+				} else {
+					vec![]
+				}
+			})
+			.filter(|x| !x.is_empty())
+			.collect()
+	}
 
-    fn tokenize_line(&self, line: &str) -> Vec<Token> {
-        let mut line = line.chars().peekable();
-        let mut tokens = vec![];
-        let mut token = String::new();
+	fn tokenize_line(&self, line: &str, line_number: usize) -> Vec<TokenInfo> {
+		let mut line = line.chars().peekable();
+		let mut tokens = vec![];
+		let mut token = String::new();
 
-        loop {
-            let char = line.next();
+		let mut c = 1;
 
-            if char.is_none() {
-                if !token.is_empty() {
-                    tokens.push(Token::new(token));
-                }
-                break;
-            }
+		loop {
+			let char = line.next();
 
-            let char = char.unwrap();
+			if char.is_none() {
+				if !token.is_empty() {
+					tokens.push(TokenInfo::new(
+						Token::new(token.clone()),
+						line_number,
+						range_from_size(c, token.len()),
+					));
+				}
+				break;
+			}
 
-            if char.is_whitespace() {
-                continue;
-            }
+			let char = char.unwrap();
 
-            if char.is_ascii_alphabetic() {
-                token.push(char);
-                loop {
-                    let char = line.peek();
+			c += 1;
 
-                    if char.is_none() || !char.unwrap().is_ascii_alphabetic() {
-                        break;
-                    }
+			if char.is_whitespace() {
+				continue;
+			}
 
-                    let char = line.next();
+			if char.is_ascii_alphabetic() {
+				token.push(char);
+				loop {
+					let char = line.peek();
 
-                    token.push(char.unwrap());
-                }
-                tokens.push(Token::new(token.clone()));
-                token.clear();
-            } else if char.is_ascii_digit() {
-                token.push(char);
-                loop {
-                    let char = line.peek();
+					if char.is_none() || !char.unwrap().is_ascii_alphabetic() {
+						break;
+					}
 
-                    if char.is_none()
-                        || (!char.unwrap().is_ascii_digit() && *char.unwrap() != '.')
-                    {
-                        break;
-                    }
+					let char = line.next();
 
-                    let char = line.next();
+					c += 1;
 
-                    token.push(char.unwrap());
-                }
-                tokens.push(Token::new(token.clone()));
-                token.clear();
-            } else {
-                token.push(char);
-                let punctuation = ['.', '(', ')', '{', '}', '[', ']', '|'];
-                loop {
-                    let char = line.peek();
+					token.push(char.unwrap());
+				}
+				tokens.push(TokenInfo::new(
+					Token::new(token.clone()),
+					line_number,
+					range_from_size(c, token.len()),
+				));
+				token.clear();
+			} else if char.is_ascii_digit() {
+				token.push(char);
+				loop {
+					let char = line.peek();
 
-                    if char.is_none()
-                        || char.unwrap().is_ascii_alphanumeric()
-                        || punctuation.contains(char.unwrap())
-                        || punctuation.map(|f| token.contains(f)).contains(&true)
-                    {
-                        break;
-                    }
+					if char.is_none() || (!char.unwrap().is_ascii_digit() && *char.unwrap() != '.') {
+						break;
+					}
 
-                    let char = line.next();
+					let char = line.next();
 
-                    token.push(char.unwrap());
-                }
-                tokens.push(Token::new(token.clone()));
-                token.clear();
-            }
-        }
+					c += 1;
 
-        let mut r = vec![];
+					token.push(char.unwrap());
+				}
+				tokens.push(TokenInfo::new(
+					Token::new(token.clone()),
+					line_number,
+					range_from_size(c, token.len()),
+				));
+				token.clear();
+			} else {
+				token.push(char);
+				let punctuation = ['.', '(', ')', '{', '}', '[', ']', '|'];
+				loop {
+					let char = line.peek();
 
-        for i in 0..tokens.len() {
-            r.push(tokens[i].clone());
+					if char.is_none()
+						|| char.unwrap().is_ascii_alphanumeric()
+						|| punctuation.contains(char.unwrap())
+						|| punctuation.map(|f| token.contains(f)).contains(&true)
+					{
+						break;
+					}
 
-            if tokens.get(i + 1).is_none() {
-                break;
-            }
+					let char = line.next();
 
-            if let Token::Integer(_) = tokens[i] {
-                if let Token::Identifier(_) = tokens[i + 1] {
-                    r.push(Token::Mul);
-                }
-            }
-        }
+					c += 1;
 
-        r
-    }
+					token.push(char.unwrap());
+				}
+				tokens.push(TokenInfo::new(
+					Token::new(token.clone()),
+					line_number,
+					range_from_size(c, token.len()),
+				));
+				token.clear();
+			}
+		}
+
+		let mut r = vec![];
+
+		let mut offset = 0;
+
+		for i in 0..tokens.len() {
+            let tokeninfo = tokens.remove(i);
+            
+			r.push(TokenInfo::new(
+				tokeninfo.token.clone(),
+				tokeninfo.line,
+				*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+			));
+
+			if tokens.get(i + 1).is_none() {
+				break;
+			}
+
+			if let Token::Integer(_) = tokeninfo.token {
+				if let Token::Identifier(_) = tokens[i + 1].token {
+					offset += 1;
+					r.push(TokenInfo::new(
+						Token::Mul,
+						line_number,
+						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+					));
+				}
+			}
+		}
+
+		r
+	}
+}
+
+fn range_from_size(start: usize, size: usize) -> RangeInclusive<usize> {
+	start..=start + size
 }

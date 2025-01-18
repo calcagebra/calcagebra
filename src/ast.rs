@@ -1,11 +1,13 @@
+use std::fmt::Display;
+
 use cranelift::prelude::{types, Type};
 
 use crate::token::Token;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum AstType {
-	Int = 1,
-	Float = 0,
+	Int,
+	Float,
 }
 
 impl AstType {
@@ -22,6 +24,19 @@ impl AstType {
 			AstType::Int => types::I64,
 			AstType::Float => types::F64,
 		}
+	}
+}
+
+impl Display for AstType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				AstType::Int => "int",
+				AstType::Float => "float",
+			}
+		)
 	}
 }
 
@@ -42,4 +57,35 @@ pub enum Expression {
 	Float(f64),
 	Integer(i64),
 	FunctionCall(String, Vec<Expression>),
+}
+
+impl Expression {
+	pub fn infer_datatype(&self) -> Option<AstType> {
+		match self {
+			Expression::Abs(expression) => expression.infer_datatype(),
+			Expression::Branched(..) => None,
+			Expression::Binary(lhs, _, rhs) => {
+				let lhs = Self::infer_datatype(lhs);
+				let rhs = Self::infer_datatype(rhs);
+
+				if lhs.is_none() || rhs.is_none() {
+					return None;
+				};
+
+				let lhs = lhs.unwrap();
+				let rhs = rhs.unwrap();
+
+				Some(match (lhs, rhs) {
+					(AstType::Int, AstType::Int) => AstType::Int,
+					(AstType::Int, AstType::Float)
+					| (AstType::Float, AstType::Int)
+					| (AstType::Float, AstType::Float) => AstType::Float,
+				})
+			}
+			Expression::Identifier(_) => None,
+			Expression::Float(_) => Some(AstType::Float),
+			Expression::Integer(_) => Some(AstType::Int),
+			Expression::FunctionCall(_, _) => None,
+		}
+	}
 }
