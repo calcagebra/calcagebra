@@ -9,6 +9,7 @@ use codespan_reporting::{
 };
 
 use crate::ast::AstType;
+use crate::token::Token;
 
 #[derive(Debug, Clone)]
 pub struct ErrorReporter {
@@ -34,7 +35,7 @@ impl ErrorReporter {
 	pub fn type_error(
 		&self,
 		file: &str,
-		range: RangeInclusive<usize>,
+		range: &RangeInclusive<usize>,
 		(expected, got): (AstType, AstType),
 	) {
 		let diagnostic = Diagnostic::error()
@@ -42,16 +43,42 @@ impl ErrorReporter {
 			.with_code("E101")
 			.with_labels(vec![Label::primary(
 				*self.file_ids.get(file).unwrap(),
-				*range.start()..*range.end()+1,
+				*range.start()-1..*range.end()-1,
 			)
-			.with_message(format!("expected `{expected}`, found `{got}`"))])
+			.with_message(format!("\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"))])
 			.with_notes(vec![format!(
-				"help: use `{expected}(...)` method to convert to correct type"
+				"\x1b[1mhelp:\x1b[0m use `{expected}(...)` method to convert to correct type"
 			)]);
 
 		let writer = StandardStream::stderr(ColorChoice::Always);
 		let config = codespan_reporting::term::Config::default();
 
 		term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).unwrap();
+	}
+
+	pub fn syntax_error(
+		&self,
+		file: &str,
+		range: &RangeInclusive<usize>,
+		(expected, got): (&Token, &Token),
+	) -> ! {
+		let diagnostic = Diagnostic::error()
+			.with_message("syntax error")
+			.with_code("E201")
+			.with_labels(vec![Label::primary(
+				*self.file_ids.get(file).unwrap(),
+				*range.start()-1..*range.end()-1,
+			)
+			.with_message(format!("\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"))])
+			.with_notes(vec![format!(
+				"\x1b[1mhelp:\x1b[0m add {expected} here"
+			)]);
+
+		let writer = StandardStream::stderr(ColorChoice::Always);
+		let config = codespan_reporting::term::Config::default();
+
+		term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).unwrap();
+
+		std::process::exit(1)
 	}
 }

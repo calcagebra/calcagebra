@@ -11,13 +11,20 @@ impl<'a> Lexer<'a> {
 	}
 
 	pub fn tokens(&self) -> Vec<Vec<TokenInfo>> {
+		let mut offset = 1;
+
 		self
 			.contents
 			.lines()
-			.enumerate()
-			.map(|(i, line)| {
+			.map(|line| {
 				if !line.starts_with("//") {
-					self.tokenize_line(line, i)
+					let tokens = self.tokenize_line(line, offset);
+
+					if let Some(token) = tokens.last() {
+						offset += *token.range.end();
+					}
+
+					tokens
 				} else {
 					vec![]
 				}
@@ -26,12 +33,10 @@ impl<'a> Lexer<'a> {
 			.collect()
 	}
 
-	fn tokenize_line(&self, line: &str, line_number: usize) -> Vec<TokenInfo> {
+	fn tokenize_line(&self, line: &str, mut c: usize) -> Vec<TokenInfo> {
 		let mut line = line.chars().peekable();
 		let mut tokens = vec![];
 		let mut token = String::new();
-
-		let mut c = 1;
 
 		loop {
 			let char = line.next();
@@ -40,7 +45,6 @@ impl<'a> Lexer<'a> {
 				if !token.is_empty() {
 					tokens.push(TokenInfo::new(
 						Token::new(token.clone()),
-						line_number,
 						range_from_size(c, token.len()),
 					));
 				}
@@ -49,9 +53,8 @@ impl<'a> Lexer<'a> {
 
 			let char = char.unwrap();
 
-			c += 1;
-
 			if char.is_whitespace() {
+				c += 1;
 				continue;
 			}
 
@@ -66,15 +69,13 @@ impl<'a> Lexer<'a> {
 
 					let char = line.next();
 
-					c += 1;
-
 					token.push(char.unwrap());
 				}
 				tokens.push(TokenInfo::new(
 					Token::new(token.clone()),
-					line_number,
 					range_from_size(c, token.len()),
 				));
+				c += token.len();
 				token.clear();
 			} else if char.is_ascii_digit() {
 				token.push(char);
@@ -87,15 +88,13 @@ impl<'a> Lexer<'a> {
 
 					let char = line.next();
 
-					c += 1;
-
 					token.push(char.unwrap());
 				}
 				tokens.push(TokenInfo::new(
 					Token::new(token.clone()),
-					line_number,
 					range_from_size(c, token.len()),
 				));
+				c += token.len();
 				token.clear();
 			} else {
 				token.push(char);
@@ -105,6 +104,7 @@ impl<'a> Lexer<'a> {
 
 					if char.is_none()
 						|| char.unwrap().is_ascii_alphanumeric()
+						|| char.unwrap().is_whitespace()
 						|| punctuation.contains(char.unwrap())
 						|| punctuation.map(|f| token.contains(f)).contains(&true)
 					{
@@ -113,15 +113,13 @@ impl<'a> Lexer<'a> {
 
 					let char = line.next();
 
-					c += 1;
-
 					token.push(char.unwrap());
 				}
 				tokens.push(TokenInfo::new(
 					Token::new(token.clone()),
-					line_number,
 					range_from_size(c, token.len()),
 				));
+				c += token.len();
 				token.clear();
 			}
 		}
@@ -131,11 +129,10 @@ impl<'a> Lexer<'a> {
 		let mut offset = 0;
 
 		for i in 0..tokens.len() {
-            let tokeninfo = tokens.remove(i);
-            
+			let tokeninfo = tokens.get(i).unwrap();
+
 			r.push(TokenInfo::new(
 				tokeninfo.token.clone(),
-				tokeninfo.line,
 				*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
 			));
 
@@ -148,7 +145,6 @@ impl<'a> Lexer<'a> {
 					offset += 1;
 					r.push(TokenInfo::new(
 						Token::Mul,
-						line_number,
 						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
 					));
 				}

@@ -270,7 +270,7 @@ impl Jit {
 
 						sig.returns.push(AbiParam::new(f.return_type.resolve()));
 					} else {
-						let type_map = type_map(&ident);
+						let type_map = internal_type_map(&ident);
 
 						for (i, _arg) in args.iter().enumerate() {
 							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
@@ -542,7 +542,7 @@ impl Translator<'_> {
 
 					f.return_type
 				} else {
-					let type_map = type_map(ident);
+					let type_map = internal_type_map(ident);
 
 					for (i, _arg) in args.iter().enumerate() {
 						sig.params.push(AbiParam::new(type_map.0[i].resolve()));

@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use cranelift::prelude::{types, Type};
 
-use crate::token::Token;
+use crate::{standardlibrary, token::Token};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
 pub enum AstType {
@@ -85,7 +85,13 @@ impl Expression {
 			Expression::Identifier(_) => None,
 			Expression::Float(_) => Some(AstType::Float),
 			Expression::Integer(_) => Some(AstType::Int),
-			Expression::FunctionCall(_, _) => None,
+			Expression::FunctionCall(ident, _) => {
+				if standardlibrary::is_standard_function(ident) {
+					Some(standardlibrary::internal_type_map(ident).1)
+				} else {
+					None
+				}
+			}
 		}
 	}
 }
