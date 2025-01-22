@@ -30,6 +30,22 @@ impl Parser {
 
 			let identifier = tokens.next().unwrap();
 
+			if identifier.token == Token::Import {
+				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+					tokens.next();
+					ast.push(AstNode::Import(ident.to_owned()));
+					continue;
+				} else {
+					let tokeninfo = tokens.next().unwrap();
+
+					self.reporter.syntax_error(
+						&self.file,
+						&tokeninfo.range,
+						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+					)
+				}
+			}
+
 			let datatype = if tokens.peek().unwrap().token == Token::Colon {
 				tokens.next();
 
@@ -383,7 +399,7 @@ impl Parser {
 		let mut params = vec![];
 		let mut expression = vec![];
 
-		let mut end = *tokens.next().unwrap().range.end();
+		let mut end = *tokens.peek().unwrap().range.end();
 
 		loop {
 			let tokeninfo = tokens.next();

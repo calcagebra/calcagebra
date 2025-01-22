@@ -1,5 +1,5 @@
-f(x: R): Z = print(x)
+a = 5.0
 
-a: Z = 2.0
+f(x) = if a == x then 1.0 else 0.0 end
 
-f(a)
+print(f(5.0))

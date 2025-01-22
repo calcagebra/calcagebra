@@ -22,6 +22,7 @@ pub enum Token {
 	Then,
 	Else,
 	End,
+	Import,
 
 	Eq,
 
@@ -56,6 +57,7 @@ impl Token {
 			"then" => Token::Then,
 			"else" => Token::Else,
 			"end" => Token::End,
+			"import" => Token::Import,
 
 			"=" => Token::Eq,
 			"!=" => Token::NEq,
@@ -111,6 +113,7 @@ impl Display for Token {
             Token::Then => "then".to_string(),
             Token::Else => "else".to_string(),
             Token::End => "end".to_string(),
+			Token::Import => "import".to_string(),
             Token::Eq => "=".to_string(),
             Token::NEq => "!=".to_string(),
             Token::IsEq => "==".to_string(),

@@ -242,6 +242,7 @@ impl Jit {
 
 		for node in filtered_ast {
 			match node {
+				AstNode::Import(..) => {}
 				AstNode::Assignment((name, datatype), expression) => {
 					let idx = trans.variables.len();
 					let var = Variable::new(idx);

@@ -43,6 +43,7 @@ impl Display for AstType {
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum AstNode {
+	Import(String),
 	Assignment((String, AstType), Expression),
 	FunctionCall(String, Vec<Expression>),
 	FunctionDeclaration(String, Vec<(String, AstType)>, AstType, Expression),
