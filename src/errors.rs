@@ -38,6 +38,7 @@ impl ErrorReporter {
 		range: &RangeInclusive<usize>,
 		(expected, got): (AstType, AstType),
 	) {
+
 		let diagnostic = Diagnostic::error()
 			.with_message("incompatible types")
 			.with_code("E101")

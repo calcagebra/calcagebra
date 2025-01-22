@@ -17,7 +17,7 @@ impl<'a> Lexer<'a> {
 			.contents
 			.lines()
 			.map(|line| {
-				if !line.starts_with("//") {
+				if !line.starts_with("//") && !line.is_empty() {
 					let tokens = self.tokenize_line(line, offset);
 
 					if let Some(token) = tokens.last() {
@@ -26,6 +26,7 @@ impl<'a> Lexer<'a> {
 
 					tokens
 				} else {
+					offset += 1;
 					vec![]
 				}
 			})
