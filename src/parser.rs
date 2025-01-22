@@ -34,6 +34,7 @@ impl Parser {
 				tokens.next();
 
 				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+					tokens.next();
 					AstType::parse(ident)
 				} else {
 					let tokeninfo = tokens.next().unwrap();
