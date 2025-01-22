@@ -1,3 +1,4 @@
+use crate::ast::AstType;
 use core::mem;
 use plotters::backend::BitMapBackend;
 use plotters::chart::ChartBuilder;
@@ -8,12 +9,11 @@ use plotters::style::{full_palette::*, Color, IntoFont};
 use std::io::{stdin, stdout, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::ast::AstType;
-pub fn type_map(f: &str) -> (Vec<AstType>, AstType) {
+pub fn internal_type_map(f: &str) -> (Vec<AstType>, AstType) {
 	match f {
 		"read" => (vec![], AstType::Float),
-		"tof" => (vec![AstType::Int], AstType::Float),
-		"toi" => (vec![AstType::Float], AstType::Int),
+		"float" => (vec![AstType::Int], AstType::Float),
+		"int" => (vec![AstType::Float], AstType::Int),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
 		| "cbrt" | "graph" => (vec![AstType::Float], AstType::Float),
 		"log" | "nrt" | "pow" => (vec![AstType::Float, AstType::Float], AstType::Float),
@@ -21,13 +21,21 @@ pub fn type_map(f: &str) -> (Vec<AstType>, AstType) {
 	}
 }
 
+pub fn is_standard_function(f: &str) -> bool {
+	[
+		"read", "float", "int", "print", "round", "ceil", "floor", "ln", "log10", "sin", "cos", "tan",
+		"sqrt", "cbrt", "graph", "log", "nrt", "pow",
+	]
+	.contains(&f)
+}
+
 // IO
-pub extern "C" fn print(a: f64) -> f64 {
+pub fn print(a: f64) -> f64 {
 	println!("{}", a);
 	0.0
 }
 
-pub extern "C" fn read() -> f64 {
+pub fn read() -> f64 {
 	print!("Enter number: ");
 	stdout().flush().unwrap();
 	let mut buf = String::new();
@@ -38,68 +46,68 @@ pub extern "C" fn read() -> f64 {
 }
 
 // TYPES
-pub extern "C" fn toi(a: f64) -> i64 {
+pub fn int(a: f64) -> i64 {
 	a as i64
 }
 
-pub extern "C" fn tof(a: i64) -> f64 {
+pub fn float(a: i64) -> f64 {
 	a as f64
 }
 
 // MATH
-pub extern "C" fn round(a: f64) -> f64 {
+pub fn round(a: f64) -> f64 {
 	a.round()
 }
 
-pub extern "C" fn ceil(a: f64) -> f64 {
+pub fn ceil(a: f64) -> f64 {
 	a.ceil()
 }
 
-pub extern "C" fn floor(a: f64) -> f64 {
+pub fn floor(a: f64) -> f64 {
 	a.floor()
 }
 
-pub extern "C" fn ln(a: f64) -> f64 {
+pub fn ln(a: f64) -> f64 {
 	a.ln()
 }
 
-pub extern "C" fn log10(a: f64) -> f64 {
+pub fn log10(a: f64) -> f64 {
 	a.log10()
 }
 
-pub extern "C" fn log(a: f64, b: f64) -> f64 {
+pub fn log(a: f64, b: f64) -> f64 {
 	a.log(b)
 }
 
-pub extern "C" fn sin(a: f64) -> f64 {
+pub fn sin(a: f64) -> f64 {
 	a.sin()
 }
 
-pub extern "C" fn cos(a: f64) -> f64 {
+pub fn cos(a: f64) -> f64 {
 	a.cos()
 }
 
-pub extern "C" fn tan(a: f64) -> f64 {
+pub fn tan(a: f64) -> f64 {
 	a.tan()
 }
 
-pub extern "C" fn sqrt(a: f64) -> f64 {
+pub fn sqrt(a: f64) -> f64 {
 	a.sqrt()
 }
 
-pub extern "C" fn cbrt(a: f64) -> f64 {
+pub fn cbrt(a: f64) -> f64 {
 	a.cbrt()
 }
 
-pub extern "C" fn nrt(a: f64, b: f64) -> f64 {
+pub fn nrt(a: f64, b: f64) -> f64 {
 	a.powf(1.0 / b)
 }
 
-pub extern "C" fn pow(a: f64, b: f64) -> f64 {
+pub fn pow(a: f64, b: f64) -> f64 {
 	a.powf(b)
 }
 
-pub extern "C" fn graph(f: f64) -> f64 {
+pub fn graph(f: f64) -> f64 {
 	let start = SystemTime::now();
 	let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
 	let name = format!("graph-output-{duration}.png");

@@ -71,8 +71,8 @@ impl Default for Jit {
 		builder.symbol("read", read as *const u8);
 
 		// TYPES
-		builder.symbol("toi", toi as *const u8);
-		builder.symbol("tof", tof as *const u8);
+		builder.symbol("int", int as *const u8);
+		builder.symbol("float", float as *const u8);
 
 		// MATH
 		builder.symbol("round", round as *const u8);
@@ -270,8 +270,8 @@ impl Jit {
 
 						sig.returns.push(AbiParam::new(f.return_type.resolve()));
 					} else {
-						let type_map = type_map(&ident);
-						
+						let type_map = internal_type_map(&ident);
+
 						for (i, _arg) in args.iter().enumerate() {
 							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
 						}
@@ -534,24 +534,24 @@ impl Translator<'_> {
 				let mut sig = self.module.make_signature();
 
 				let return_type = if let Some(f) = self.functions.get(ident) {
-						for (i, _arg) in args.iter().enumerate() {
-							sig.params.push(AbiParam::new(f.params[i].resolve()));
-						}
+					for (i, _arg) in args.iter().enumerate() {
+						sig.params.push(AbiParam::new(f.params[i].resolve()));
+					}
 
-						sig.returns.push(AbiParam::new(f.return_type.resolve()));
+					sig.returns.push(AbiParam::new(f.return_type.resolve()));
 
-						f.return_type
-					} else {
-						let type_map = type_map(ident);
-						
-						for (i, _arg) in args.iter().enumerate() {
-							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
-						}
+					f.return_type
+				} else {
+					let type_map = internal_type_map(ident);
 
-						sig.returns.push(AbiParam::new(type_map.1.resolve()));
+					for (i, _arg) in args.iter().enumerate() {
+						sig.params.push(AbiParam::new(type_map.0[i].resolve()));
+					}
 
-						type_map.1
-					};
+					sig.returns.push(AbiParam::new(type_map.1.resolve()));
+
+					type_map.1
+				};
 
 				let callee = self
 					.module

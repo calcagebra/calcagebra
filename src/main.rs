@@ -5,11 +5,13 @@ mod parser;
 mod repl;
 mod standardlibrary;
 mod token;
+mod errors;
 
 use core::mem;
 use std::{fs::read_to_string, time::Instant};
 
 use clap::{command, Parser as ClapParser, Subcommand};
+use errors::ErrorReporter;
 use jit::Jit;
 use lexer::Lexer;
 use repl::repl;
@@ -57,6 +59,10 @@ fn main() {
 
 	let contents = read_to_string(input.clone()).unwrap();
 
+	let mut reporter = ErrorReporter::new();
+
+	reporter.add_file(&input, &contents);
+
 	let tokens = Lexer::new(&contents).tokens();
 
 	if args.debug {
@@ -64,7 +70,7 @@ fn main() {
 		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let ast = Parser::new(tokens).ast();
+	let ast = Parser::new(&input, tokens, reporter).ast();
 
 	if args.debug {
 		let duration = main.elapsed();
@@ -83,30 +89,4 @@ fn main() {
 
 pub fn version() -> String {
 	env!("CARGO_PKG_VERSION").to_string()
-}
-
-mod tests {
-	#[test]
-	fn example() {
-		use super::jit::Jit;
-		use super::lexer::Lexer;
-		use super::parser::Parser;
-
-		use core::mem;
-		use std::fs::read_to_string;
-
-		let contents = read_to_string("examples/example.cal").unwrap();
-
-		let tokens = Lexer::new(&contents).tokens();
-
-		println!("LEXER: {tokens:?}\n");
-
-		let ast = Parser::new(tokens).ast();
-
-		println!("AST: {ast:?}\n");
-
-		let mut jit = Jit::default();
-
-		unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast, false).unwrap())() };
-	}
 }

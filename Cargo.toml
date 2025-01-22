@@ -5,11 +5,13 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"] }
+codespan-reporting = "0.11.1"
 cranelift = { version = "0.114.0", features = ["module", "jit", "native"] }
 plotters = "0.3.7"
 rand = "0.8.5"
 rustyline = { version = "14.0.0", features = ["derive"] }
 syntect = "5.2.0"
+unindent = "0.2.3"
 viuer = { version = "0.9.1", features = ["print-file"] }
 
 [profile.release]
