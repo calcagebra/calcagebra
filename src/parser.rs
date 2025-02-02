@@ -23,30 +23,126 @@ impl Parser {
 
 	pub fn ast(&self) -> Vec<AstNode> {
 		let mut ast = vec![];
-		let lines = &self.tokens;
+		let mut lines = &mut self.tokens.iter().peekable();
 
-		for line in lines {
-			let mut tokens = line.iter().peekable();
-
-			let identifier = tokens.next().unwrap();
-
-			if identifier.token == Token::Import {
-				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-					tokens.next();
-					ast.push(AstNode::Import(ident.to_owned()));
-					continue;
-				} else {
-					let tokeninfo = tokens.next().unwrap();
-
-					self.reporter.syntax_error(
-						&self.file,
-						&tokeninfo.range,
-						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-					)
-				}
+		loop {
+			if lines.peek().is_none() {
+				break;
 			}
 
-			let datatype = if tokens.peek().unwrap().token == Token::Colon {
+			let node;
+
+			(lines, node) = self.parse_astnode(lines);
+
+			ast.push(node);
+		}
+
+		ast
+	}
+
+	pub fn parse_astnode<'a>(
+		&'a self,
+		mut lines: &'a mut Peekable<Iter<'a, Vec<TokenInfo>>>,
+	) -> (&'a mut Peekable<Iter<'a, Vec<TokenInfo>>>, AstNode) {
+		let line = lines.next().unwrap();
+
+		let mut tokens = line.iter().peekable();
+
+		let identifier = tokens.next().unwrap();
+
+		if identifier.token == Token::Import {
+			if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+				tokens.next();
+				return (lines, AstNode::Import(ident.to_owned()));
+			} else {
+				let tokeninfo = tokens.next().unwrap();
+
+				self.reporter.syntax_error(
+					&self.file,
+					&tokeninfo.range,
+					(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+				)
+			}
+		}
+
+		if identifier.token == Token::Return {
+			let (expr, _, _) = self.pratt_parser(tokens, 0);
+
+			return (lines, AstNode::Return(expr));
+		}
+
+		if identifier.token == Token::Fn {
+			let tokeninfo = tokens.next().unwrap();
+
+			let name = match &tokeninfo.token {
+				Token::Identifier(name) => name,
+				_ => unreachable!(),
+			};
+
+			let tokeninfo = tokens.next().unwrap();
+
+			if tokeninfo.token != Token::LParen {
+				self.reporter.syntax_error(
+					&self.file,
+					&tokeninfo.range,
+					(&Token::LParen, &tokeninfo.token),
+				);
+			}
+
+			let mut args = vec![];
+
+			loop {
+				let t = tokens.peek();
+
+				if t.is_none() {
+					break;
+				}
+
+				if Token::RParen == t.unwrap().token {
+					tokens.next();
+					break;
+				}
+
+				let t = tokens.next().unwrap();
+
+				if let Token::Identifier(..) = &t.token {
+				} else {
+					self.reporter.syntax_error(
+						&self.file,
+						&t.range,
+						(&Token::Identifier("ident".to_string()), &t.token),
+					)
+				}
+
+				let datatype = if tokens.peek().unwrap().token == Token::Colon {
+					tokens.next();
+
+					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+						tokens.next();
+						AstType::parse(ident)
+					} else {
+						let tokeninfo = tokens.next().unwrap();
+
+						self.reporter.syntax_error(
+							&self.file,
+							&tokeninfo.range,
+							(&Token::Identifier("type".to_string()), &tokeninfo.token),
+						)
+					}
+				} else {
+					AstType::Float
+				};
+
+				args.push((
+					match &t.token {
+						Token::Identifier(i) => i.to_string(),
+						_ => unreachable!(),
+					},
+					datatype,
+				));
+			}
+
+			let return_type = if tokens.peek().unwrap().token == Token::Colon {
 				tokens.next();
 
 				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
@@ -58,172 +154,134 @@ impl Parser {
 					self.reporter.syntax_error(
 						&self.file,
 						&tokeninfo.range,
-						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+						(&Token::Identifier("type".to_string()), &tokeninfo.token),
 					)
 				}
 			} else {
 				AstType::Float
 			};
 
-			if tokens.peek().unwrap().token == Token::Eq {
-				tokens.next();
-				let mut name = "";
-				if let Token::Identifier(str) = &identifier.token {
-					name = str;
-				}
+			let tokeninfo = tokens.next().unwrap();
 
-				let (expr, _, range) = self.pratt_parser(tokens, 0);
-
-				let expr_type = expr.infer_datatype();
-
-				if expr_type.is_some() && expr_type.unwrap() != datatype {
-					self
-						.reporter
-						.type_error(&self.file, &range, (datatype, expr_type.unwrap()));
-				}
-
-				ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
-			} else {
-				let name = match &identifier.token {
-					Token::Identifier(name) => name,
-					_ => unreachable!(),
-				};
-
-				if line
-					.iter()
-					.map(|f| &f.token)
-					.collect::<Vec<&Token>>()
-					.contains(&&Token::Eq)
-				{
-					let tokeninfo = tokens.next().unwrap();
-
-					if tokeninfo.token != Token::LParen {
-						self.reporter.syntax_error(
-							&self.file,
-							&tokeninfo.range,
-							(&Token::LParen, &tokeninfo.token),
-						);
-					}
-
-					let mut args = vec![];
-
-					loop {
-						let t = tokens.peek();
-
-						if t.is_none() {
-							break;
-						}
-
-						if Token::RParen == t.unwrap().token {
-							tokens.next();
-							break;
-						}
-
-						let t = tokens.next().unwrap();
-
-						if let Token::Identifier(..) = &t.token {
-						} else {
-							self.reporter.syntax_error(
-								&self.file,
-								&t.range,
-								(&Token::Identifier("ident".to_string()), &t.token),
-							)
-						}
-
-						let datatype = if tokens.peek().unwrap().token == Token::Colon {
-							tokens.next();
-
-							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-								tokens.next();
-								AstType::parse(ident)
-							} else {
-								let tokeninfo = tokens.next().unwrap();
-
-								self.reporter.syntax_error(
-									&self.file,
-									&tokeninfo.range,
-									(&Token::Identifier("type".to_string()), &tokeninfo.token),
-								)
-							}
-						} else {
-							AstType::Float
-						};
-
-						args.push((
-							match &t.token {
-								Token::Identifier(i) => i.to_string(),
-								_ => unreachable!(),
-							},
-							datatype,
-						));
-					}
-
-					let return_type = if tokens.peek().unwrap().token == Token::Colon {
-						tokens.next();
-
-						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-							tokens.next();
-							AstType::parse(ident)
-						} else {
-							let tokeninfo = tokens.next().unwrap();
-
-							self.reporter.syntax_error(
-								&self.file,
-								&tokeninfo.range,
-								(&Token::Identifier("type".to_string()), &tokeninfo.token),
-							)
-						}
-					} else {
-						AstType::Float
-					};
-
-					let tokeninfo = tokens.next().unwrap();
-
-					if tokeninfo.token != Token::Eq {
-						self.reporter.syntax_error(
-							&self.file,
-							&tokeninfo.range,
-							(&Token::LParen, &tokeninfo.token),
-						);
-					}
-
-					let (expr, _, range) = self.pratt_parser(tokens, 0);
-
-					let expr_type = expr.infer_datatype();
-
-					if expr_type.is_some() && expr_type.unwrap() != return_type {
-						self
-							.reporter
-							.type_error(&self.file, &range, (return_type, expr_type.unwrap()));
-					}
-
-					ast.push(AstNode::FunctionDeclaration(
-						name.to_string(),
-						args,
-						return_type,
-						expr,
-					));
-				} else {
-					let args = self.pratt_parser(line.iter().peekable(), 0).0;
-
-					match args {
-						Expression::FunctionCall(name, args) => {
-							ast.push(AstNode::FunctionCall(name.to_string(), args))
-						}
-						_ => unreachable!(),
-					}
-				}
+			if tokeninfo.token != Token::LCurly {
+				self.reporter.syntax_error(
+					&self.file,
+					&tokeninfo.range,
+					(&Token::LCurly, &tokeninfo.token),
+				);
 			}
+
+			let mut last_range = tokeninfo.range.clone();
+
+			// TODO: Rewrite lexer to use semicolons and then make this code not dependent newline placements
+
+			if lines.peek().is_none() {
+				self
+					.reporter
+					.no_remaining_statements_error(&self.file, &last_range)
+			}
+
+			let flag;
+
+			let mut exprs = vec![];
+
+			loop {
+				let mut tokens = lines.next().unwrap().iter().peekable();
+
+				if tokens.peek().unwrap().token == Token::RCurly {
+					flag = true;
+					let tokeninfo = tokens.next().unwrap();
+					last_range = tokeninfo.range.start() - 1..=tokeninfo.range.end() - 1;
+					break;
+				}
+
+				let node;
+				(lines, node) = self.parse_astnode(lines);
+
+				exprs.push(node);
+			}
+
+			if !flag && lines.peek().is_none() {
+				self
+					.reporter
+					.no_remaining_statements_error(&self.file, &tokeninfo.range)
+			}
+
+			let expr_type = exprs.last().unwrap().infer_datatype();
+
+			if expr_type.is_some() && expr_type.unwrap() != return_type {
+				self
+					.reporter
+					.type_error(&self.file, &last_range, (return_type, expr_type.unwrap()));
+			}
+
+			return (
+				lines,
+				AstNode::FunctionDeclaration(name.to_string(), args, return_type, exprs),
+			);
 		}
 
-		ast
+		let datatype = if tokens.peek().unwrap().token == Token::Colon {
+			tokens.next();
+
+			if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+				tokens.next();
+				AstType::parse(ident)
+			} else {
+				let tokeninfo = tokens.next().unwrap();
+
+				self.reporter.syntax_error(
+					&self.file,
+					&tokeninfo.range,
+					(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+				)
+			}
+		} else {
+			AstType::Float
+		};
+
+		if tokens.peek().unwrap().token == Token::Eq {
+			tokens.next();
+			let mut name = "";
+			if let Token::Identifier(str) = &identifier.token {
+				name = str;
+			}
+
+			let (expr, _, range) = self.pratt_parser(tokens, 0);
+
+			let expr_type = expr.infer_datatype();
+
+			if expr_type.is_some() && expr_type.unwrap() != datatype {
+				self
+					.reporter
+					.type_error(&self.file, &range, (datatype, expr_type.unwrap()));
+			}
+
+			(
+				lines,
+				AstNode::Assignment((name.to_string(), datatype), expr),
+			)
+		} else {
+			let args = self.pratt_parser(line.iter().peekable(), 0).0;
+
+			match args {
+				Expression::FunctionCall(name, args) => {
+					(lines, AstNode::FunctionCall(name.to_string(), args))
+				}
+				_ => unreachable!(),
+			}
+		}
 	}
 
 	pub fn pratt_parser<'a>(
 		&'a self,
 		mut tokens: Peekable<Iter<'a, TokenInfo>>,
 		prec: u16,
-	) -> (Expression, Peekable<Iter<TokenInfo>>, RangeInclusive<usize>) {
+	) -> (
+		Expression,
+		Peekable<Iter<'a, TokenInfo>>,
+		RangeInclusive<usize>,
+	) {
 		let tokeninfo = &tokens.next().unwrap();
 
 		let token = &tokeninfo.token;

@@ -1,15 +1,18 @@
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+	collections::{hash_map::Entry, HashMap},
+};
 
 use codegen::verify_function;
 use cranelift::{
 	jit::{JITBuilder, JITModule},
-	module::{default_libcall_names, FuncId, Linkage, Module},
+	module::{default_libcall_names, DataDescription, FuncId, Linkage, Module},
 	native::builder,
 	prelude::*,
 };
 
 use crate::{
 	ast::{AstNode, AstType, Expression},
+	errors::ErrorReporter,
 	standardlibrary::*,
 	token::Token,
 };
@@ -47,10 +50,13 @@ pub struct Jit {
 	functions: HashMap<String, FunctionWrapper>,
 
 	counter: isize,
+
+	file: String,
+	reporter: ErrorReporter,
 }
 
-impl Default for Jit {
-	fn default() -> Self {
+impl Jit {
+	pub fn new(file: &str, reporter: ErrorReporter) -> Self {
 		let mut flag_builder = settings::builder();
 
 		flag_builder.set("use_colocated_libcalls", "false").unwrap();
@@ -99,242 +105,148 @@ impl Default for Jit {
 			functions: HashMap::new(),
 			module,
 			counter: 0,
+			file: file.to_string(),
+			reporter,
 		}
 	}
-}
 
-impl Jit {
 	pub fn execute(&mut self, ast: Vec<AstNode>, debug: bool) -> Result<*const u8, String> {
-		let mut filtered_ast = vec![];
-		let mut functions = self.functions.clone();
+		// Global variables
+		for node in ast.iter() {
+			if let AstNode::Assignment(name, expression) = node {
+				let id = self
+					.module
+					.declare_data(&name.0, Linkage::Local, true, false)
+					.unwrap();
 
-		for node in ast {
-			match node {
-				AstNode::FunctionDeclaration(name, params, return_type, expr) => {
-					for p in &params {
-						self
-							.ctx
-							.func
-							.signature
-							.params
-							.push(AbiParam::new(p.1.resolve()));
-					}
+				let mut data = DataDescription::new();
 
+				data.define(match expression {
+					Expression::Float(f) => Box::new(f.to_be_bytes()),
+					Expression::Integer(i) => Box::new(i.to_be_bytes()),
+					_ => panic!("non const value"),
+				});
+
+				self.module.define_data(id, &data).unwrap();
+			}
+		}
+
+		let mut main = None;
+		let mut functions = HashMap::new();
+
+		// Functions that are NOT main
+		for node in ast.iter() {
+			if let AstNode::FunctionDeclaration(name, params, return_type, exprs) = node {
+				if name == "main" {
+					main = Some(node);
+					continue;
+				}
+
+				for p in params {
 					self
 						.ctx
 						.func
 						.signature
-						.returns
-						.push(AbiParam::new(return_type.resolve()));
-
-					let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
-					let entry_block = builder.create_block();
-
-					builder.append_block_params_for_function_params(entry_block);
-					builder.switch_to_block(entry_block);
-					builder.seal_block(entry_block);
-
-					let mut variables = HashMap::new();
-					let mut index = 0;
-					let param_types = params.iter().map(|param| param.1).collect::<Vec<AstType>>();
-
-					for param in params {
-						let val = builder.block_params(entry_block)[index];
-						let var = Variable::new(index);
-						if let Entry::Vacant(e) = variables.entry(param.0) {
-							e.insert(VariableWrapper {
-								id: var,
-								code: None,
-								datatype: param.1,
-							});
-							builder.declare_var(var, param.1.resolve());
-							index += 1;
-						}
-						builder.def_var(var, val);
-					}
-
-					let mut trans = Translator {
-						builder,
-						variables,
-						functions: HashMap::new(),
-						module: &mut self.module,
-					};
-
-					let (mut ret_value, datatype) = trans.translate_expr(&expr);
-
-					if datatype != return_type {
-						ret_value = match (datatype, return_type) {
-							(AstType::Int, AstType::Float) => {
-								trans.builder.ins().fcvt_from_sint(types::F64, ret_value)
-							}
-							(AstType::Float, AstType::Int) => {
-								trans.builder.ins().fcvt_to_sint(types::I64, ret_value)
-							}
-							_ => unreachable!(),
-						}
-					}
-
-					trans.builder.ins().return_(&[ret_value]);
-
-					trans.builder.finalize();
-
-					if debug {
-						println!("{}", self.ctx.func);
-					}
-
-					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
-						eprintln!("Verifier errors in function: {}", errors);
-					}
-
-					let id = self
-						.module
-						.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
-						.map_err(|e| e.to_string())?;
-
-					functions.insert(
-						name,
-						FunctionWrapper {
-							id,
-							params: param_types,
-							return_type,
-						},
-					);
-
-					self
-						.module
-						.define_function(id, &mut self.ctx)
-						.map_err(|e| e.to_string())?;
-
-					if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
-						eprintln!("Verifier errors: {}", errors);
-					}
-
-					self.module.clear_context(&mut self.ctx);
-
-					self.module.finalize_definitions().unwrap();
+						.params
+						.push(AbiParam::new(p.1.resolve()));
 				}
-				_ => filtered_ast.push(node),
-			}
-		}
 
-		let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
-		let entry_block = builder.create_block();
+				self
+					.ctx
+					.func
+					.signature
+					.returns
+					.push(AbiParam::new(return_type.resolve()));
 
-		builder.append_block_params_for_function_params(entry_block);
-		builder.switch_to_block(entry_block);
-		builder.seal_block(entry_block);
+				let mut builder = FunctionBuilder::new(&mut self.ctx.func, &mut self.builder_context);
+				let entry_block = builder.create_block();
 
-		let mut trans = Translator {
-			builder,
-			variables: HashMap::new(),
-			functions,
-			module: &mut self.module,
-		};
+				builder.append_block_params_for_function_params(entry_block);
+				builder.switch_to_block(entry_block);
+				builder.seal_block(entry_block);
 
-		for (name, vw) in &self.variables {
-			let (val, _) = trans.translate_expr(vw.code.as_ref().unwrap());
+				let mut variables = HashMap::new();
+				let mut index = 0;
+				let param_types = params.iter().map(|param| param.1).collect::<Vec<AstType>>();
 
-			trans.variables.insert(name.to_string(), vw.clone());
-			trans.builder.declare_var(vw.id, vw.datatype.resolve());
-
-			trans.builder.def_var(vw.id, val);
-		}
-
-		for node in filtered_ast {
-			match node {
-				AstNode::Import(..) => {}
-				AstNode::Assignment((name, datatype), expression) => {
-					let idx = trans.variables.len();
-					let var = Variable::new(idx);
-
-					let (val, _) = trans.translate_expr(&expression);
-
-					trans.variables.insert(
-						name.to_string(),
-						VariableWrapper {
+				for param in params {
+					let val = builder.block_params(entry_block)[index];
+					let var = Variable::new(index);
+					if let Entry::Vacant(e) = variables.entry(param.0) {
+						e.insert(VariableWrapper {
 							id: var,
-							code: Some(expression),
-							datatype,
-						},
-					);
-					trans.builder.declare_var(var, datatype.resolve());
-
-					trans.builder.def_var(var, val);
-				}
-				AstNode::FunctionCall(ident, args) => {
-					let mut sig = trans.module.make_signature();
-
-					if let Some(f) = trans.functions.get(&ident) {
-						for (i, _arg) in args.iter().enumerate() {
-							sig.params.push(AbiParam::new(f.params[i].resolve()));
-						}
-
-						sig.returns.push(AbiParam::new(f.return_type.resolve()));
-					} else {
-						let type_map = internal_type_map(&ident);
-
-						for (i, _arg) in args.iter().enumerate() {
-							sig.params.push(AbiParam::new(type_map.0[i].resolve()));
-						}
-
-						sig.returns.push(AbiParam::new(type_map.1.resolve()));
-					};
-
-					let callee = trans
-						.module
-						.declare_function(&ident, Linkage::Local, &sig)
-						.expect("problem declaring function");
-
-					let local_callee = trans
-						.module
-						.declare_func_in_func(callee, trans.builder.func);
-
-					let mut arg_values = Vec::new();
-
-					for arg in args {
-						arg_values.push(trans.translate_expr(&arg).0)
+							code: None,
+							datatype: param.1,
+						});
+						builder.declare_var(var, param.1.resolve());
+						index += 1;
 					}
-
-					let call = trans.builder.ins().call(local_callee, &arg_values);
-
-					assert!(!trans.builder.inst_results(call).is_empty());
+					builder.def_var(var, val);
 				}
-				AstNode::FunctionDeclaration(..) => {}
+
+				let mut trans = Translator {
+					builder,
+					variables,
+					functions: HashMap::new(),
+					module: &mut self.module,
+				};
+
+				let (mut ret_value, datatype) = trans.translate_expr(&exprs);
+
+				if datatype != *return_type {
+					ret_value = match (datatype, return_type) {
+						(AstType::Int, AstType::Float) => {
+							trans.builder.ins().fcvt_from_sint(types::F64, ret_value)
+						}
+						(AstType::Float, AstType::Int) => {
+							trans.builder.ins().fcvt_to_sint(types::I64, ret_value)
+						}
+						_ => unreachable!(),
+					}
+				}
+
+				trans.builder.ins().return_(&[ret_value]);
+
+				trans.builder.finalize();
+
+				if debug {
+					println!("{}", self.ctx.func);
+				}
+
+				if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
+					eprintln!("Verifier errors in function: {}", errors);
+				}
+
+				let id = self
+					.module
+					.declare_function(&name, Linkage::Export, &self.ctx.func.signature)
+					.map_err(|e| e.to_string())?;
+
+				functions.insert(
+					name,
+					FunctionWrapper {
+						id,
+						params: param_types,
+						return_type: *return_type,
+					},
+				);
+
+				self
+					.module
+					.define_function(id, &mut self.ctx)
+					.map_err(|e| e.to_string())?;
+
+				if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
+					eprintln!("Verifier errors: {}", errors);
+				}
+
+				self.module.clear_context(&mut self.ctx);
+
+				self.module.finalize_definitions().unwrap();
 			}
 		}
 
-		trans.builder.ins().return_(&[]);
-
-		self.functions = trans.functions;
-		self.variables = trans.variables;
-
-		if debug {
-			println!("{}", self.ctx.func);
-		}
-
-		if let Err(errors) = verify_function(&self.ctx.func, self.module.isa()) {
-			eprintln!("Verifier errors in IR: {}", errors);
-		}
-
-		let id = self
-			.module
-			.declare_function(
-				&format!("main{}", self.counter),
-				Linkage::Export,
-				&self.ctx.func.signature,
-			)
-			.map_err(|e| e.to_string())?;
-
-		self
-			.module
-			.define_function(id, &mut self.ctx)
-			.map_err(|e| e.to_string())?;
-
-		self.module.clear_context(&mut self.ctx);
-
-		self.module.finalize_definitions().unwrap();
-
-		Ok(self.module.get_finalized_function(id))
+		Ok(0 as *const u8)
 	}
 
 	pub fn renew(&mut self) {

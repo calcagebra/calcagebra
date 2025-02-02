@@ -23,6 +23,8 @@ pub enum Token {
 	Else,
 	End,
 	Import,
+	Fn,
+	Return,
 
 	Eq,
 
@@ -58,6 +60,8 @@ impl Token {
 			"else" => Token::Else,
 			"end" => Token::End,
 			"import" => Token::Import,
+			"fn" => Token::Fn,
+			"return" => Token::Return,
 
 			"=" => Token::Eq,
 			"!=" => Token::NEq,
@@ -102,39 +106,44 @@ impl Token {
 	}
 }
 
-
 impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-			Token::Integer(n) => n.to_string(),
-            Token::Float(n) => n.to_string(),
-            Token::Identifier(ident) => ident.to_string(),
-            Token::If => "if".to_string(),
-            Token::Then => "then".to_string(),
-            Token::Else => "else".to_string(),
-            Token::End => "end".to_string(),
-			Token::Import => "import".to_string(),
-            Token::Eq => "=".to_string(),
-            Token::NEq => "!=".to_string(),
-            Token::IsEq => "==".to_string(),
-            Token::Gt => ">".to_string(),
-            Token::Lt => "<".to_string(),
-            Token::GtEq => ">=".to_string(),
-            Token::LtEq => "<=".to_string(),
-            Token::Abs => "|".to_string(),
-            Token::Add => "+".to_string(),
-            Token::Sub => "-".to_string(),
-            Token::Mul => "*".to_string(),
-            Token::Div => "/".to_string(),
-            Token::Pow => "^".to_string(),
-            Token::Rem => "%".to_string(),
-            Token::Comma => ",".to_string(),
-            Token::Belongs => "E".to_string(),
-            Token::Colon => ":".to_string(),
-            Token::LParen => "(".to_string(),
-            Token::RParen => ")".to_string(),
-            Token::LCurly => "{".to_string(),
-            Token::RCurly => "}".to_string(),
-        })
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Token::Integer(n) => n.to_string(),
+				Token::Float(n) => n.to_string(),
+				Token::Identifier(ident) => ident.to_string(),
+				Token::If => "if".to_string(),
+				Token::Then => "then".to_string(),
+				Token::Else => "else".to_string(),
+				Token::End => "end".to_string(),
+				Token::Import => "import".to_string(),
+				Token::Return => "return".to_string(),
+				Token::Fn => "fn".to_string(),
+				Token::Eq => "=".to_string(),
+				Token::NEq => "!=".to_string(),
+				Token::IsEq => "==".to_string(),
+				Token::Gt => ">".to_string(),
+				Token::Lt => "<".to_string(),
+				Token::GtEq => ">=".to_string(),
+				Token::LtEq => "<=".to_string(),
+				Token::Abs => "|".to_string(),
+				Token::Add => "+".to_string(),
+				Token::Sub => "-".to_string(),
+				Token::Mul => "*".to_string(),
+				Token::Div => "/".to_string(),
+				Token::Pow => "^".to_string(),
+				Token::Rem => "%".to_string(),
+				Token::Comma => ",".to_string(),
+				Token::Belongs => "E".to_string(),
+				Token::Colon => ":".to_string(),
+				Token::LParen => "(".to_string(),
+				Token::RParen => ")".to_string(),
+				Token::LCurly => "{".to_string(),
+				Token::RCurly => "}".to_string(),
+			}
+		)
+	}
 }

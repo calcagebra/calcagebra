@@ -1,11 +1,11 @@
 mod ast;
+mod errors;
 mod jit;
 mod lexer;
 mod parser;
 mod repl;
 mod standardlibrary;
 mod token;
-mod errors;
 
 use core::mem;
 use std::{fs::read_to_string, time::Instant};
@@ -14,8 +14,8 @@ use clap::{command, Parser as ClapParser, Subcommand};
 use errors::ErrorReporter;
 use jit::Jit;
 use lexer::Lexer;
-use repl::repl;
 use parser::Parser;
+use repl::repl;
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -77,7 +77,11 @@ fn main() {
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let mut jit = Jit::default();
+	let mut reporter = ErrorReporter::new();
+
+	reporter.add_file(&input, &contents);
+
+	let mut jit = Jit::new(&input, reporter);
 
 	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast, args.debug).unwrap())() };
 

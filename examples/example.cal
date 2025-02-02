@@ -1,5 +1,6 @@
 a = 5.0
 
-f(x) = if a == x then 1.0 else 0.0 end
-
-print(f(5.0))
+fn f(x): R {
+    a = 7
+    print(a)
+}

@@ -46,7 +46,20 @@ pub enum AstNode {
 	Import(String),
 	Assignment((String, AstType), Expression),
 	FunctionCall(String, Vec<Expression>),
-	FunctionDeclaration(String, Vec<(String, AstType)>, AstType, Expression),
+	FunctionDeclaration(String, Vec<(String, AstType)>, AstType, Vec<AstNode>),
+	Return(Expression),
+}
+
+impl AstNode {
+	pub fn infer_datatype(&self) -> Option<AstType> {
+		match self {
+			AstNode::Import(..) => None,
+			AstNode::Assignment(..) => None,
+			AstNode::FunctionCall(_, expressions) => expressions.last().unwrap().infer_datatype(),
+			AstNode::FunctionDeclaration(..) => None,
+			AstNode::Return(expression) => expression.infer_datatype(),
+		}
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]

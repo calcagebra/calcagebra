@@ -81,7 +81,8 @@ pub fn repl() {
 	let mut rl = Editor::with_config(config).unwrap();
 	rl.set_helper(Some(h));
 
-	let mut jit = Jit::default();
+	let mut reporter = ErrorReporter::new();
+	let mut jit = Jit::new("REPL", reporter);
 
 	loop {
 		"\x1b[1m\x1b[32m[In]:\x1b[0m "
@@ -97,7 +98,7 @@ pub fn repl() {
 
 				println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
-				let mut reporter = ErrorReporter::new();
+				reporter = ErrorReporter::new();
 				reporter.add_file("REPL", &line);
 
 				jit.renew();

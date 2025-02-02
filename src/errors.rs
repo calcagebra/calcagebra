@@ -38,15 +38,16 @@ impl ErrorReporter {
 		range: &RangeInclusive<usize>,
 		(expected, got): (AstType, AstType),
 	) {
-
 		let diagnostic = Diagnostic::error()
 			.with_message("incompatible types")
 			.with_code("E101")
 			.with_labels(vec![Label::primary(
 				*self.file_ids.get(file).unwrap(),
-				*range.start()-1..*range.end()-1,
+				*range.start() - 1..*range.end() - 1,
 			)
-			.with_message(format!("\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"))])
+			.with_message(format!(
+				"\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"
+			))])
 			.with_notes(vec![format!(
 				"\x1b[1mhelp:\x1b[0m use `{expected}(...)` method to convert to correct type"
 			)]);
@@ -68,11 +69,50 @@ impl ErrorReporter {
 			.with_code("E201")
 			.with_labels(vec![Label::primary(
 				*self.file_ids.get(file).unwrap(),
-				*range.start()-1..*range.end()-1,
+				*range.start() - 1..*range.end() - 1,
 			)
-			.with_message(format!("\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"))])
+			.with_message(format!(
+				"\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"
+			))])
+			.with_notes(vec![format!("\x1b[1mhelp:\x1b[0m add {expected} here")]);
+
+		let writer = StandardStream::stderr(ColorChoice::Always);
+		let config = codespan_reporting::term::Config::default();
+
+		term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).unwrap();
+
+		std::process::exit(1)
+	}
+
+	pub fn no_remaining_statements_error(&self, file: &str, range: &RangeInclusive<usize>) -> ! {
+		let diagnostic = Diagnostic::error()
+			.with_message("syntax error")
+			.with_code("E202")
+			.with_labels(vec![Label::primary(
+				*self.file_ids.get(file).unwrap(),
+				*range.start() - 1..*range.end() - 1,
+			)
+			.with_message("\x1b[1munexpected end of code \x1b[0m".to_string())]);
+
+		let writer = StandardStream::stderr(ColorChoice::Always);
+		let config = codespan_reporting::term::Config::default();
+
+		term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).unwrap();
+
+		std::process::exit(1)
+	}
+
+	pub fn non_const_error(&self, file: &str, range: &RangeInclusive<usize>) -> ! {
+		let diagnostic = Diagnostic::error()
+			.with_message("non constant value found")
+			.with_code("E202")
+			.with_labels(vec![Label::primary(
+				*self.file_ids.get(file).unwrap(),
+				*range.start() - 1..*range.end() - 1,
+			)
+			.with_message("\x1b[1munexpected non-constant value \x1b[0m".to_string())])
 			.with_notes(vec![format!(
-				"\x1b[1mhelp:\x1b[0m add {expected} here"
+				"\x1b[1mhelp:\x1b[0m only constant literals can be used in global variables"
 			)]);
 
 		let writer = StandardStream::stderr(ColorChoice::Always);
