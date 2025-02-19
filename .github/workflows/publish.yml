@@ -41,6 +41,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - shell: bash
+        run: |
+          sudo apt update
+          sudo apt install fontconfig
       - uses: actions-rs/cargo@v1
         with:
           command: build
