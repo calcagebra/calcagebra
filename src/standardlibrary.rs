@@ -1,22 +1,22 @@
-use crate::ast::AstType;
+use crate::types::NumberType;
 use core::mem;
 use plotters::backend::BitMapBackend;
 use plotters::chart::ChartBuilder;
 use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
-use plotters::style::{full_palette::*, Color, IntoFont};
-use std::io::{stdin, stdout, Write};
+use plotters::style::{Color, IntoFont, full_palette::*};
+use std::io::{Write, stdin, stdout};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub fn internal_type_map(f: &str) -> (Vec<AstType>, AstType) {
+pub fn internal_type_map(f: &str) -> (Vec<NumberType>, NumberType) {
 	match f {
-		"read" => (vec![], AstType::Float),
-		"float" => (vec![AstType::Int], AstType::Float),
-		"int" => (vec![AstType::Float], AstType::Int),
+		"read" => (vec![], NumberType::Real),
+		"float" => (vec![NumberType::Int], NumberType::Real),
+		"int" => (vec![NumberType::Real], NumberType::Int),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
-		| "cbrt" | "graph" => (vec![AstType::Float], AstType::Float),
-		"log" | "nrt" | "pow" => (vec![AstType::Float, AstType::Float], AstType::Float),
+		| "cbrt" | "graph" => (vec![NumberType::Real], NumberType::Real),
+		"log" | "nrt" | "pow" => (vec![NumberType::Real, NumberType::Real], NumberType::Real),
 		_ => unimplemented!("type map not implemented for: {f}"),
 	}
 }

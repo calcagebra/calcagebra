@@ -8,7 +8,7 @@ use codespan_reporting::{
 	term::termcolor::{ColorChoice, StandardStream},
 };
 
-use crate::ast::AstType;
+use crate::types::NumberType;
 use crate::token::Token;
 
 #[derive(Debug, Clone)]
@@ -36,17 +36,20 @@ impl ErrorReporter {
 		&self,
 		file: &str,
 		range: &RangeInclusive<usize>,
-		(expected, got): (AstType, AstType),
+		(expected, got): (NumberType, NumberType),
 	) {
-
 		let diagnostic = Diagnostic::error()
 			.with_message("incompatible types")
 			.with_code("E101")
-			.with_labels(vec![Label::primary(
-				*self.file_ids.get(file).unwrap(),
-				*range.start()-1..*range.end()-1,
-			)
-			.with_message(format!("\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"))])
+			.with_labels(vec![
+				Label::primary(
+					*self.file_ids.get(file).unwrap(),
+					*range.start() - 1..*range.end() - 1,
+				)
+				.with_message(format!(
+					"\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"
+				)),
+			])
 			.with_notes(vec![format!(
 				"\x1b[1mhelp:\x1b[0m use `{expected}(...)` method to convert to correct type"
 			)]);
@@ -66,14 +69,16 @@ impl ErrorReporter {
 		let diagnostic = Diagnostic::error()
 			.with_message("syntax error")
 			.with_code("E201")
-			.with_labels(vec![Label::primary(
-				*self.file_ids.get(file).unwrap(),
-				*range.start()-1..*range.end()-1,
-			)
-			.with_message(format!("\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"))])
-			.with_notes(vec![format!(
-				"\x1b[1mhelp:\x1b[0m add {expected} here"
-			)]);
+			.with_labels(vec![
+				Label::primary(
+					*self.file_ids.get(file).unwrap(),
+					*range.start() - 1..*range.end() - 1,
+				)
+				.with_message(format!(
+					"\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"
+				)),
+			])
+			.with_notes(vec![format!("\x1b[1mhelp:\x1b[0m add {expected} here")]);
 
 		let writer = StandardStream::stderr(ColorChoice::Always);
 		let config = codespan_reporting::term::Config::default();

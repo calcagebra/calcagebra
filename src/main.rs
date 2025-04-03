@@ -1,19 +1,19 @@
 mod ast;
-mod jit;
 mod lexer;
 mod parser;
 mod repl;
 mod standardlibrary;
 mod token;
 mod errors;
+mod interpreter;
+mod types;
 
-use core::mem;
 use std::{fs::read_to_string, time::Instant};
 
 use clap::{command, Parser as ClapParser, Subcommand};
 use errors::ErrorReporter;
-use jit::Jit;
 use lexer::Lexer;
+use interpreter::Interpreter;
 use repl::repl;
 use parser::Parser;
 
@@ -77,9 +77,7 @@ fn main() {
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let mut jit = Jit::default();
-
-	unsafe { mem::transmute::<*const u8, fn()>(jit.execute(ast, args.debug).unwrap())() };
+	Interpreter::new().interpret(ast);
 
 	if args.debug || args.time {
 		let duration = main.elapsed();

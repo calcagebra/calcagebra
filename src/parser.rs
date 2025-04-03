@@ -1,9 +1,10 @@
 use std::{iter::Peekable, ops::RangeInclusive, slice::Iter};
 
 use crate::{
-	ast::{AstNode, AstType, Expression},
+	ast::{AstNode, Expression},
 	errors::ErrorReporter,
 	token::{Token, TokenInfo},
+	types::NumberType,
 };
 
 pub struct Parser {
@@ -51,7 +52,7 @@ impl Parser {
 
 				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 					tokens.next();
-					AstType::parse(ident)
+					NumberType::parse(ident)
 				} else {
 					let tokeninfo = tokens.next().unwrap();
 
@@ -62,7 +63,7 @@ impl Parser {
 					)
 				}
 			} else {
-				AstType::Float
+				NumberType::Real
 			};
 
 			if tokens.peek().unwrap().token == Token::Eq {
@@ -135,7 +136,7 @@ impl Parser {
 
 							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 								tokens.next();
-								AstType::parse(ident)
+								NumberType::parse(ident)
 							} else {
 								let tokeninfo = tokens.next().unwrap();
 
@@ -146,7 +147,7 @@ impl Parser {
 								)
 							}
 						} else {
-							AstType::Float
+							NumberType::Real
 						};
 
 						args.push((
@@ -163,7 +164,7 @@ impl Parser {
 
 						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
-							AstType::parse(ident)
+							NumberType::parse(ident)
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
@@ -174,7 +175,7 @@ impl Parser {
 							)
 						}
 					} else {
-						AstType::Float
+						NumberType::Real
 					};
 
 					let tokeninfo = tokens.next().unwrap();
@@ -223,7 +224,11 @@ impl Parser {
 		&'a self,
 		mut tokens: Peekable<Iter<'a, TokenInfo>>,
 		prec: u16,
-	) -> (Expression, Peekable<Iter<TokenInfo>>, RangeInclusive<usize>) {
+	) -> (
+		Expression,
+		Peekable<Iter<'a, TokenInfo>>,
+		RangeInclusive<usize>,
+	) {
 		let tokeninfo = &tokens.next().unwrap();
 
 		let token = &tokeninfo.token;
@@ -271,8 +276,8 @@ impl Parser {
 				if let Token::Integer(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Integer(-i));
 					end = *tokens.next().unwrap().range.end();
-				} else if let Token::Float(i) = tokens.peek().unwrap().token {
-					expr = Some(Expression::Float(-i));
+				} else if let Token::Real(i) = tokens.peek().unwrap().token {
+					expr = Some(Expression::Real(-i));
 					end = *tokens.next().unwrap().range.end();
 				} else {
 					end = *tokeninfo.range.end();
@@ -282,8 +287,8 @@ impl Parser {
 				expr = Some(Expression::Integer(*n));
 				end = *tokeninfo.range.end();
 			}
-			Token::Float(n) => {
-				expr = Some(Expression::Float(*n));
+			Token::Real(n) => {
+				expr = Some(Expression::Real(*n));
 				end = *tokeninfo.range.end();
 			}
 			_ => {
