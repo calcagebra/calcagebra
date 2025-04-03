@@ -1,2 +1,0 @@
-tasks:
-  - command: sudo bash scripts/install-deps.sh
