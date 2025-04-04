@@ -42,7 +42,12 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - shell: bash
-        run: brew install fontconfig
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+                sudo apt install libfontconfig1-dev
+          else [ "$RUNNER_OS" == "macOS" ]; then
+                brew install fontconfig
+          fi
       - uses: actions-rs/cargo@v1
         with:
           command: build
