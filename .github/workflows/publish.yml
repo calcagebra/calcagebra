@@ -45,7 +45,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
                 sudo apt install libfontconfig1-dev
-          else [ "$RUNNER_OS" == "macOS" ]; then
+          else [ "$RUNNER_OS" == "macOS" ];
                 brew install fontconfig
           fi
       - uses: actions-rs/cargo@v1
