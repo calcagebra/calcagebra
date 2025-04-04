@@ -9,7 +9,7 @@ use crate::{
 	types::{Number, NumberType},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Interpreter {
 	pub globals: HashMap<String, Number>,
 	pub functions: HashMap<String, Function>,
@@ -96,6 +96,9 @@ impl Interpreter {
 				match numbertype {
 					NumberType::Int => Number::Int(number.int().abs()),
 					NumberType::Real => Number::Real(number.real().abs()),
+					NumberType::Complex => {
+						Number::Real(number.array().iter().map(|f| f * f).sum::<f32>().sqrt())
+					}
 				}
 			}
 			Expression::Binary(lhs, token, rhs) => {
@@ -104,126 +107,174 @@ impl Interpreter {
 				let rhd = self.interpret_expression(rhs);
 
 				match token {
-					Token::Add => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => return Number::Int(lhd.int() + rhd.int()),
-						(NumberType::Int, NumberType::Real) => {
-							return Number::Real(lhd.int() as f32 + rhd.real());
+					Token::Add => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => return Number::Int(a + b),
+						(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
+							return Number::Real(a as f32 + b);
 						}
-						(NumberType::Real, NumberType::Int) => {
-							return Number::Real(lhd.real() + rhd.int() as f32);
+						(Number::Real(a), Number::Real(b)) => return Number::Real(a + b),
+						(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
+							Number::Complex(a + (n as f32), b)
 						}
-						(NumberType::Real, NumberType::Real) => return Number::Real(lhd.real() + rhd.real()),
+						(Number::Real(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Real(n)) => {
+							Number::Complex(a + n, b)
+						}
+						(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a + c, b + d),
 					},
-					Token::Sub => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => return Number::Int(lhd.int() - rhd.int()),
-						(NumberType::Int, NumberType::Real) => {
-							return Number::Real(lhd.int() as f32 - rhd.real());
+					Token::Sub => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => return Number::Int(a - b),
+						(Number::Int(a), Number::Real(b)) => {
+							return Number::Real(a as f32 - b);
 						}
-						(NumberType::Real, NumberType::Int) => {
-							return Number::Real(lhd.real() - rhd.int() as f32);
+						(Number::Real(b), Number::Int(a)) => {
+							return Number::Real(b - a as f32);
 						}
-						(NumberType::Real, NumberType::Real) => return Number::Real(lhd.real() - rhd.real()),
+						(Number::Real(a), Number::Real(b)) => return Number::Real(a - b),
+						(Number::Int(n), Number::Complex(a, b)) => Number::Complex(-a + (n as f32), -b),
+						(Number::Complex(a, b), Number::Int(n)) => Number::Complex(a - (n as f32), b),
+						(Number::Real(n), Number::Complex(a, b)) => Number::Complex(-a + n, -b),
+						(Number::Complex(a, b), Number::Real(n)) => Number::Complex(a - n, b),
+						(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a - c, b - d),
 					},
-					Token::Mul => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => return Number::Int(lhd.int() * rhd.int()),
-						(NumberType::Int, NumberType::Real) => {
-							return Number::Real(lhd.int() as f32 * rhd.real());
+					Token::Mul => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => return Number::Int(a * b),
+						(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
+							return Number::Real(a as f32 * b);
 						}
-						(NumberType::Real, NumberType::Int) => {
-							return Number::Real(lhd.real() * rhd.int() as f32);
+						(Number::Real(a), Number::Real(b)) => return Number::Real(a * b),
+						(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
+							Number::Complex(a * (n as f32), b * (n as f32))
 						}
-						(NumberType::Real, NumberType::Real) => return Number::Real(lhd.real() * rhd.real()),
+						(Number::Real(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Real(n)) => {
+							Number::Complex(a * n, b * n)
+						}
+						(Number::Complex(a, b), Number::Complex(c, d)) => {
+							Number::Complex(a * c - b * d, a * d + b * c)
+						}
 					},
-					Token::Div => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => return Number::Int(lhd.int() / rhd.int()),
-						(NumberType::Int, NumberType::Real) => {
-							return Number::Real(lhd.int() as f32 / rhd.real());
+					Token::Div => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => return Number::Int(a / b),
+						(Number::Int(a), Number::Real(b)) => {
+							return Number::Real(a as f32 / b);
 						}
-						(NumberType::Real, NumberType::Int) => {
-							return Number::Real(lhd.real() / rhd.int() as f32);
+						(Number::Real(b), Number::Int(a)) => {
+							return Number::Real(b / a as f32);
 						}
-						(NumberType::Real, NumberType::Real) => return Number::Real(lhd.real() / rhd.real()),
+						(Number::Real(a), Number::Real(b)) => return Number::Real(a / b),
+						(Number::Int(n), Number::Complex(a, b)) => Number::Complex(
+							(n as f32) * a / (a * a + b * b),
+							-(n as f32) * b / (a * a + b * b),
+						),
+						(Number::Complex(a, b), Number::Int(n)) => {
+							Number::Complex(a / (n as f32), b / (n as f32))
+						}
+						(Number::Real(n), Number::Complex(a, b)) => {
+							Number::Complex(n * a / (a * a + b * b), -n * b / (a * a + b * b))
+						}
+						(Number::Complex(a, b), Number::Real(n)) => Number::Complex(a / n, b / n),
+						(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(
+							(a * c + b * d) / (c * c + d * d),
+							(b * c - a * d) / (c * c + d * d),
+						),
 					},
 					Token::Pow => {
-						match (lhd.r#type(), rhd.r#type()) {
-							(NumberType::Int, NumberType::Int) => {
+						match (lhd, rhd) {
+							(Number::Int(a), Number::Int(b)) => {
 								// TODO: Handle negative errors
-								return Number::Int(lhd.int().pow(rhd.int().try_into().unwrap()));
+								return Number::Int(a.pow(b.try_into().unwrap()));
 							}
-							(NumberType::Int, NumberType::Real) => {
-								return Number::Real((lhd.int() as f32).powf(rhd.real()));
+							(Number::Int(a), Number::Real(b)) => {
+								return Number::Real((a as f32).powf(b));
 							}
-							(NumberType::Real, NumberType::Int) => {
-								return Number::Real(lhd.real().powf(rhd.int() as f32));
+							(Number::Real(a), Number::Int(b)) => {
+								return Number::Real(a.powf(b as f32));
 							}
-							(NumberType::Real, NumberType::Real) => {
-								return Number::Real(lhd.real().powf(rhd.real()));
+							(Number::Real(a), Number::Real(b)) => {
+								return Number::Real(a.powf(b));
 							}
+							(Number::Complex(a, b), Number::Int(n)) => {
+								let modulus = (a * a + b * b).sqrt();
+
+								let argument = (b / a).atan();
+
+								return Number::Complex(
+									modulus.powf(n as f32) * (n as f32 * argument).cos(),
+									modulus.powf(n as f32) * (n as f32 * argument).sin(),
+								)
+							}
+							_ => unimplemented!(),
 						}
 					}
-					Token::Rem => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => return Number::Int(lhd.int().rem(rhd.int())),
-						(NumberType::Int, NumberType::Real) => {
-							return Number::Real((lhd.int() as f32).rem(rhd.real()));
+					Token::Rem => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => return Number::Int(a.rem(b)),
+						(Number::Int(a), Number::Real(b)) => {
+							return Number::Real((a as f32).rem(b));
 						}
-						(NumberType::Real, NumberType::Int) => {
-							return Number::Real((lhd.real()).rem(rhd.int() as f32));
+						(Number::Real(a), Number::Int(b)) => {
+							return Number::Real((a).rem(b as f32));
 						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Real(lhd.real().rem(rhd.real()));
-						}
-					},
-					Token::IsEq => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() == rhd.int()) as i32);
-						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() == rhd.real()) as i32);
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Real(a.rem(b));
 						}
 						_ => unimplemented!(),
 					},
-					Token::NEq => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() != rhd.int()) as i32);
+					Token::IsEq => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a == b) as i32);
 						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() != rhd.real()) as i32);
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a == b) as i32);
 						}
-						_ => unimplemented!(),
-					},
-					Token::Gt => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() > rhd.int()) as i32);
-						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() > rhd.real()) as i32);
+						(Number::Complex(a, b), Number::Complex(c, d)) => {
+							return Number::Int((a == c && b == d) as i32)
 						}
 						_ => unimplemented!(),
 					},
-					Token::GtEq => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() >= rhd.int()) as i32);
+					Token::NEq => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a != b) as i32);
 						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() >= rhd.real()) as i32);
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a != b) as i32);
 						}
-						_ => unimplemented!(),
-					},
-					Token::Lt => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() < rhd.int()) as i32);
-						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() < rhd.real()) as i32);
+						(Number::Complex(a, b), Number::Complex(c, d)) => {
+							return Number::Int((a != c && b != d) as i32)
 						}
 						_ => unimplemented!(),
 					},
-					Token::LtEq => match (lhd.r#type(), rhd.r#type()) {
-						(NumberType::Int, NumberType::Int) => {
-							return Number::Int((lhd.int() <= rhd.int()) as i32);
+					Token::Gt => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a > b) as i32);
 						}
-						(NumberType::Real, NumberType::Real) => {
-							return Number::Int((lhd.real() <= rhd.real()) as i32);
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a > b) as i32);
+						}
+						_ => unimplemented!(),
+					},
+					Token::GtEq => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a >= b) as i32);
+						}
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a >= b) as i32);
+						}
+						_ => unimplemented!(),
+					},
+					Token::Lt => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a < b) as i32);
+						}
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a < b) as i32);
+						}
+						_ => unimplemented!(),
+					},
+					Token::LtEq => match (lhd, rhd) {
+						(Number::Int(a), Number::Int(b)) => {
+							return Number::Int((a <= b) as i32);
+						}
+						(Number::Real(a), Number::Real(b)) => {
+							return Number::Int((a <= b) as i32);
 						}
 						_ => unimplemented!(),
 					},
@@ -245,6 +296,10 @@ impl Interpreter {
 			}
 			Expression::Real(f) => Number::Real(*f),
 			Expression::Integer(i) => Number::Int(*i),
+			Expression::Complex(a, b) => Number::Complex(
+				self.interpret_expression(a).real(),
+				self.interpret_expression(b).real(),
+			),
 			Expression::FunctionCall(name, exprs) => {
 				// A simple standard function is a term used to define a function which
 				// takes only Number as arguments opposed to say function name

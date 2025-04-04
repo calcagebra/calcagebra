@@ -101,7 +101,8 @@ pub fn repl() {
 				let mut reporter = ErrorReporter::new();
 				reporter.add_file("REPL", &line);
 
-				interpreter.interpret(Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast());
+				interpreter
+					.interpret(Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast());
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");

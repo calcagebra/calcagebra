@@ -14,7 +14,7 @@ impl TokenInfo {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-	Real(f32),
+	Float(f32),
 	Integer(i32),
 	Identifier(String),
 
@@ -94,7 +94,7 @@ impl Token {
 					if let Ok(n) = try_integer {
 						Token::Integer(n)
 					} else if let Ok(f) = try_float {
-						Token::Real(f)
+						Token::Float(f)
 					} else {
 						panic!("could not lex number: `{}`", token);
 					}
@@ -113,7 +113,7 @@ impl Display for Token {
 			"{}",
 			match self {
 				Token::Integer(n) => n.to_string(),
-				Token::Real(n) => n.to_string(),
+				Token::Float(n) => n.to_string(),
 				Token::Identifier(ident) => ident.to_string(),
 				Token::Let => "let".to_string(),
 				Token::Fn => "fn".to_string(),
