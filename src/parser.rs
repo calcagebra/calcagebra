@@ -31,28 +31,13 @@ impl Parser {
 
 			let identifier = tokens.next().unwrap();
 
-			if identifier.token == Token::Import {
-				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-					tokens.next();
-					ast.push(AstNode::Import(ident.to_owned()));
-					continue;
-				}
-				let tokeninfo = tokens.next().unwrap();
-
-				self.reporter.syntax_error(
-					&self.file,
-					&tokeninfo.range,
-					(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-				)
-			}
-
-			let mut datatype = if tokens.peek().unwrap().token == Token::Colon {
-				tokens.next();
-
-				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-					tokens.next();
-					Some(NumberType::parse(ident))
-				} else {
+			match identifier.token {
+				Token::Import => {
+					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+						tokens.next();
+						ast.push(AstNode::Import(ident.to_owned()));
+						continue;
+					}
 					let tokeninfo = tokens.next().unwrap();
 
 					self.reporter.syntax_error(
@@ -61,53 +46,60 @@ impl Parser {
 						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 					)
 				}
-			} else {
-				None
-			};
+				Token::Let => {
+					let mut datatype = None;
 
-			if tokens.peek().unwrap().token == Token::Eq {
-				tokens.next();
-				let mut name = "";
-				if let Token::Identifier(str) = &identifier.token {
-					name = str;
-				}
+					if tokens.peek().unwrap().token == Token::Colon {
+						tokens.next();
 
-				let (expr, _, range) = self.pratt_parser(tokens, 0);
+						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+							tokens.next();
 
-				let expr_type = expr.infer_datatype();
+							datatype = Some(NumberType::parse(ident))
+						} else {
+							let tokeninfo = tokens.next().unwrap();
 
-				if datatype.is_none() {
-					datatype = expr_type
-				}
-
-				if expr_type.is_some() && expr_type.unwrap() != datatype.unwrap() {
-					self
-						.reporter
-						.type_error(&self.file, &range, (datatype.unwrap(), expr_type.unwrap()));
-				}
-
-				ast.push(AstNode::Assignment((name.to_string(), datatype.unwrap()), expr));
-			} else {
-				let name = match &identifier.token {
-					Token::Identifier(name) => name,
-					_ => unreachable!(),
-				};
-
-				if line
-					.iter()
-					.map(|f| &f.token)
-					.collect::<Vec<&Token>>()
-					.contains(&&Token::Eq)
-				{
-					let tokeninfo = tokens.next().unwrap();
-
-					if tokeninfo.token != Token::LParen {
-						self.reporter.syntax_error(
-							&self.file,
-							&tokeninfo.range,
-							(&Token::LParen, &tokeninfo.token),
-						);
+							self.reporter.syntax_error(
+								&self.file,
+								&tokeninfo.range,
+								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+							)
+						}
 					}
+
+					let name = match &tokens.next().unwrap().token {
+						Token::Identifier(name) => name,
+						_ => unreachable!(),
+					};
+
+					tokens.next(); // Token =
+
+					let (expr, _, range) = self.pratt_parser(tokens, 0);
+
+					let expr_type = expr.infer_datatype();
+
+					if datatype.is_none() {
+						datatype = expr_type
+					}
+
+					if expr_type.is_some() && expr_type.unwrap() != datatype.unwrap() {
+						self
+							.reporter
+							.type_error(&self.file, &range, (datatype.unwrap(), expr_type.unwrap()));
+					}
+
+					ast.push(AstNode::Assignment(
+						(name.to_string(), datatype.unwrap()),
+						expr,
+					));
+				}
+				Token::Fn => {
+					let name = match &tokens.next().unwrap().token {
+						Token::Identifier(name) => name,
+						_ => unreachable!(),
+					};
+
+					tokens.next(); // Token (
 
 					let mut args = vec![];
 
@@ -125,61 +117,54 @@ impl Parser {
 
 						let t = tokens.next().unwrap();
 
-						if let Token::Identifier(..) = &t.token {
-						} else {
-							self.reporter.syntax_error(
-								&self.file,
-								&t.range,
-								(&Token::Identifier("ident".to_string()), &t.token),
-							)
-						}
+						let mut datatype = Some(NumberType::Real);
 
-						let datatype = if tokens.peek().unwrap().token == Token::Colon {
+						if tokens.peek().unwrap().token == Token::Colon {
 							tokens.next();
 
 							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 								tokens.next();
-								NumberType::parse(ident)
+
+								datatype = Some(NumberType::parse(ident))
 							} else {
 								let tokeninfo = tokens.next().unwrap();
 
 								self.reporter.syntax_error(
 									&self.file,
 									&tokeninfo.range,
-									(&Token::Identifier("type".to_string()), &tokeninfo.token),
+									(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 								)
 							}
-						} else {
-							NumberType::Real
-						};
+						}
 
 						args.push((
 							match &t.token {
 								Token::Identifier(i) => i.to_string(),
 								_ => unreachable!(),
 							},
-							datatype,
+							datatype.unwrap(),
 						));
 					}
 
-					let return_type = if tokens.peek().unwrap().token == Token::Colon {
+					let mut return_type = Some(NumberType::Real);
+
+					if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
 
 						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
-							NumberType::parse(ident)
+
+							return_type = Some(NumberType::parse(ident))
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
 							self.reporter.syntax_error(
 								&self.file,
 								&tokeninfo.range,
-								(&Token::Identifier("type".to_string()), &tokeninfo.token),
+								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 							)
 						}
-					} else {
-						NumberType::Real
-					};
+					}
 
 					let tokeninfo = tokens.next().unwrap();
 
@@ -195,19 +180,22 @@ impl Parser {
 
 					let expr_type = expr.infer_datatype();
 
-					if expr_type.is_some() && expr_type.unwrap() != return_type {
-						self
-							.reporter
-							.type_error(&self.file, &range, (return_type, expr_type.unwrap()));
+					if expr_type.is_some() && expr_type.unwrap() != return_type.unwrap() {
+						self.reporter.type_error(
+							&self.file,
+							&range,
+							(return_type.unwrap(), expr_type.unwrap()),
+						);
 					}
 
 					ast.push(AstNode::FunctionDeclaration(
 						name.to_string(),
 						args,
-						return_type,
+						return_type.unwrap(),
 						expr,
 					));
-				} else {
+				}
+				_ => {
 					let args = self.pratt_parser(line.iter().peekable(), 0).0;
 
 					match args {
@@ -219,7 +207,6 @@ impl Parser {
 				}
 			}
 		}
-
 		ast
 	}
 
@@ -242,6 +229,9 @@ impl Parser {
 
 		match token {
 			Token::Identifier(i) => {
+				// An identifier can either be a function call, in multiplication with a mod
+				// or simply an identifier, eg read(), a|b|, c
+
 				if tokens.peek().is_some()
 					&& self.infix_binding_power(&tokens.peek().unwrap().token) == (0, 0)
 					&& ![Token::RParen, Token::Abs].contains(&tokens.peek().unwrap().token)

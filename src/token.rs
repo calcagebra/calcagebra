@@ -18,6 +18,8 @@ pub enum Token {
 	Integer(i32),
 	Identifier(String),
 
+	Let,
+	Fn,
 	If,
 	Then,
 	Else,
@@ -53,6 +55,8 @@ pub enum Token {
 impl Token {
 	pub fn new(token: String) -> Self {
 		match token.as_str().trim() {
+			"let" => Token::Let,
+			"fn" => Token::Fn,
 			"if" => Token::If,
 			"then" => Token::Then,
 			"else" => Token::Else,
@@ -111,6 +115,8 @@ impl Display for Token {
 				Token::Integer(n) => n.to_string(),
 				Token::Real(n) => n.to_string(),
 				Token::Identifier(ident) => ident.to_string(),
+				Token::Let => "let".to_string(),
+				Token::Fn => "fn".to_string(),
 				Token::If => "if".to_string(),
 				Token::Then => "then".to_string(),
 				Token::Else => "else".to_string(),

@@ -29,11 +29,11 @@ Note: Multiple exprs should always be seperated by a `,`. `*` operator is option
 
 ### Assignment
 
-Assignments follow the `name = value` structure, variables can be reassigned with the same. `name` is an identifier and `value` is an `expr`.
+Assignments follow the `let name = value` structure, variables can be reassigned with the same. `name` is an identifier and `value` is an `expr`.
 
 ### Function Declaration
 
-Functions are declared by the `name(params) = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
+Functions are declared by the `fn name(params) = code` structure where `name` is an identifier, `params` are `identifiers` seperated by whitespace and `code` is an `expr`.
 
 ### Function Calls
 
