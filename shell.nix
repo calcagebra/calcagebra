@@ -3,6 +3,7 @@
     overrides = (builtins.fromTOML (builtins.readFile ./rust-toolchain.toml));
     libPath = with pkgs; lib.makeLibraryPath [
       # load external libraries that you need in your rust project here
+      fontconfig
     ];
 in
   pkgs.mkShell rec {
@@ -11,7 +12,14 @@ in
       # Replace llvmPackages with llvmPackages_X, where X is the latest LLVM version (at the time of writing, 16)
       llvmPackages_18.bintools
       rustup
+      fontconfig
+      dbus
     ];
+    nativeBuildInputs = with pkgs; [
+        pkg-config
+    ];
+    dbus = pkgs.dbus;
+    fontconfig = pkgs.fontconfig;
     RUSTC_VERSION = overrides.toolchain.channel;
     # https://github.com/rust-lang/rust-bindgen#environment-variables
     LIBCLANG_PATH = pkgs.lib.makeLibraryPath [ pkgs.llvmPackages_latest.libclang.lib ];
