@@ -42,9 +42,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - shell: bash
-        run: |
-          sudo apt update
-          sudo apt install fontconfig
+        run: brew install fontconfig
       - uses: actions-rs/cargo@v1
         with:
           command: build
