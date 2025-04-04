@@ -3,7 +3,9 @@
 	"extensions": [
 		"rust-lang.rust-analyzer",
 		"kuba-p.theme-pink-candy",
-		"pkief.material-icon-theme"
+		"pkief.material-icon-theme",
+		"megatank58.calcagebra",
+		"esbenp.prettier-vscode"
 	],
 	"dockerFile": "Dockerfile",
 	"settings": {

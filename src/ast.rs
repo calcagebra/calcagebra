@@ -15,8 +15,8 @@ pub enum Expression {
 	Binary(Box<Expression>, Token, Box<Expression>),
 	Branched(Box<Expression>, Box<Expression>, Box<Expression>),
 	Identifier(String),
-	Real(f64),
-	Integer(i64),
+	Real(f32),
+	Integer(i32),
 	FunctionCall(String, Vec<Expression>),
 }
 
@@ -47,7 +47,9 @@ impl Expression {
 			Expression::Real(_) => Some(NumberType::Real),
 			Expression::Integer(_) => Some(NumberType::Int),
 			Expression::FunctionCall(ident, _) => {
-				if standardlibrary::is_standard_function(ident) {
+				if standardlibrary::is_simple_standard_function(ident)
+					|| standardlibrary::is_complex_standard_function(ident)
+				{
 					Some(standardlibrary::internal_type_map(ident).1)
 				} else {
 					None

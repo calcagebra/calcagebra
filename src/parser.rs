@@ -36,23 +36,22 @@ impl Parser {
 					tokens.next();
 					ast.push(AstNode::Import(ident.to_owned()));
 					continue;
-				} else {
-					let tokeninfo = tokens.next().unwrap();
-
-					self.reporter.syntax_error(
-						&self.file,
-						&tokeninfo.range,
-						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-					)
 				}
+				let tokeninfo = tokens.next().unwrap();
+
+				self.reporter.syntax_error(
+					&self.file,
+					&tokeninfo.range,
+					(&Token::Identifier("ident".to_string()), &tokeninfo.token),
+				)
 			}
 
-			let datatype = if tokens.peek().unwrap().token == Token::Colon {
+			let mut datatype = if tokens.peek().unwrap().token == Token::Colon {
 				tokens.next();
 
 				if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 					tokens.next();
-					NumberType::parse(ident)
+					Some(NumberType::parse(ident))
 				} else {
 					let tokeninfo = tokens.next().unwrap();
 
@@ -63,7 +62,7 @@ impl Parser {
 					)
 				}
 			} else {
-				NumberType::Real
+				None
 			};
 
 			if tokens.peek().unwrap().token == Token::Eq {
@@ -77,13 +76,17 @@ impl Parser {
 
 				let expr_type = expr.infer_datatype();
 
-				if expr_type.is_some() && expr_type.unwrap() != datatype {
-					self
-						.reporter
-						.type_error(&self.file, &range, (datatype, expr_type.unwrap()));
+				if datatype.is_none() {
+					datatype = expr_type
 				}
 
-				ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
+				if expr_type.is_some() && expr_type.unwrap() != datatype.unwrap() {
+					self
+						.reporter
+						.type_error(&self.file, &range, (datatype.unwrap(), expr_type.unwrap()));
+				}
+
+				ast.push(AstNode::Assignment((name.to_string(), datatype.unwrap()), expr));
 			} else {
 				let name = match &identifier.token {
 					Token::Identifier(name) => name,

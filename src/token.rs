@@ -14,8 +14,8 @@ impl TokenInfo {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-	Real(f64),
-	Integer(i64),
+	Real(f32),
+	Integer(i32),
 	Identifier(String),
 
 	If,
@@ -84,8 +84,8 @@ impl Token {
 			"}" => Token::RCurly,
 			_ => {
 				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_integer = token.parse::<i64>();
-					let try_float = token.parse::<f64>();
+					let try_integer = token.parse::<i32>();
+					let try_float = token.parse::<f32>();
 
 					if let Ok(n) = try_integer {
 						Token::Integer(n)
