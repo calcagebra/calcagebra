@@ -1,7 +1,6 @@
-use core::mem;
 use rustyline::{
-	error::ReadlineError, highlight::Highlighter, validate::MatchingBracketValidator, Completer,
-	Config, Editor, Helper, Hinter, Validator,
+	Completer, Config, Editor, Helper, Hinter, Validator, error::ReadlineError,
+	highlight::Highlighter, validate::MatchingBracketValidator,
 };
 use std::{
 	borrow::Cow::{self, Borrowed, Owned},
@@ -10,7 +9,9 @@ use std::{
 };
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
-use crate::{errors::ErrorReporter, jit::Jit, lexer::Lexer, parser::Parser, version};
+use crate::{
+	errors::ErrorReporter, interpreter::Interpreter, lexer::Lexer, parser::Parser, version,
+};
 
 #[derive(Helper, Completer, Hinter, Validator)]
 struct HighlightHelper {
@@ -81,7 +82,7 @@ pub fn repl() {
 	let mut rl = Editor::with_config(config).unwrap();
 	rl.set_helper(Some(h));
 
-	let mut jit = Jit::default();
+	let mut interpreter = Interpreter::new();
 
 	loop {
 		"\x1b[1m\x1b[32m[In]:\x1b[0m "
@@ -100,18 +101,7 @@ pub fn repl() {
 				let mut reporter = ErrorReporter::new();
 				reporter.add_file("REPL", &line);
 
-				jit.renew();
-
-				unsafe {
-					mem::transmute::<*const u8, fn()>(
-						jit
-							.execute(
-								Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast(),
-								false,
-							)
-							.unwrap(),
-					)()
-				};
+				interpreter.interpret(Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast());
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");

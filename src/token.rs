@@ -14,8 +14,8 @@ impl TokenInfo {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-	Float(f64),
-	Integer(i64),
+	Real(f32),
+	Integer(i32),
 	Identifier(String),
 
 	If,
@@ -84,13 +84,13 @@ impl Token {
 			"}" => Token::RCurly,
 			_ => {
 				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_integer = token.parse::<i64>();
-					let try_float = token.parse::<f64>();
+					let try_integer = token.parse::<i32>();
+					let try_float = token.parse::<f32>();
 
 					if let Ok(n) = try_integer {
 						Token::Integer(n)
 					} else if let Ok(f) = try_float {
-						Token::Float(f)
+						Token::Real(f)
 					} else {
 						panic!("could not lex number: `{}`", token);
 					}
@@ -102,39 +102,42 @@ impl Token {
 	}
 }
 
-
 impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-			Token::Integer(n) => n.to_string(),
-            Token::Float(n) => n.to_string(),
-            Token::Identifier(ident) => ident.to_string(),
-            Token::If => "if".to_string(),
-            Token::Then => "then".to_string(),
-            Token::Else => "else".to_string(),
-            Token::End => "end".to_string(),
-			Token::Import => "import".to_string(),
-            Token::Eq => "=".to_string(),
-            Token::NEq => "!=".to_string(),
-            Token::IsEq => "==".to_string(),
-            Token::Gt => ">".to_string(),
-            Token::Lt => "<".to_string(),
-            Token::GtEq => ">=".to_string(),
-            Token::LtEq => "<=".to_string(),
-            Token::Abs => "|".to_string(),
-            Token::Add => "+".to_string(),
-            Token::Sub => "-".to_string(),
-            Token::Mul => "*".to_string(),
-            Token::Div => "/".to_string(),
-            Token::Pow => "^".to_string(),
-            Token::Rem => "%".to_string(),
-            Token::Comma => ",".to_string(),
-            Token::Belongs => "E".to_string(),
-            Token::Colon => ":".to_string(),
-            Token::LParen => "(".to_string(),
-            Token::RParen => ")".to_string(),
-            Token::LCurly => "{".to_string(),
-            Token::RCurly => "}".to_string(),
-        })
-    }
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"{}",
+			match self {
+				Token::Integer(n) => n.to_string(),
+				Token::Real(n) => n.to_string(),
+				Token::Identifier(ident) => ident.to_string(),
+				Token::If => "if".to_string(),
+				Token::Then => "then".to_string(),
+				Token::Else => "else".to_string(),
+				Token::End => "end".to_string(),
+				Token::Import => "import".to_string(),
+				Token::Eq => "=".to_string(),
+				Token::NEq => "!=".to_string(),
+				Token::IsEq => "==".to_string(),
+				Token::Gt => ">".to_string(),
+				Token::Lt => "<".to_string(),
+				Token::GtEq => ">=".to_string(),
+				Token::LtEq => "<=".to_string(),
+				Token::Abs => "|".to_string(),
+				Token::Add => "+".to_string(),
+				Token::Sub => "-".to_string(),
+				Token::Mul => "*".to_string(),
+				Token::Div => "/".to_string(),
+				Token::Pow => "^".to_string(),
+				Token::Rem => "%".to_string(),
+				Token::Comma => ",".to_string(),
+				Token::Belongs => "E".to_string(),
+				Token::Colon => ":".to_string(),
+				Token::LParen => "(".to_string(),
+				Token::RParen => ")".to_string(),
+				Token::LCurly => "{".to_string(),
+				Token::RCurly => "}".to_string(),
+			}
+		)
+	}
 }

@@ -1,52 +1,12 @@
-use std::fmt::Display;
-
-use cranelift::prelude::{types, Type};
-
-use crate::{standardlibrary, token::Token};
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
-pub enum AstType {
-	Int,
-	Float,
-}
-
-impl AstType {
-	pub fn parse(ident: &str) -> Self {
-		match ident.to_uppercase().as_str() {
-			"Z" | "INT" | "INTEGER" => Self::Int,
-			"R" | "FLOAT" => Self::Float,
-			_ => unimplemented!(),
-		}
-	}
-
-	pub fn resolve(&self) -> Type {
-		match self {
-			AstType::Int => types::I64,
-			AstType::Float => types::F64,
-		}
-	}
-}
-
-impl Display for AstType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"{}",
-			match self {
-				AstType::Int => "int",
-				AstType::Float => "float",
-			}
-		)
-	}
-}
+use crate::{standardlibrary, token::Token, types::NumberType};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum AstNode {
 	Import(String),
-	Assignment((String, AstType), Expression),
+	Assignment((String, NumberType), Expression),
 	FunctionCall(String, Vec<Expression>),
-	FunctionDeclaration(String, Vec<(String, AstType)>, AstType, Expression),
+	FunctionDeclaration(String, Vec<(String, NumberType)>, NumberType, Expression),
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -55,13 +15,13 @@ pub enum Expression {
 	Binary(Box<Expression>, Token, Box<Expression>),
 	Branched(Box<Expression>, Box<Expression>, Box<Expression>),
 	Identifier(String),
-	Float(f64),
-	Integer(i64),
+	Real(f32),
+	Integer(i32),
 	FunctionCall(String, Vec<Expression>),
 }
 
 impl Expression {
-	pub fn infer_datatype(&self) -> Option<AstType> {
+	pub fn infer_datatype(&self) -> Option<NumberType> {
 		match self {
 			Expression::Abs(expression) => expression.infer_datatype(),
 			Expression::Branched(..) => None,
@@ -77,17 +37,19 @@ impl Expression {
 				let rhs = rhs.unwrap();
 
 				Some(match (lhs, rhs) {
-					(AstType::Int, AstType::Int) => AstType::Int,
-					(AstType::Int, AstType::Float)
-					| (AstType::Float, AstType::Int)
-					| (AstType::Float, AstType::Float) => AstType::Float,
+					(NumberType::Int, NumberType::Int) => NumberType::Int,
+					(NumberType::Int, NumberType::Real)
+					| (NumberType::Real, NumberType::Int)
+					| (NumberType::Real, NumberType::Real) => NumberType::Real,
 				})
 			}
 			Expression::Identifier(_) => None,
-			Expression::Float(_) => Some(AstType::Float),
-			Expression::Integer(_) => Some(AstType::Int),
+			Expression::Real(_) => Some(NumberType::Real),
+			Expression::Integer(_) => Some(NumberType::Int),
 			Expression::FunctionCall(ident, _) => {
-				if standardlibrary::is_standard_function(ident) {
+				if standardlibrary::is_simple_standard_function(ident)
+					|| standardlibrary::is_complex_standard_function(ident)
+				{
 					Some(standardlibrary::internal_type_map(ident).1)
 				} else {
 					None
