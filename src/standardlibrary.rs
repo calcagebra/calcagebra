@@ -140,7 +140,17 @@ pub fn tan(a: Vec<Number>) -> Number {
 }
 
 pub fn sqrt(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().sqrt())
+	match a[0] {
+		Number::Int(..) |
+		Number::Real(..) => Number::Real(a[0].real().sqrt()),
+		Number::Complex(a, b) => {
+			let r = (a*a + b*b).sqrt();
+
+			let zr = ((a+r)*(a+r) + b*b).sqrt();
+
+			Number::Complex(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
+		},
+	}
 }
 
 pub fn cbrt(a: Vec<Number>) -> Number {
