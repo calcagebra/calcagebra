@@ -37,7 +37,7 @@ impl Interpreter {
 
 				if number.r#type() != numbertype {
 					// TODO: proper errors
-					panic!("type mismatch")
+					panic!("type mismatch found {} expected {}", number, numbertype)
 				}
 
 				self.globals.insert(name, number);
@@ -99,6 +99,7 @@ impl Interpreter {
 					NumberType::Complex => {
 						Number::Real(number.array().iter().map(|f| f * f).sum::<f32>().sqrt())
 					}
+					_ => todo!(),
 				}
 			}
 			Expression::Binary(lhs, token, rhs) => {
@@ -120,6 +121,7 @@ impl Interpreter {
 							Number::Complex(a + n, b)
 						}
 						(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a + c, b + d),
+						_ => todo!(),
 					},
 					Token::Sub => match (lhd, rhd) {
 						(Number::Int(a), Number::Int(b)) => return Number::Int(a - b),
@@ -135,6 +137,7 @@ impl Interpreter {
 						(Number::Real(n), Number::Complex(a, b)) => Number::Complex(-a + n, -b),
 						(Number::Complex(a, b), Number::Real(n)) => Number::Complex(a - n, b),
 						(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a - c, b - d),
+						_ => todo!(),
 					},
 					Token::Mul => match (lhd, rhd) {
 						(Number::Int(a), Number::Int(b)) => return Number::Int(a * b),
@@ -151,6 +154,7 @@ impl Interpreter {
 						(Number::Complex(a, b), Number::Complex(c, d)) => {
 							Number::Complex(a * c - b * d, a * d + b * c)
 						}
+						_ => todo!(),
 					},
 					Token::Div => match (lhd, rhd) {
 						(Number::Int(a), Number::Int(b)) => return Number::Int(a / b),
@@ -176,6 +180,7 @@ impl Interpreter {
 							(a * c + b * d) / (c * c + d * d),
 							(b * c - a * d) / (c * c + d * d),
 						),
+						_ => todo!(),
 					},
 					Token::Pow => {
 						match (lhd, rhd) {
@@ -200,7 +205,7 @@ impl Interpreter {
 								return Number::Complex(
 									modulus.powf(n as f32) * (n as f32 * argument).cos(),
 									modulus.powf(n as f32) * (n as f32 * argument).sin(),
-								)
+								);
 							}
 							_ => unimplemented!(),
 						}
@@ -226,7 +231,7 @@ impl Interpreter {
 							return Number::Int((a == b) as i32);
 						}
 						(Number::Complex(a, b), Number::Complex(c, d)) => {
-							return Number::Int((a == c && b == d) as i32)
+							return Number::Int((a == c && b == d) as i32);
 						}
 						_ => unimplemented!(),
 					},
@@ -238,7 +243,7 @@ impl Interpreter {
 							return Number::Int((a != b) as i32);
 						}
 						(Number::Complex(a, b), Number::Complex(c, d)) => {
-							return Number::Int((a != c && b != d) as i32)
+							return Number::Int((a != c && b != d) as i32);
 						}
 						_ => unimplemented!(),
 					},
@@ -292,7 +297,7 @@ impl Interpreter {
 			}
 			Expression::Identifier(name) => {
 				// TODO: Error handling for when name does not
-				*self.globals.get(name).unwrap()
+				self.globals.get(name).unwrap().clone()
 			}
 			Expression::Real(f) => Number::Real(*f),
 			Expression::Integer(i) => Number::Int(*i),
@@ -300,6 +305,11 @@ impl Interpreter {
 				self.interpret_expression(a).real(),
 				self.interpret_expression(b).real(),
 			),
+			Expression::Matrix(matrix) => Number::Matrix(matrix.iter().map(|f| {
+				f.iter()
+					.map(|g| self.interpret_expression(g))
+					.collect::<Vec<Number>>()
+			}).collect::<Vec<Vec<Number>>>()),
 			Expression::FunctionCall(name, exprs) => {
 				// A simple standard function is a term used to define a function which
 				// takes only Number as arguments opposed to say function name

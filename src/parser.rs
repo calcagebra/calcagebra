@@ -225,7 +225,7 @@ impl Parser {
 		let mut expr: Option<Expression> = None;
 
 		let start = *tokeninfo.range.start();
-		let mut end;
+		let mut end = *tokeninfo.range.end();
 
 		match token {
 			Token::Identifier(i) => {
@@ -261,6 +261,71 @@ impl Parser {
 				end = *range.end();
 				expr = Some(exp);
 				tokens.next();
+			}
+			Token::LSquare => {
+				let mut matrix = vec![];
+
+				let mut column = vec![];
+
+				let mut column_tokens: Vec<TokenInfo> = vec![];
+
+				loop {
+					let t = tokens.peek();
+
+					if t.is_none() {
+						break;
+					}
+
+					let t = tokens.next().unwrap();
+
+					if t.token == Token::RSquare {
+						if column_tokens.len() > 0 {
+							let exp;
+
+							(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+
+							column.push(exp);
+						}
+
+						end = *t.range.end();
+						matrix.push(column);
+						break;
+					}
+
+					if t.token == Token::Comma {
+						if column_tokens.len() > 0 {
+							let exp;
+
+							(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+
+							column.push(exp);
+							column_tokens.clear();
+						}
+						end = *t.range.end();
+						matrix.push(column.clone());
+						column.clear();
+						continue;
+					}
+
+					let last_token = column_tokens.last();
+
+					if last_token.is_some()
+						&& !last_token.unwrap().token.is_operator()
+						&& !t.token.is_operator()
+					{
+						let exp;
+
+						(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+
+						column.push(exp);
+						column_tokens.clear();
+					}
+
+					end = *t.range.end();
+					column_tokens.push((*t).clone());
+				}
+
+				expr = Some(Expression::Matrix(matrix));
 			}
 			Token::Abs => {
 				let exp;

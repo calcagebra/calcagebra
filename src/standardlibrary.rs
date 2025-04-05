@@ -150,6 +150,7 @@ pub fn sqrt(a: Vec<Number>) -> Number {
 
 			Number::Complex(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
 		},
+		_ => unimplemented!()
 	}
 }
 

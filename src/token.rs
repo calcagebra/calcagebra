@@ -47,6 +47,8 @@ pub enum Token {
 	Colon,
 	LParen,
 	RParen,
+	LSquare,
+	RSquare,
 	LCurly,
 	RCurly,
 	Abs,
@@ -84,6 +86,8 @@ impl Token {
 			":" => Token::Colon,
 			"(" => Token::LParen,
 			")" => Token::RParen,
+			"[" => Token::LSquare,
+			"]" => Token::RSquare,
 			"{" => Token::LCurly,
 			"}" => Token::RCurly,
 			_ => {
@@ -102,6 +106,13 @@ impl Token {
 					Token::Identifier(token)
 				}
 			}
+		}
+	}
+
+	pub fn is_operator(&self) -> bool {
+		match self {
+			Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Pow | Token::Rem => true,
+			_ => false,
 		}
 	}
 }
@@ -141,6 +152,8 @@ impl Display for Token {
 				Token::Colon => ":".to_string(),
 				Token::LParen => "(".to_string(),
 				Token::RParen => ")".to_string(),
+				Token::LSquare => "[".to_string(),
+				Token::RSquare => "]".to_string(),
 				Token::LCurly => "{".to_string(),
 				Token::RCurly => "}".to_string(),
 			}

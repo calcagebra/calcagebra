@@ -18,6 +18,7 @@ pub enum Expression {
 	Integer(i32),
 	Real(f32),
 	Complex(Box<Expression>, Box<Expression>),
+	Matrix(Vec<Vec<Expression>>),
 	FunctionCall(String, Vec<Expression>),
 }
 
@@ -43,11 +44,14 @@ impl Expression {
 					| (NumberType::Real, NumberType::Int)
 					| (NumberType::Real, NumberType::Real) => NumberType::Real,
 					(NumberType::Complex, _) | (_, NumberType::Complex) => NumberType::Complex,
+					// TODO: Make this stricter
+					(NumberType::Matrix, _) | (_, NumberType::Matrix) => NumberType::Matrix,
 				})
 			}
 			Expression::Identifier(_) => None,
 			Expression::Real(..) => Some(NumberType::Real),
 			Expression::Integer(..) => Some(NumberType::Int),
+			Expression::Matrix(..) => Some(NumberType::Matrix),
 			Expression::Complex(..) => Some(NumberType::Complex),
 			Expression::FunctionCall(ident, _) => {
 				if standardlibrary::is_simple_standard_function(ident)
