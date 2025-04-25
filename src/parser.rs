@@ -32,20 +32,6 @@ impl Parser {
 			let identifier = tokens.next().unwrap();
 
 			match identifier.token {
-				Token::Import => {
-					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-						tokens.next();
-						ast.push(AstNode::Import(ident.to_owned()));
-						continue;
-					}
-					let tokeninfo = tokens.next().unwrap();
-
-					self.reporter.syntax_error(
-						&self.file,
-						&tokeninfo.range,
-						(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-					)
-				}
 				Token::Let => {
 					let mut datatype = None;
 

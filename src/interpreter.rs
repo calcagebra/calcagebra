@@ -50,7 +50,6 @@ impl Interpreter {
 
 	pub fn interpret_node(&mut self, node: AstNode) {
 		match node {
-			AstNode::Import(_) => todo!(),
 			AstNode::Assignment((name, numbertype), expr) => {
 				let number = self.interpret_expression(&expr);
 

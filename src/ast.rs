@@ -3,7 +3,6 @@ use crate::{standardlibrary, token::Token, types::NumberType};
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum AstNode {
-	Import(String),
 	Assignment((String, Option<NumberType>), Expression),
 	FunctionCall(String, Vec<Expression>),
 	FunctionDeclaration(String, Vec<(String, NumberType)>, NumberType, Expression),
