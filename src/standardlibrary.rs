@@ -95,7 +95,7 @@ pub fn round(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
 		NumberType::Int => Number::Int(a[0].real().round() as i32),
 		NumberType::Real => Number::Real(a[0].real().round()),
-		_ => unimplemented!()
+		_ => unimplemented!(),
 	}
 }
 
@@ -103,7 +103,7 @@ pub fn ceil(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
 		NumberType::Int => Number::Int(a[0].real().ceil() as i32),
 		NumberType::Real => Number::Real(a[0].real().ceil()),
-		_ => unimplemented!()
+		_ => unimplemented!(),
 	}
 }
 
@@ -111,7 +111,7 @@ pub fn floor(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
 		NumberType::Int => Number::Int(a[0].real().floor() as i32),
 		NumberType::Real => Number::Real(a[0].real().floor()),
-		_ => unimplemented!()
+		_ => unimplemented!(),
 	}
 }
 
@@ -141,16 +141,15 @@ pub fn tan(a: Vec<Number>) -> Number {
 
 pub fn sqrt(a: Vec<Number>) -> Number {
 	match a[0] {
-		Number::Int(..) |
-		Number::Real(..) => Number::Real(a[0].real().sqrt()),
+		Number::Int(..) | Number::Real(..) => Number::Real(a[0].real().sqrt()),
 		Number::Complex(a, b) => {
-			let r = (a*a + b*b).sqrt();
+			let r = (a * a + b * b).sqrt();
 
-			let zr = ((a+r)*(a+r) + b*b).sqrt();
+			let zr = ((a + r) * (a + r) + b * b).sqrt();
 
 			Number::Complex(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
-		},
-		_ => unimplemented!()
+		}
+		_ => unimplemented!(),
 	}
 }
 

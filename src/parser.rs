@@ -88,10 +88,7 @@ impl Parser {
 							.type_error(&self.file, &range, (datatype.unwrap(), expr_type.unwrap()));
 					}
 
-					ast.push(AstNode::Assignment(
-						(name.to_string(), datatype),
-						expr,
-					));
+					ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
 				}
 				Token::Fn => {
 					let name = match &tokens.next().unwrap().token {

@@ -1,21 +1,21 @@
 mod ast;
+mod errors;
+mod interpreter;
 mod lexer;
 mod parser;
 mod repl;
 mod standardlibrary;
 mod token;
-mod errors;
-mod interpreter;
 mod types;
 
 use std::{fs::read_to_string, time::Instant};
 
-use clap::{command, Parser as ClapParser, Subcommand};
+use clap::{Parser as ClapParser, Subcommand, command};
 use errors::ErrorReporter;
-use lexer::Lexer;
 use interpreter::Interpreter;
-use repl::repl;
+use lexer::Lexer;
 use parser::Parser;
+use repl::repl;
 
 #[derive(ClapParser, Debug)]
 #[clap(author, version, about, long_about = None)]

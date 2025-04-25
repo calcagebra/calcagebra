@@ -56,7 +56,11 @@ impl Interpreter {
 
 				if numbertype.is_some() && number.r#type() != numbertype.unwrap() {
 					// TODO: proper errors
-					panic!("type mismatch found {} expected {}", number, numbertype.unwrap())
+					panic!(
+						"type mismatch found {} expected {}",
+						number,
+						numbertype.unwrap()
+					)
 				}
 
 				self.globals.insert(name, number);

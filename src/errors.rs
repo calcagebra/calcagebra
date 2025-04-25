@@ -8,8 +8,8 @@ use codespan_reporting::{
 	term::termcolor::{ColorChoice, StandardStream},
 };
 
-use crate::types::NumberType;
 use crate::token::Token;
+use crate::types::NumberType;
 
 #[derive(Debug, Clone)]
 pub struct ErrorReporter {
