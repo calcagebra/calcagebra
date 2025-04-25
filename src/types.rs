@@ -54,21 +54,49 @@ impl Display for Number {
 				Number::Real(f) => f.to_string(),
 				Number::Complex(a, b) => format!("{a} + {b}i"),
 				Number::Matrix(matrix) => {
+					let mut highest_padding_required = 0;
+					let mut whitespace_index_map = vec![];
+
+					for i in 0..matrix[0].len() {
+						let mut max_len = 0;
+						for row in matrix {
+							if row[i].to_string().len() > max_len {
+								max_len = row[i].to_string().len();
+							}
+						}
+						whitespace_index_map.push(max_len);
+					}
+
+					let rows = matrix
+						.iter()
+						.map(|c| {
+							let row = c
+								.iter()
+								.enumerate()
+								.map(|(i, m)| {
+									let l = m.to_string();
+									if l.len() < whitespace_index_map[i] {
+										m.to_string() + &" ".repeat(whitespace_index_map[i] - l.len())
+									} else {
+										l
+									}
+								})
+								.collect::<Vec<String>>()
+								.join(" ");
+
+							if row.len() > highest_padding_required {
+								highest_padding_required = row.len();
+							}
+
+							format!("│ {row} │")
+						})
+						.collect::<Vec<String>>();
+
 					format!(
-						"┌  {}  ┐\n{}\n└  {}  ┘",
-						" ".repeat(matrix[0].len()),
-						matrix
-							.iter()
-							.map(|c| format!(
-								"│ {} │",
-								c.iter()
-									.map(|m| m.to_string())
-									.collect::<Vec<String>>()
-									.join(" ")
-							))
-							.collect::<Vec<String>>()
-							.join("\n"),
-						" ".repeat(matrix[0].len()),
+						"┌ {} ┐\n{}\n└ {} ┘",
+						" ".repeat(highest_padding_required),
+						rows.join("\n"),
+						" ".repeat(highest_padding_required),
 					)
 				}
 			}
