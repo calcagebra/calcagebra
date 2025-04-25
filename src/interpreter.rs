@@ -104,7 +104,7 @@ impl Interpreter {
 			AstNode::FunctionDeclaration(name, items, number_type, expr) => {
 				self
 					.functions
-					.insert(name.clone(), Function::new(name, items, number_type, expr));
+					.insert(name, Function::new( items, number_type, expr));
 			}
 		}
 	}
@@ -440,6 +440,10 @@ impl Interpreter {
 
 					self.globals = globals;
 
+					if r.r#type() != f.return_type {
+						panic!("return type and expression type are not the same")
+					}
+
 					return r;
 				}
 
@@ -451,7 +455,6 @@ impl Interpreter {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-	pub name: String,
 	pub params: Vec<(String, NumberType)>,
 	pub return_type: NumberType,
 	pub code: Expression,
@@ -459,13 +462,11 @@ pub struct Function {
 
 impl Function {
 	pub fn new(
-		name: String,
 		params: Vec<(String, NumberType)>,
 		return_type: NumberType,
 		code: Expression,
 	) -> Self {
 		Self {
-			name,
 			params,
 			return_type,
 			code,
