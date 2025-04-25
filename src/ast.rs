@@ -4,7 +4,7 @@ use crate::{standardlibrary, token::Token, types::NumberType};
 
 pub enum AstNode {
 	Import(String),
-	Assignment((String, NumberType), Expression),
+	Assignment((String, Option<NumberType>), Expression),
 	FunctionCall(String, Vec<Expression>),
 	FunctionDeclaration(String, Vec<(String, NumberType)>, NumberType, Expression),
 }
@@ -17,7 +17,6 @@ pub enum Expression {
 	Identifier(String),
 	Integer(i32),
 	Real(f32),
-	Complex(Box<Expression>, Box<Expression>),
 	Matrix(Vec<Vec<Expression>>),
 	FunctionCall(String, Vec<Expression>),
 }
@@ -52,7 +51,6 @@ impl Expression {
 			Expression::Real(..) => Some(NumberType::Real),
 			Expression::Integer(..) => Some(NumberType::Int),
 			Expression::Matrix(..) => Some(NumberType::Matrix),
-			Expression::Complex(..) => Some(NumberType::Complex),
 			Expression::FunctionCall(ident, _) => {
 				if standardlibrary::is_simple_standard_function(ident)
 					|| standardlibrary::is_complex_standard_function(ident)

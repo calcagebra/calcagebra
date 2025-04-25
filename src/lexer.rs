@@ -125,7 +125,35 @@ impl<'a> Lexer<'a> {
 			}
 		}
 
-		tokens
+		let mut r = vec![];
+
+		let mut offset = 0;
+
+		for i in 0..tokens.len() {
+			let tokeninfo = tokens.get(i).unwrap();
+
+			r.push(TokenInfo::new(
+				tokeninfo.token.clone(),
+				*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+			));
+
+			if tokens.get(i + 1).is_none() {
+				break;
+			}
+
+			if let Token::Integer(_) = tokeninfo.token {
+				if let Token::Identifier(_) = tokens[i + 1].token {
+					offset += 1;
+
+					r.push(TokenInfo::new(
+						Token::Mul,
+						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+					));
+				}
+			}
+		}
+
+		r
 	}
 }
 

@@ -89,7 +89,7 @@ impl Parser {
 					}
 
 					ast.push(AstNode::Assignment(
-						(name.to_string(), datatype.unwrap()),
+						(name.to_string(), datatype),
 						expr,
 					));
 				}
@@ -239,17 +239,7 @@ impl Parser {
 					(expr, tokens, end) = self.parse_fn(tokens, i.clone());
 				} else {
 					end = *tokeninfo.range.end();
-					expr = Some(Expression::Identifier(i.to_string()));
-
-					if tokens.peek().is_some()
-						&& tokens.peek().unwrap().token == Token::Identifier("i".to_owned())
-					{
-						expr = Some(Expression::Complex(
-							Box::new(Expression::Real(0.0)),
-							Box::new(Expression::Identifier(i.to_string())),
-						));
-						end = *tokens.next().unwrap().range.end();
-					}
+					expr = Some(Expression::Identifier(i.to_string()))
 				};
 			}
 			Token::LParen => {
@@ -354,30 +344,10 @@ impl Parser {
 			Token::Integer(n) => {
 				expr = Some(Expression::Integer(*n));
 				end = *tokeninfo.range.end();
-
-				if tokens.peek().is_some()
-					&& tokens.peek().unwrap().token == Token::Identifier("i".to_owned())
-				{
-					expr = Some(Expression::Complex(
-						Box::new(Expression::Real(0.0)),
-						Box::new(Expression::Real(*n as f32)),
-					));
-					end = *tokens.next().unwrap().range.end();
-				}
 			}
 			Token::Float(n) => {
 				expr = Some(Expression::Real(*n));
 				end = *tokeninfo.range.end();
-
-				if tokens.peek().is_some()
-					&& tokens.peek().unwrap().token == Token::Identifier("i".to_owned())
-				{
-					expr = Some(Expression::Complex(
-						Box::new(Expression::Real(0.0)),
-						Box::new(Expression::Real(*n)),
-					));
-					end = *tokens.next().unwrap().range.end();
-				}
 			}
 			_ => {
 				end = *tokeninfo.range.end();

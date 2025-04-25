@@ -1,4 +1,8 @@
-use std::{collections::HashMap, ops::Rem};
+use std::{
+	collections::HashMap,
+	f32::consts::{E, PI},
+	ops::Rem,
+};
 
 use crate::{
 	ast::{AstNode, Expression},
@@ -23,7 +27,22 @@ impl Interpreter {
 		}
 	}
 
+	pub fn setup(&mut self) {
+		let globals = vec![
+			("i", Number::Complex(0.0, 1.0)),
+			("pi", Number::Real(PI)),
+			("π", Number::Real(PI)),
+			("e", Number::Real(E)),
+		];
+
+		for (global, data) in globals {
+			self.globals.insert(String::from(global), data);
+		}
+	}
+
 	pub fn interpret(&mut self, ast: Vec<AstNode>) {
+		self.setup();
+
 		for node in ast {
 			self.interpret_node(node);
 		}
@@ -35,9 +54,9 @@ impl Interpreter {
 			AstNode::Assignment((name, numbertype), expr) => {
 				let number = self.interpret_expression(&expr);
 
-				if number.r#type() != numbertype {
+				if numbertype.is_some() && number.r#type() != numbertype.unwrap() {
 					// TODO: proper errors
-					panic!("type mismatch found {} expected {}", number, numbertype)
+					panic!("type mismatch found {} expected {}", number, numbertype.unwrap())
 				}
 
 				self.globals.insert(name, number);
@@ -301,15 +320,16 @@ impl Interpreter {
 			}
 			Expression::Real(f) => Number::Real(*f),
 			Expression::Integer(i) => Number::Int(*i),
-			Expression::Complex(a, b) => Number::Complex(
-				self.interpret_expression(a).real(),
-				self.interpret_expression(b).real(),
+			Expression::Matrix(matrix) => Number::Matrix(
+				matrix
+					.iter()
+					.map(|f| {
+						f.iter()
+							.map(|g| self.interpret_expression(g))
+							.collect::<Vec<Number>>()
+					})
+					.collect::<Vec<Vec<Number>>>(),
 			),
-			Expression::Matrix(matrix) => Number::Matrix(matrix.iter().map(|f| {
-				f.iter()
-					.map(|g| self.interpret_expression(g))
-					.collect::<Vec<Number>>()
-			}).collect::<Vec<Vec<Number>>>()),
 			Expression::FunctionCall(name, exprs) => {
 				// A simple standard function is a term used to define a function which
 				// takes only Number as arguments opposed to say function name
