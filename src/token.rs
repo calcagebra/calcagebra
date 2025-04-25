@@ -110,13 +110,6 @@ impl Token {
 			}
 		}
 	}
-
-	pub fn is_operator(&self) -> bool {
-		match self {
-			Token::Add | Token::Sub | Token::Mul | Token::Div | Token::Pow | Token::Rem => true,
-			_ => false,
-		}
-	}
 }
 
 impl Display for Token {

@@ -318,6 +318,9 @@ impl Interpreter {
 							(Number::Complex(a, b), Number::Complex(c, d)) => {
 								return Number::Int((a == c && b == d) as i32);
 							}
+							(Number::Matrix(a), Number::Matrix(b)) => {
+								return Number::Int((a == b) as i32);
+							}
 							_ => unimplemented!(),
 						},
 						Token::NEq => match (lhd, rhd) {
@@ -329,6 +332,9 @@ impl Interpreter {
 							}
 							(Number::Complex(a, b), Number::Complex(c, d)) => {
 								return Number::Int((a != c && b != d) as i32);
+							}
+							(Number::Matrix(a), Number::Matrix(b)) => {
+								return Number::Int((a != b) as i32);
 							}
 							_ => unimplemented!(),
 						},
