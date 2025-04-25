@@ -76,7 +76,7 @@ impl Display for Number {
 								.map(|(i, m)| {
 									let l = m.to_string();
 									if l.len() < whitespace_index_map[i] {
-										m.to_string() + &" ".repeat(whitespace_index_map[i] - l.len())
+										" ".repeat(whitespace_index_map[i] - l.len()) + &m.to_string()
 									} else {
 										l
 									}
