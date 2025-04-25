@@ -103,7 +103,7 @@ impl Interpreter {
 			AstNode::FunctionDeclaration(name, items, number_type, expr) => {
 				self
 					.functions
-					.insert(name, Function::new( items, number_type, expr));
+					.insert(name, Function::new(items, number_type, expr));
 			}
 		}
 	}
@@ -460,11 +460,7 @@ pub struct Function {
 }
 
 impl Function {
-	pub fn new(
-		params: Vec<(String, NumberType)>,
-		return_type: NumberType,
-		code: Expression,
-	) -> Self {
+	pub fn new(params: Vec<(String, NumberType)>, return_type: NumberType, code: Expression) -> Self {
 		Self {
 			params,
 			return_type,
