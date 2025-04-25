@@ -252,9 +252,9 @@ impl Parser {
 			Token::LSquare => {
 				let mut matrix = vec![];
 
-				let mut column = vec![];
+				let mut row = vec![];
 
-				let mut column_tokens: Vec<TokenInfo> = vec![];
+				let mut row_tokens: Vec<TokenInfo> = vec![];
 
 				loop {
 					let t = tokens.peek();
@@ -266,50 +266,46 @@ impl Parser {
 					let t = tokens.next().unwrap();
 
 					if t.token == Token::RSquare {
-						if column_tokens.len() > 0 {
+						if row_tokens.len() > 0 {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
 
-							column.push(exp);
+							row.push(exp);
 						}
 
 						end = *t.range.end();
-						matrix.push(column);
+						matrix.push(row);
 						break;
 					}
 
-					if t.token == Token::Comma {
-						if column_tokens.len() > 0 {
+					if t.token == Token::SemiColon {
+						if row_tokens.len() > 0 {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
 
-							column.push(exp);
-							column_tokens.clear();
+							row.push(exp);
+							row_tokens.clear();
 						}
 						end = *t.range.end();
-						matrix.push(column.clone());
-						column.clear();
+						matrix.push(row.clone());
+						row.clear();
 						continue;
 					}
 
-					let last_token = column_tokens.last();
-
-					if last_token.is_some()
-						&& !last_token.unwrap().token.is_operator()
-						&& !t.token.is_operator()
-					{
+					if t.token == Token::Comma {
 						let exp;
 
-						(exp, _, _) = self.pratt_parser(column_tokens.iter().peekable(), 0);
+						(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
 
-						column.push(exp);
-						column_tokens.clear();
+						row.push(exp);
+						row_tokens.clear();
+						continue;
 					}
 
 					end = *t.range.end();
-					column_tokens.push((*t).clone());
+					row_tokens.push((*t).clone());
 				}
 
 				expr = Some(Expression::Matrix(matrix));
