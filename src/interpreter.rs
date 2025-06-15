@@ -174,7 +174,7 @@ impl Interpreter {
 							(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a - c, b - d),
 							(Number::Matrix(a), Number::Matrix(b)) => {
 								if a.len() != b.len() {
-									panic!("matrix rows are not same, required for addition")
+									panic!("matrix rows are not same, required for subtraction")
 								}
 
 								let mut r = vec![];
