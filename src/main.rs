@@ -46,7 +46,6 @@ enum Subcommands {
 
 fn main() {
 	let args = Args::parse();
-	let main = Instant::now();
 
 	let input = match args.command {
 		Subcommands::Run { name } => name,
@@ -57,7 +56,17 @@ fn main() {
 		repl();
 	}
 
-	let contents = read_to_string(input.clone()).unwrap();
+	run(&input, args.debug, args.time);
+}
+
+pub fn version() -> String {
+	env!("CARGO_PKG_VERSION").to_string()
+}
+
+pub fn run(input: &str, debug: bool, time: bool) {
+	let main = Instant::now();
+
+	let contents = read_to_string(input).unwrap();
 
 	let mut reporter = ErrorReporter::new();
 
@@ -65,26 +74,32 @@ fn main() {
 
 	let tokens = Lexer::new(&contents).tokens();
 
-	if args.debug {
+	if debug {
 		let duration = main.elapsed();
 		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
 	}
 
 	let ast = Parser::new(&input, tokens, reporter).ast();
 
-	if args.debug {
+	if debug {
 		let duration = main.elapsed();
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
 
 	Interpreter::new().interpret(ast);
 
-	if args.debug || args.time {
+	if debug || time {
 		let duration = main.elapsed();
 		println!("\nTIME: {duration:?}");
 	}
 }
 
-pub fn version() -> String {
-	env!("CARGO_PKG_VERSION").to_string()
+#[cfg(test)]
+mod tests {
+    use crate::run;
+
+	#[test]
+	fn matrix() {
+		run("tests/matrix.cal", false, false);
+	}
 }
