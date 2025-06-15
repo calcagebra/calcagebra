@@ -22,19 +22,19 @@ pub fn internal_type_map(f: &str) -> (Vec<NumberType>, NumberType) {
 	}
 }
 
-pub fn is_simple_standard_function(f: &str) -> bool {
+pub fn is_std(f: &str) -> bool {
 	[
 		"print", "read", "int", "real", "round", "ceil", "floor", "ln", "log10", "log", "sin", "cos",
-		"tan", "sqrt", "cbrt", "nrt",
+		"tan", "sqrt", "cbrt", "nrt", "graph"
 	]
 	.contains(&f)
 }
 
-pub fn is_complex_standard_function(f: &str) -> bool {
+pub fn needs_ctx(f: &str) -> bool {
 	["graph"].contains(&f)
 }
 
-pub fn simple_call(f: &str, args: Vec<Number>) -> Number {
+pub fn call(f: &str, args: Vec<Number>) -> Number {
 	match f {
 		"print" => print(args),
 		"read" => read(),
@@ -56,7 +56,7 @@ pub fn simple_call(f: &str, args: Vec<Number>) -> Number {
 	}
 }
 
-pub fn complex_call(f: &str, args: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
+pub fn ctx_call(f: &str, args: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
 	match f {
 		"graph" => graph(args, interpreter),
 		_ => unreachable!(),

@@ -6,9 +6,7 @@ use std::{
 
 use crate::{
 	ast::{AstNode, Expression},
-	standardlibrary::{
-		complex_call, is_complex_standard_function, is_simple_standard_function, simple_call,
-	},
+	standardlibrary::{call, ctx_call, is_std, needs_ctx},
 	token::Token,
 	types::{Number, NumberType},
 };
@@ -65,21 +63,17 @@ impl Interpreter {
 				self.globals.insert(name, number);
 			}
 			AstNode::FunctionCall(name, exprs) => {
-				// A simple standard function is a term used to define a function which
-				// takes only Number as arguments opposed to say function name
-				if is_simple_standard_function(&name) {
+				if is_std(&name) && !needs_ctx(&name) {
 					let mut args = vec![];
 
 					for expr in exprs {
 						args.push(self.interpret_expression(&expr))
 					}
 
-					simple_call(&name, args);
+					call(&name, args);
 				}
-				// A complex function is one which may take any combination of argument and types
-				// currently only graph is a complex function
-				else if is_complex_standard_function(&name) {
-					complex_call(&name, exprs, self);
+				else if is_std(&name) && needs_ctx(&name) {
+					ctx_call(&name, exprs, self);
 				} else if self.functions.contains_key(&name) {
 					let f: Function = self.functions.get(&name).unwrap().clone();
 					let globals = self.globals.clone();
@@ -407,19 +401,19 @@ impl Interpreter {
 			Expression::FunctionCall(name, exprs) => {
 				// A simple standard function is a term used to define a function which
 				// takes only Number as arguments opposed to say function name
-				if is_simple_standard_function(&name) {
+				if is_std(&name) && !needs_ctx(&name) {
 					let mut args = vec![];
 
 					for expr in exprs {
 						args.push(self.interpret_expression(&expr))
 					}
 
-					return simple_call(&name, args);
+					return call(&name, args);
 				}
 				// A complex function is one which may take any combination of argument and types
 				// currently only graph is a complex function
-				else if is_complex_standard_function(&name) {
-					return complex_call(&name, exprs.to_vec(), self);
+				else if is_std(&name) && needs_ctx(&name) {
+					return ctx_call(&name, exprs.to_vec(), self);
 				} else if self.functions.contains_key(name) {
 					let f = self.functions.get(name).unwrap().clone();
 					let globals = self.globals.clone();
