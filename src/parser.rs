@@ -7,16 +7,14 @@ use crate::{
 	types::NumberType,
 };
 
-pub struct Parser {
-	file: String,
+pub struct Parser<'a> {
 	tokens: Vec<Vec<TokenInfo>>,
-	reporter: ErrorReporter,
+	reporter: ErrorReporter<'a>,
 }
 
-impl Parser {
-	pub fn new(file: &str, tokens: Vec<Vec<TokenInfo>>, reporter: ErrorReporter) -> Self {
+impl<'a> Parser<'a> {
+	pub fn new(tokens: Vec<Vec<TokenInfo>>, reporter: ErrorReporter<'a>) -> Self {
 		Self {
-			file: file.to_string(),
 			tokens,
 			reporter,
 		}
@@ -46,7 +44,6 @@ impl Parser {
 							let tokeninfo = tokens.next().unwrap();
 
 							self.reporter.syntax_error(
-								&self.file,
 								&tokeninfo.range,
 								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 							)
@@ -58,7 +55,7 @@ impl Parser {
 						_ => unreachable!(),
 					};
 
-					tokens.next(); // Token =
+					tokens.next(); // `=`
 
 					let (expr, _, range) = self.pratt_parser(tokens, 0);
 
@@ -71,7 +68,7 @@ impl Parser {
 					if expr_type.is_some() && expr_type.unwrap() != datatype.unwrap() {
 						self
 							.reporter
-							.type_error(&self.file, &range, (datatype.unwrap(), expr_type.unwrap()));
+							.type_error(&range, (datatype.unwrap(), expr_type.unwrap()));
 					}
 
 					ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
@@ -82,7 +79,7 @@ impl Parser {
 						_ => unreachable!(),
 					};
 
-					tokens.next(); // Token (
+					tokens.next(); // `(`
 
 					let mut args = vec![];
 
@@ -113,7 +110,6 @@ impl Parser {
 								let tokeninfo = tokens.next().unwrap();
 
 								self.reporter.syntax_error(
-									&self.file,
 									&tokeninfo.range,
 									(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 								)
@@ -142,7 +138,6 @@ impl Parser {
 							let tokeninfo = tokens.next().unwrap();
 
 							self.reporter.syntax_error(
-								&self.file,
 								&tokeninfo.range,
 								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
 							)
@@ -152,11 +147,9 @@ impl Parser {
 					let tokeninfo = tokens.next().unwrap();
 
 					if tokeninfo.token != Token::Eq {
-						self.reporter.syntax_error(
-							&self.file,
-							&tokeninfo.range,
-							(&Token::LParen, &tokeninfo.token),
-						);
+						self
+							.reporter
+							.syntax_error(&tokeninfo.range, (&Token::LParen, &tokeninfo.token));
 					}
 
 					let (expr, _, range) = self.pratt_parser(tokens, 0);
@@ -164,11 +157,9 @@ impl Parser {
 					let expr_type = expr.infer_datatype();
 
 					if expr_type.is_some() && expr_type.unwrap() != return_type.unwrap() {
-						self.reporter.type_error(
-							&self.file,
-							&range,
-							(return_type.unwrap(), expr_type.unwrap()),
-						);
+						self
+							.reporter
+							.type_error(&range, (return_type.unwrap(), expr_type.unwrap()));
 					}
 
 					ast.push(AstNode::FunctionDeclaration(
@@ -193,13 +184,13 @@ impl Parser {
 		ast
 	}
 
-	pub fn pratt_parser<'a>(
-		&'a self,
-		mut tokens: Peekable<Iter<'a, TokenInfo>>,
+	pub fn pratt_parser<'b>(
+		&'b self,
+		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		prec: u16,
 	) -> (
 		Expression,
-		Peekable<Iter<'a, TokenInfo>>,
+		Peekable<Iter<'b, TokenInfo>>,
 		RangeInclusive<usize>,
 	) {
 		let tokeninfo = &tokens.next().unwrap();
@@ -364,11 +355,11 @@ impl Parser {
 		(expr.unwrap(), tokens, start..=end)
 	}
 
-	pub fn parse_fn<'a>(
-		&'a self,
-		mut tokens: Peekable<Iter<'a, TokenInfo>>,
+	pub fn parse_fn<'b>(
+		&'b self,
+		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		i: String,
-	) -> (Option<Expression>, Peekable<Iter<'a, TokenInfo>>, usize) {
+	) -> (Option<Expression>, Peekable<Iter<'b, TokenInfo>>, usize) {
 		let mut depth = 0;
 		let mut params = vec![];
 		let mut expression = vec![];
@@ -433,10 +424,10 @@ impl Parser {
 		)
 	}
 
-	pub fn parse_if<'a>(
-		&'a self,
-		mut tokens: Peekable<Iter<'a, TokenInfo>>,
-	) -> (Option<Expression>, Peekable<Iter<'a, TokenInfo>>, usize) {
+	pub fn parse_if<'b>(
+		&'b self,
+		mut tokens: Peekable<Iter<'b, TokenInfo>>,
+	) -> (Option<Expression>, Peekable<Iter<'b, TokenInfo>>, usize) {
 		let mut depth = 1;
 		let mut params = vec![];
 		let mut expression = vec![];

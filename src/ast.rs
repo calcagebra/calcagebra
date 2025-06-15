@@ -42,7 +42,6 @@ impl Expression {
 					| (NumberType::Real, NumberType::Int)
 					| (NumberType::Real, NumberType::Real) => NumberType::Real,
 					(NumberType::Complex, _) | (_, NumberType::Complex) => NumberType::Complex,
-					// TODO: Make this stricter
 					(NumberType::Matrix, _) | (_, NumberType::Matrix) => NumberType::Matrix,
 				})
 			}

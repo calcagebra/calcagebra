@@ -68,9 +68,7 @@ pub fn run(input: &str, debug: bool, time: bool) {
 
 	let contents = read_to_string(input).unwrap();
 
-	let mut reporter = ErrorReporter::new();
-
-	reporter.add_file(&input, &contents);
+	let reporter = ErrorReporter::new(input, &contents);
 
 	let tokens = Lexer::new(&contents).tokens();
 
@@ -79,7 +77,7 @@ pub fn run(input: &str, debug: bool, time: bool) {
 		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let ast = Parser::new(&input, tokens, reporter).ast();
+	let ast = Parser::new(tokens, reporter).ast();
 
 	if debug {
 		let duration = main.elapsed();

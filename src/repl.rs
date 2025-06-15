@@ -98,10 +98,9 @@ pub fn repl() {
 
 				println!("\x1b[1m\x1b[31m[Out]:\x1b[0m ");
 
-				let mut reporter = ErrorReporter::new();
-				reporter.add_file("REPL", &line);
+				let reporter = ErrorReporter::new("REPL", &line);
 
-				interpreter.interpret(Parser::new("REPL", Lexer::new(&line).tokens(), reporter).ast());
+				interpreter.interpret(Parser::new(Lexer::new(&line).tokens(), reporter).ast());
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");
