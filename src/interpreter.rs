@@ -166,8 +166,6 @@ impl Interpreter {
 					.collect::<Vec<Vec<Number>>>(),
 			),
 			Expression::FunctionCall(name, exprs) => {
-				// A simple standard function is a term used to define a function which
-				// takes only Number as arguments opposed to say function name
 				if is_std(&name) && !needs_ctx(&name) {
 					let mut args = vec![];
 
@@ -177,8 +175,6 @@ impl Interpreter {
 
 					return call(&name, args);
 				}
-				// A complex function is one which may take any combination of argument and types
-				// currently only graph is a complex function
 				else if is_std(&name) && needs_ctx(&name) {
 					return ctx_call(&name, exprs.to_vec(), self);
 				} else if self.functions.contains_key(name) {
