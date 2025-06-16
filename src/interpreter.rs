@@ -6,7 +6,7 @@ use std::{
 use crate::{
 	ast::{AstNode, Expression},
 	standardlibrary::{
-		call, ctx_call, is_std, needs_ctx,
+		call, ctx_call, is_std, math, needs_ctx,
 		operands::{add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
 	},
 	token::Token,
@@ -105,20 +105,7 @@ impl Interpreter {
 
 	pub fn interpret_expression(&mut self, expr: &Expression) -> Number {
 		match expr {
-			Expression::Abs(expression) => {
-				let number = self.interpret_expression(expression);
-
-				let numbertype = number.r#type();
-
-				match numbertype {
-					NumberType::Int => Number::Int(number.int().abs()),
-					NumberType::Real => Number::Real(number.real().abs()),
-					NumberType::Complex => {
-						Number::Real(number.array().iter().map(|f| f * f).sum::<f32>().sqrt())
-					}
-					_ => todo!(),
-				}
-			}
+			Expression::Abs(expression) => math::abs(vec![self.interpret_expression(expression)]),
 			Expression::Binary(lhs, token, rhs) => {
 				let lhd = &self.interpret_expression(lhs);
 
@@ -174,8 +161,7 @@ impl Interpreter {
 					}
 
 					return call(&name, args);
-				}
-				else if is_std(&name) && needs_ctx(&name) {
+				} else if is_std(&name) && needs_ctx(&name) {
 					return ctx_call(&name, exprs.to_vec(), self);
 				} else if self.functions.contains_key(name) {
 					let f = self.functions.get(name).unwrap().clone();
