@@ -50,8 +50,7 @@ impl Expression {
 			Expression::Integer(..) => Some(NumberType::Int),
 			Expression::Matrix(..) => Some(NumberType::Matrix),
 			Expression::FunctionCall(ident, _) => {
-				if standardlibrary::is_std(ident)
-				{
+				if standardlibrary::is_std(ident) {
 					Some(standardlibrary::internal_type_map(ident).1)
 				} else {
 					None

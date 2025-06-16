@@ -1,12 +1,14 @@
 use std::{
 	collections::HashMap,
 	f32::consts::{E, PI},
-	ops::Rem,
 };
 
 use crate::{
 	ast::{AstNode, Expression},
-	standardlibrary::{call, ctx_call, is_std, needs_ctx},
+	standardlibrary::{
+		call, ctx_call, is_std, needs_ctx,
+		operands::{add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
+	},
 	token::Token,
 	types::{Number, NumberType},
 };
@@ -71,8 +73,7 @@ impl Interpreter {
 					}
 
 					call(&name, args);
-				}
-				else if is_std(&name) && needs_ctx(&name) {
+				} else if is_std(&name) && needs_ctx(&name) {
 					ctx_call(&name, exprs, self);
 				} else if self.functions.contains_key(&name) {
 					let f: Function = self.functions.get(&name).unwrap().clone();
@@ -119,259 +120,25 @@ impl Interpreter {
 				}
 			}
 			Expression::Binary(lhs, token, rhs) => {
-				let lhd = self.interpret_expression(lhs);
+				let lhd = &self.interpret_expression(lhs);
 
-				let rhd = self.interpret_expression(rhs);
+				let rhd = &self.interpret_expression(rhs);
 
-				fn solve(lhd: &Number, rhd: &Number, token: &Token) -> Number {
-					match token {
-						Token::Add => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => return Number::Int(a + b),
-							(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
-								return Number::Real(*a as f32 + b);
-							}
-							(Number::Real(a), Number::Real(b)) => return Number::Real(a + b),
-							(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
-								Number::Complex(a + (*n as f32), *b)
-							}
-							(Number::Real(n), Number::Complex(a, b))
-							| (Number::Complex(a, b), Number::Real(n)) => Number::Complex(a + n, *b),
-							(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a + c, b + d),
-							(Number::Matrix(a), Number::Matrix(b)) => {
-								if a.len() != b.len() {
-									panic!("matrix rows are not same, required for addition")
-								}
-
-								let mut r = vec![];
-
-								let mut col = vec![];
-
-								for (i, numbers) in a.iter().enumerate() {
-									for (j, number) in numbers.iter().enumerate() {
-										col.push(solve(&number.clone(), &b[i][j].clone(), &Token::Add));
-									}
-									r.push(col.clone());
-									col.clear();
-								}
-
-								Number::Matrix(r)
-							}
-							_ => todo!(),
-						},
-						Token::Sub => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => return Number::Int(a - b),
-							(Number::Int(a), Number::Real(b)) => {
-								return Number::Real(*a as f32 - b);
-							}
-							(Number::Real(b), Number::Int(a)) => {
-								return Number::Real(b - *a as f32);
-							}
-							(Number::Real(a), Number::Real(b)) => return Number::Real(a - b),
-							(Number::Int(n), Number::Complex(a, b)) => Number::Complex(-a + (*n as f32), -b),
-							(Number::Complex(a, b), Number::Int(n)) => Number::Complex(a - (*n as f32), *b),
-							(Number::Real(n), Number::Complex(a, b)) => Number::Complex(-a + n, -b),
-							(Number::Complex(a, b), Number::Real(n)) => Number::Complex(a - n, *b),
-							(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a - c, b - d),
-							(Number::Matrix(a), Number::Matrix(b)) => {
-								if a.len() != b.len() {
-									panic!("matrix rows are not same, required for subtraction")
-								}
-
-								let mut r = vec![];
-
-								let mut col = vec![];
-
-								for (i, numbers) in a.iter().enumerate() {
-									for (j, number) in numbers.iter().enumerate() {
-										col.push(solve(number, &b[i][j], &Token::Sub));
-									}
-									r.push(col.clone());
-									col.clear();
-								}
-
-								Number::Matrix(r)
-							}
-							_ => todo!(),
-						},
-						Token::Mul => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => return Number::Int(a * b),
-							(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
-								return Number::Real(*a as f32 * b);
-							}
-							(Number::Real(a), Number::Real(b)) => return Number::Real(a * b),
-							(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
-								Number::Complex(a * (*n as f32), b * (*n as f32))
-							}
-							(Number::Real(n), Number::Complex(a, b))
-							| (Number::Complex(a, b), Number::Real(n)) => Number::Complex(a * n, b * n),
-							(Number::Complex(a, b), Number::Complex(c, d)) => {
-								Number::Complex(a * c - b * d, a * d + b * c)
-							}
-							(Number::Matrix(a), Number::Matrix(b)) => {
-								// TODO: Check if matrices can be multipled
-
-								let mut r = vec![];
-
-								let mut col = vec![];
-
-								for row in a {
-									let mut c = 0;
-									while b[0].len() != c {
-										let mut sum = Number::Real(0.0);
-
-										for (k, number) in row.iter().enumerate() {
-											sum = solve(&sum, &solve(number, &b[k][c], &Token::Mul), &Token::Add);
-										}
-
-										col.push(sum);
-										c += 1;
-									}
-									r.push(col.clone());
-									col.clear();
-								}
-
-								Number::Matrix(r)
-							}
-							_ => todo!(),
-						},
-						Token::Div => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => return Number::Int(a / b),
-							(Number::Int(a), Number::Real(b)) => {
-								return Number::Real(*a as f32 / b);
-							}
-							(Number::Real(b), Number::Int(a)) => {
-								return Number::Real(b / *a as f32);
-							}
-							(Number::Real(a), Number::Real(b)) => return Number::Real(a / b),
-							(Number::Int(n), Number::Complex(a, b)) => Number::Complex(
-								(*n as f32) * a / (a * a + b * b),
-								-(*n as f32) * b / (a * a + b * b),
-							),
-							(Number::Complex(a, b), Number::Int(n)) => {
-								Number::Complex(a / (*n as f32), b / (*n as f32))
-							}
-							(Number::Real(n), Number::Complex(a, b)) => {
-								Number::Complex(n * a / (a * a + b * b), -n * b / (a * a + b * b))
-							}
-							(Number::Complex(a, b), Number::Real(n)) => Number::Complex(a / n, b / n),
-							(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(
-								(a * c + b * d) / (c * c + d * d),
-								(b * c - a * d) / (c * c + d * d),
-							),
-							_ => todo!(),
-						},
-						Token::Pow => {
-							match (lhd, rhd) {
-								(Number::Int(a), Number::Int(b)) => {
-									// TODO: Handle negative errors
-									return Number::Int(a.pow((*b).try_into().unwrap()));
-								}
-								(Number::Int(a), Number::Real(b)) => {
-									return Number::Real((*a as f32).powf(*b));
-								}
-								(Number::Real(a), Number::Int(b)) => {
-									return Number::Real(a.powf(*b as f32));
-								}
-								(Number::Real(a), Number::Real(b)) => {
-									return Number::Real(a.powf(*b));
-								}
-								(Number::Complex(a, b), Number::Int(n)) => {
-									let modulus = (a * a + b * b).sqrt();
-
-									let argument = (b / a).atan();
-
-									return Number::Complex(
-										modulus.powf(*n as f32) * (*n as f32 * argument).cos(),
-										modulus.powf(*n as f32) * (*n as f32 * argument).sin(),
-									);
-								}
-								_ => unimplemented!(),
-							}
-						}
-						Token::Rem => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => return Number::Int(a.rem(b)),
-							(Number::Int(a), Number::Real(b)) => {
-								return Number::Real((*a as f32).rem(b));
-							}
-							(Number::Real(a), Number::Int(b)) => {
-								return Number::Real((a).rem(*b as f32));
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Real(a.rem(b));
-							}
-							_ => unimplemented!(),
-						},
-						Token::IsEq => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a == b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a == b) as i32);
-							}
-							(Number::Complex(a, b), Number::Complex(c, d)) => {
-								return Number::Int((a == c && b == d) as i32);
-							}
-							(Number::Matrix(a), Number::Matrix(b)) => {
-								return Number::Int((a == b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						Token::NEq => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a != b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a != b) as i32);
-							}
-							(Number::Complex(a, b), Number::Complex(c, d)) => {
-								return Number::Int((a != c && b != d) as i32);
-							}
-							(Number::Matrix(a), Number::Matrix(b)) => {
-								return Number::Int((a != b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						Token::Gt => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a > b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a > b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						Token::GtEq => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a >= b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a >= b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						Token::Lt => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a < b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a < b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						Token::LtEq => match (lhd, rhd) {
-							(Number::Int(a), Number::Int(b)) => {
-								return Number::Int((a <= b) as i32);
-							}
-							(Number::Real(a), Number::Real(b)) => {
-								return Number::Int((a <= b) as i32);
-							}
-							_ => unimplemented!(),
-						},
-						_ => unreachable!(),
-					}
+				match token {
+					Token::Add => add(lhd, rhd),
+					Token::Sub => sub(lhd, rhd),
+					Token::Mul => mul(lhd, rhd),
+					Token::Div => div(lhd, rhd),
+					Token::Pow => pow(lhd, rhd),
+					Token::Rem => rem(lhd, rhd),
+					Token::IsEq => is_eq(lhd, rhd),
+					Token::NEq => neq(lhd, rhd),
+					Token::Gt => gt(lhd, rhd),
+					Token::GtEq => gteq(lhd, rhd),
+					Token::Lt => lt(lhd, rhd),
+					Token::LtEq => lteq(lhd, rhd),
+					_ => unreachable!(),
 				}
-
-				solve(&lhd, &rhd, token)
 			}
 			Expression::Branched(condition, then, otherwise) => {
 				let condition = self.interpret_expression(condition).real();

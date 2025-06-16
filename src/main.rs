@@ -94,7 +94,7 @@ pub fn run(input: &str, debug: bool, time: bool) {
 
 #[cfg(test)]
 mod tests {
-    use crate::run;
+	use crate::run;
 
 	#[test]
 	fn matrix() {

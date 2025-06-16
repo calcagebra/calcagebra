@@ -18,7 +18,7 @@ pub struct ErrorReporter<'a> {
 impl<'a> ErrorReporter<'a> {
 	pub fn new(name: &'a str, source: &'a str) -> Self {
 		Self {
-			file: SimpleFile::new(name, source)
+			file: SimpleFile::new(name, source),
 		}
 	}
 
@@ -31,11 +31,7 @@ impl<'a> ErrorReporter<'a> {
 			.with_message("incompatible types")
 			.with_code("E101")
 			.with_labels(vec![
-				Label::primary(
-					(),
-					*range.start() - 1..*range.end() - 1,
-				)
-				.with_message(format!(
+				Label::primary((), *range.start() - 1..*range.end() - 1).with_message(format!(
 					"\x1b[1mexpected `{expected}`, found `{got}`\x1b[0m"
 				)),
 			])
@@ -58,11 +54,7 @@ impl<'a> ErrorReporter<'a> {
 			.with_message("syntax error")
 			.with_code("E201")
 			.with_labels(vec![
-				Label::primary(
-					(),
-					*range.start() - 1..*range.end() - 1,
-				)
-				.with_message(format!(
+				Label::primary((), *range.start() - 1..*range.end() - 1).with_message(format!(
 					"\x1b[1mencountered `{got}` where {expected} was expected \x1b[0m"
 				)),
 			])

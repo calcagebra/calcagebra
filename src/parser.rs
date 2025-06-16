@@ -14,10 +14,7 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
 	pub fn new(tokens: Vec<Vec<TokenInfo>>, reporter: ErrorReporter<'a>) -> Self {
-		Self {
-			tokens,
-			reporter,
-		}
+		Self { tokens, reporter }
 	}
 
 	pub fn ast(&self) -> Vec<AstNode> {
