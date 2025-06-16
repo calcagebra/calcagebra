@@ -7,13 +7,15 @@ use crate::ast::Expression;
 use crate::interpreter::Interpreter;
 use crate::types::{Number, NumberType};
 
+// TODO: Add operands in this
+/// Returns argument type and return type
 pub fn internal_type_map(f: &str) -> (Vec<NumberType>, NumberType) {
 	match f {
 		"read" => (vec![], NumberType::Real),
 		"real" => (vec![NumberType::Int], NumberType::Real),
 		"int" => (vec![NumberType::Real], NumberType::Int),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
-		| "cbrt" | "graph" => (vec![NumberType::Real], NumberType::Real),
+		| "cbrt" | "graph" | "transpose" | "abs" => (vec![NumberType::Real], NumberType::Real),
 		"log" | "nrt" => (vec![NumberType::Real, NumberType::Real], NumberType::Real),
 		_ => unimplemented!("type map not implemented for: {f}"),
 	}
@@ -21,9 +23,37 @@ pub fn internal_type_map(f: &str) -> (Vec<NumberType>, NumberType) {
 
 pub fn is_std(f: &str) -> bool {
 	[
-		"print", "read", "int", "real", "add", "sub", "mul", "div", "pow", "rem", "is_eq", "neq", "gt",
-		"gteq", "lt", "lteq", "abs", "round", "ceil", "floor", "ln", "log10", "log", "sin", "cos",
-		"tan", "sqrt", "cbrt", "nrt", "graph",
+		"print",
+		"read",
+		"int",
+		"real",
+		"add",
+		"sub",
+		"mul",
+		"div",
+		"pow",
+		"rem",
+		"is_eq",
+		"neq",
+		"gt",
+		"gteq",
+		"lt",
+		"lteq",
+		"abs",
+		"round",
+		"ceil",
+		"floor",
+		"ln",
+		"log10",
+		"log",
+		"sin",
+		"cos",
+		"tan",
+		"sqrt",
+		"cbrt",
+		"nrt",
+		"graph",
+		"transpose",
 	]
 	.contains(&f)
 }
@@ -63,6 +93,7 @@ pub fn call(f: &str, args: Vec<Number>) -> Number {
 		"sqrt" => math::sqrt(args),
 		"cbrt" => math::cbrt(args),
 		"nrt" => math::nrt(args),
+		"transpose" => math::transpose(args),
 		_ => unreachable!(),
 	}
 }

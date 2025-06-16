@@ -91,6 +91,26 @@ pub fn nrt(a: Vec<Number>) -> Number {
 	Number::Real(a[0].real().powf(1.0 / a[1].real()))
 }
 
+pub fn transpose(v: Vec<Number>) -> Number {
+	match &v[0] {
+		Number::Matrix(v) => {
+			let len = v[0].len();
+			let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
+			Number::Matrix(
+				(0..len)
+					.map(|_| {
+						iters
+							.iter_mut()
+							.map(|n| n.next().unwrap().clone())
+							.collect::<Vec<Number>>()
+					})
+					.collect(),
+			)
+		}
+		_ => panic!("expected matrix for transposing"),
+	}
+}
+
 pub fn graph(f: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
 	if let Expression::Identifier(f) = &f[0] {
 		let start = SystemTime::now();
