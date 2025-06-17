@@ -8,6 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ast::Expression;
 use crate::interpreter::Interpreter;
+use crate::standardlibrary::operands::{add, mul, sub};
 use crate::types::{Number, NumberType};
 
 pub fn abs(a: Vec<Number>) -> Number {
@@ -17,7 +18,7 @@ pub fn abs(a: Vec<Number>) -> Number {
 		NumberType::Int => Number::Int(a[0].int().abs()),
 		NumberType::Real => Number::Real(a[0].real().abs()),
 		NumberType::Complex => Number::Real(a[0].array().iter().map(|f| f * f).sum::<f32>().sqrt()),
-		_ => todo!(),
+		NumberType::Matrix => determinant(a),
 	}
 }
 
@@ -91,13 +92,64 @@ pub fn nrt(a: Vec<Number>) -> Number {
 	Number::Real(a[0].real().powf(1.0 / a[1].real()))
 }
 
+pub fn determinant(v: Vec<Number>) -> Number {
+	match &v[0] {
+		Number::Matrix(matrix) => {
+			let cols = matrix.len();
+
+			for row in matrix {
+				if row.len() != cols {
+					panic!("matrix should be square for determinant");
+				}
+			}
+
+			if cols == 2 && matrix[0].len() == 2 && matrix[1].len() == 2 {
+				return sub(
+					&mul(&matrix[0][0], &matrix[1][1]),
+					&mul(&matrix[0][1], &matrix[1][0]),
+				);
+			} else {
+				let mut delta = Number::Real(0.0);
+
+				for (i, n) in matrix[0].iter().enumerate() {
+					let mut minor_matrix = matrix.clone();
+
+					minor_matrix.remove(0);
+
+					for row in &mut minor_matrix {
+						row.remove(i);
+					}
+
+					delta = add(
+						&delta,
+						&mul(
+							&mul(n, &Number::Int([1, -1][i % 2])),
+							&determinant(vec![Number::Matrix(minor_matrix)]),
+						),
+					);
+				}
+
+				delta
+			}
+		}
+		_ => panic!("expected matrix for determinant"),
+	}
+}
+
 pub fn transpose(v: Vec<Number>) -> Number {
 	match &v[0] {
-		Number::Matrix(v) => {
-			let len = v[0].len();
-			let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
+		Number::Matrix(matrix) => {
+			let cols = matrix.len();
+
+			for row in matrix {
+				if row.len() != cols {
+					panic!("matrix should be square for determinant");
+				}
+			}
+
+			let mut iters: Vec<_> = matrix.into_iter().map(|n| n.into_iter()).collect();
 			Number::Matrix(
-				(0..len)
+				(0..cols)
 					.map(|_| {
 						iters
 							.iter_mut()

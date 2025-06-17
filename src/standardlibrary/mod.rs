@@ -54,6 +54,7 @@ pub fn is_std(f: &str) -> bool {
 		"nrt",
 		"graph",
 		"transpose",
+		"determinant"
 	]
 	.contains(&f)
 }
@@ -94,6 +95,7 @@ pub fn call(f: &str, args: Vec<Number>) -> Number {
 		"cbrt" => math::cbrt(args),
 		"nrt" => math::nrt(args),
 		"transpose" => math::transpose(args),
+		"determinant" => math::determinant(args),
 		_ => unreachable!(),
 	}
 }
