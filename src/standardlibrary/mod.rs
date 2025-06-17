@@ -9,14 +9,27 @@ use crate::types::{Number, NumberType};
 
 // TODO: Add operands in this
 /// Returns argument type and return type
-pub fn internal_type_map(f: &str) -> (Vec<NumberType>, NumberType) {
+pub fn internal_type_map(f: &str) -> (Vec<Vec<NumberType>>, NumberType) {
 	match f {
 		"read" => (vec![], NumberType::Real),
-		"real" => (vec![NumberType::Int], NumberType::Real),
-		"int" => (vec![NumberType::Real], NumberType::Int),
+		"real" => (vec![vec![NumberType::Int]], NumberType::Real),
+		"int" => (vec![vec![NumberType::Real]], NumberType::Int),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
-		| "cbrt" | "graph" | "transpose" | "abs" => (vec![NumberType::Real], NumberType::Real),
-		"log" | "nrt" => (vec![NumberType::Real, NumberType::Real], NumberType::Real),
+		| "cbrt" | "graph" => (vec![vec![NumberType::Real]], NumberType::Real),
+		"log" | "nrt" => (
+			vec![vec![NumberType::Real], vec![NumberType::Real]],
+			NumberType::Real,
+		),
+		"transpose" | "determinant" => (vec![vec![NumberType::Matrix]], NumberType::Matrix),
+		"abs" => (
+			vec![vec![
+				NumberType::Int,
+				NumberType::Real,
+				NumberType::Complex,
+				NumberType::Matrix,
+			]],
+			NumberType::Real,
+		),
 		_ => unimplemented!("type map not implemented for: {f}"),
 	}
 }
@@ -54,7 +67,7 @@ pub fn is_std(f: &str) -> bool {
 		"nrt",
 		"graph",
 		"transpose",
-		"determinant"
+		"determinant",
 	]
 	.contains(&f)
 }

@@ -15,7 +15,7 @@ pub fn abs(a: Vec<Number>) -> Number {
 	let numbertype = a[0].r#type();
 
 	match numbertype {
-		NumberType::Int => Number::Int(a[0].int().abs()),
+		NumberType::Int => Number::Real(a[0].int().abs() as f32),
 		NumberType::Real => Number::Real(a[0].real().abs()),
 		NumberType::Complex => Number::Real(a[0].array().iter().map(|f| f * f).sum::<f32>().sqrt()),
 		NumberType::Matrix => determinant(a),
