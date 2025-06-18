@@ -104,10 +104,10 @@ pub fn determinant(v: Vec<Number>) -> Number {
 			}
 
 			if cols == 2 && matrix[0].len() == 2 && matrix[1].len() == 2 {
-				return sub(
+				sub(
 					&mul(&matrix[0][0], &matrix[1][1]),
 					&mul(&matrix[0][1], &matrix[1][0]),
-				);
+				)
 			} else {
 				let mut delta = Number::Real(0.0);
 
@@ -147,7 +147,7 @@ pub fn transpose(v: Vec<Number>) -> Number {
 				}
 			}
 
-			let mut iters: Vec<_> = matrix.into_iter().map(|n| n.into_iter()).collect();
+			let mut iters: Vec<_> = matrix.iter().map(|n| n.iter()).collect();
 			Number::Matrix(
 				(0..cols)
 					.map(|_| {

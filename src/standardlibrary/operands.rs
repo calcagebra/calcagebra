@@ -4,11 +4,11 @@ use crate::types::Number;
 
 pub fn add(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
-		(Number::Int(a), Number::Int(b)) => return Number::Int(a + b),
+		(Number::Int(a), Number::Int(b)) => Number::Int(a + b),
 		(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
-			return Number::Real(*a as f32 + b);
+			Number::Real(*a as f32 + b)
 		}
-		(Number::Real(a), Number::Real(b)) => return Number::Real(a + b),
+		(Number::Real(a), Number::Real(b)) => Number::Real(a + b),
 		(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
 			Number::Complex(a + (*n as f32), *b)
 		}
@@ -27,7 +27,7 @@ pub fn add(lhd: &Number, rhd: &Number) -> Number {
 
 			for (i, numbers) in a.iter().enumerate() {
 				for (j, number) in numbers.iter().enumerate() {
-					col.push(add(&number, &b[i][j]));
+					col.push(add(number, &b[i][j]));
 				}
 				r.push(col.clone());
 				col.clear();
@@ -41,14 +41,14 @@ pub fn add(lhd: &Number, rhd: &Number) -> Number {
 
 pub fn sub(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
-		(Number::Int(a), Number::Int(b)) => return Number::Int(a - b),
+		(Number::Int(a), Number::Int(b)) => Number::Int(a - b),
 		(Number::Int(a), Number::Real(b)) => {
-			return Number::Real(*a as f32 - b);
+			Number::Real(*a as f32 - b)
 		}
 		(Number::Real(b), Number::Int(a)) => {
-			return Number::Real(b - *a as f32);
+			Number::Real(b - *a as f32)
 		}
-		(Number::Real(a), Number::Real(b)) => return Number::Real(a - b),
+		(Number::Real(a), Number::Real(b)) => Number::Real(a - b),
 		(Number::Int(n), Number::Complex(a, b)) => Number::Complex(-a + (*n as f32), -b),
 		(Number::Complex(a, b), Number::Int(n)) => Number::Complex(a - (*n as f32), *b),
 		(Number::Real(n), Number::Complex(a, b)) => Number::Complex(-a + n, -b),
@@ -79,11 +79,11 @@ pub fn sub(lhd: &Number, rhd: &Number) -> Number {
 
 pub fn mul(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
-		(Number::Int(a), Number::Int(b)) => return Number::Int(a * b),
+		(Number::Int(a), Number::Int(b)) => Number::Int(a * b),
 		(Number::Int(a), Number::Real(b)) | (Number::Real(b), Number::Int(a)) => {
-			return Number::Real(*a as f32 * b);
+			Number::Real(*a as f32 * b)
 		}
-		(Number::Real(a), Number::Real(b)) => return Number::Real(a * b),
+		(Number::Real(a), Number::Real(b)) => Number::Real(a * b),
 		(Number::Int(n), Number::Complex(a, b)) | (Number::Complex(a, b), Number::Int(n)) => {
 			Number::Complex(a * (*n as f32), b * (*n as f32))
 		}
@@ -122,14 +122,14 @@ pub fn mul(lhd: &Number, rhd: &Number) -> Number {
 
 pub fn div(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
-		(Number::Int(a), Number::Int(b)) => return Number::Int(a / b),
+		(Number::Int(a), Number::Int(b)) => Number::Int(a / b),
 		(Number::Int(a), Number::Real(b)) => {
-			return Number::Real(*a as f32 / b);
+			Number::Real(*a as f32 / b)
 		}
 		(Number::Real(b), Number::Int(a)) => {
-			return Number::Real(b / *a as f32);
+			Number::Real(b / *a as f32)
 		}
-		(Number::Real(a), Number::Real(b)) => return Number::Real(a / b),
+		(Number::Real(a), Number::Real(b)) => Number::Real(a / b),
 		(Number::Int(n), Number::Complex(a, b)) => Number::Complex(
 			(*n as f32) * a / (a * a + b * b),
 			-(*n as f32) * b / (a * a + b * b),
@@ -151,26 +151,26 @@ pub fn pow(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
 			// TODO: Handle negative errors
-			return Number::Int(a.pow((*b).try_into().unwrap()));
+			Number::Int(a.pow((*b).try_into().unwrap()))
 		}
 		(Number::Int(a), Number::Real(b)) => {
-			return Number::Real((*a as f32).powf(*b));
+			Number::Real((*a as f32).powf(*b))
 		}
 		(Number::Real(a), Number::Int(b)) => {
-			return Number::Real(a.powf(*b as f32));
+			Number::Real(a.powf(*b as f32))
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Real(a.powf(*b));
+			Number::Real(a.powf(*b))
 		}
 		(Number::Complex(a, b), Number::Int(n)) => {
 			let modulus = (a * a + b * b).sqrt();
 
 			let argument = (b / a).atan();
 
-			return Number::Complex(
+			Number::Complex(
 				modulus.powf(*n as f32) * (*n as f32 * argument).cos(),
 				modulus.powf(*n as f32) * (*n as f32 * argument).sin(),
-			);
+			)
 		}
 		_ => unimplemented!(),
 	}
@@ -178,15 +178,15 @@ pub fn pow(lhd: &Number, rhd: &Number) -> Number {
 
 pub fn rem(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
-		(Number::Int(a), Number::Int(b)) => return Number::Int(a.rem(b)),
+		(Number::Int(a), Number::Int(b)) => Number::Int(a.rem(b)),
 		(Number::Int(a), Number::Real(b)) => {
-			return Number::Real((*a as f32).rem(b));
+			Number::Real((*a as f32).rem(b))
 		}
 		(Number::Real(a), Number::Int(b)) => {
-			return Number::Real((a).rem(*b as f32));
+			Number::Real((a).rem(*b as f32))
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Real(a.rem(b));
+			Number::Real(a.rem(b))
 		}
 		_ => unimplemented!(),
 	}
@@ -195,16 +195,16 @@ pub fn rem(lhd: &Number, rhd: &Number) -> Number {
 pub fn is_eq(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a == b) as i32);
+			Number::Int((a == b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a == b) as i32);
+			Number::Int((a == b) as i32)
 		}
 		(Number::Complex(a, b), Number::Complex(c, d)) => {
-			return Number::Int((a == c && b == d) as i32);
+			Number::Int((a == c && b == d) as i32)
 		}
 		(Number::Matrix(a), Number::Matrix(b)) => {
-			return Number::Int((a == b) as i32);
+			Number::Int((a == b) as i32)
 		}
 		_ => unimplemented!(),
 	}
@@ -213,16 +213,16 @@ pub fn is_eq(lhd: &Number, rhd: &Number) -> Number {
 pub fn neq(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a != b) as i32);
+			Number::Int((a != b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a != b) as i32);
+			Number::Int((a != b) as i32)
 		}
 		(Number::Complex(a, b), Number::Complex(c, d)) => {
-			return Number::Int((a != c && b != d) as i32);
+			Number::Int((a != c && b != d) as i32)
 		}
 		(Number::Matrix(a), Number::Matrix(b)) => {
-			return Number::Int((a != b) as i32);
+			Number::Int((a != b) as i32)
 		}
 		_ => unimplemented!(),
 	}
@@ -231,10 +231,10 @@ pub fn neq(lhd: &Number, rhd: &Number) -> Number {
 pub fn gt(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a > b) as i32);
+			Number::Int((a > b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a > b) as i32);
+			Number::Int((a > b) as i32)
 		}
 		_ => unimplemented!(),
 	}
@@ -243,10 +243,10 @@ pub fn gt(lhd: &Number, rhd: &Number) -> Number {
 pub fn gteq(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a >= b) as i32);
+			Number::Int((a >= b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a >= b) as i32);
+			Number::Int((a >= b) as i32)
 		}
 		_ => unimplemented!(),
 	}
@@ -255,10 +255,10 @@ pub fn gteq(lhd: &Number, rhd: &Number) -> Number {
 pub fn lt(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a < b) as i32);
+			Number::Int((a < b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a < b) as i32);
+			Number::Int((a < b) as i32)
 		}
 		_ => unimplemented!(),
 	}
@@ -267,10 +267,10 @@ pub fn lt(lhd: &Number, rhd: &Number) -> Number {
 pub fn lteq(lhd: &Number, rhd: &Number) -> Number {
 	match (lhd, rhd) {
 		(Number::Int(a), Number::Int(b)) => {
-			return Number::Int((a <= b) as i32);
+			Number::Int((a <= b) as i32)
 		}
 		(Number::Real(a), Number::Real(b)) => {
-			return Number::Int((a <= b) as i32);
+			Number::Int((a <= b) as i32)
 		}
 		_ => unimplemented!(),
 	}

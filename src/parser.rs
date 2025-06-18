@@ -62,10 +62,12 @@ impl<'a> Parser<'a> {
 						datatype = expr_type
 					}
 
-					if expr_type.is_some() && expr_type.unwrap() != datatype.unwrap() {
-						self
-							.reporter
-							.type_error(&range, (datatype.unwrap(), expr_type.unwrap()));
+					if let Some(expression_type) = expr_type {
+						if expr_type.unwrap() != datatype.unwrap() {
+							self
+								.reporter
+								.type_error(&range, (datatype.unwrap(), expression_type));
+						}
 					}
 
 					ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
@@ -153,10 +155,12 @@ impl<'a> Parser<'a> {
 
 					let expr_type = expr.infer_datatype();
 
-					if expr_type.is_some() && expr_type.unwrap() != return_type.unwrap() {
-						self
-							.reporter
-							.type_error(&range, (return_type.unwrap(), expr_type.unwrap()));
+					if let Some(expression_type) = expr_type {
+						if expr_type.unwrap() != return_type.unwrap() {
+							self
+								.reporter
+								.type_error(&range, (return_type.unwrap(), expression_type));
+						}
 					}
 
 					ast.push(AstNode::FunctionDeclaration(
@@ -240,7 +244,7 @@ impl<'a> Parser<'a> {
 					let t = tokens.next().unwrap();
 
 					if t.token == Token::RSquare {
-						if row_tokens.len() > 0 {
+						if !row_tokens.is_empty() {
 							let exp;
 
 							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
@@ -254,7 +258,7 @@ impl<'a> Parser<'a> {
 					}
 
 					if t.token == Token::SemiColon {
-						if row_tokens.len() > 0 {
+						if !row_tokens.is_empty() {
 							let exp;
 
 							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);

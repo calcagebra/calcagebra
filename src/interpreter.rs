@@ -153,16 +153,16 @@ impl Interpreter {
 					.collect::<Vec<Vec<Number>>>(),
 			),
 			Expression::FunctionCall(name, exprs) => {
-				if is_std(&name) && !needs_ctx(&name) {
+				if is_std(name) && !needs_ctx(name) {
 					let mut args = vec![];
 
 					for expr in exprs {
-						args.push(self.interpret_expression(&expr))
+						args.push(self.interpret_expression(expr))
 					}
 
-					return call(&name, args);
-				} else if is_std(&name) && needs_ctx(&name) {
-					return ctx_call(&name, exprs.to_vec(), self);
+					return call(name, args);
+				} else if is_std(name) && needs_ctx(name) {
+					return ctx_call(name, exprs.to_vec(), self);
 				} else if self.functions.contains_key(name) {
 					let f = self.functions.get(name).unwrap().clone();
 					let globals = self.globals.clone();
