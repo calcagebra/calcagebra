@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ast::Expression;
 use crate::interpreter::Interpreter;
-use crate::standardlibrary::operands::{add, mul, sub};
+use crate::standardlibrary::operands::{add, div, mul, sub};
 use crate::types::{Number, NumberType};
 
 pub fn abs(a: Vec<Number>) -> Number {
@@ -196,6 +196,23 @@ pub fn adj(v: Vec<Number>) -> Number {
 			Number::Matrix(adj_matrix)
 		}
 		_ => panic!("expected matrix for adj"),
+	}
+}
+
+pub fn inverse(v: Vec<Number>) -> Number {
+	match &v[0] {
+		t @ Number::Matrix(matrix) => {
+			let cols = matrix.len();
+
+			for row in matrix {
+				if row.len() != cols {
+					panic!("matrix should be square for inverse");
+				}
+			}
+			let det = &determinant(vec![t.clone()]);
+			div(t, det)
+		}
+		_ => panic!("expected matrix for inverse"),
 	}
 }
 

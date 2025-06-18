@@ -20,7 +20,7 @@ pub fn internal_type_map(f: &str) -> (Vec<Vec<NumberType>>, NumberType) {
 			vec![vec![NumberType::Real], vec![NumberType::Real]],
 			NumberType::Real,
 		),
-		"transpose" | "determinant" | "adj" => (vec![vec![NumberType::Matrix]], NumberType::Matrix),
+		"transpose" | "determinant" | "adj" | "inverse" => (vec![vec![NumberType::Matrix]], NumberType::Matrix),
 		"abs" => (
 			vec![vec![
 				NumberType::Int,
@@ -69,6 +69,7 @@ pub fn is_std(f: &str) -> bool {
 		"transpose",
 		"determinant",
 		"adj",
+		"inverse"
 	]
 	.contains(&f)
 }
@@ -111,6 +112,7 @@ pub fn call(f: &str, args: Vec<Number>) -> Number {
 		"transpose" => math::transpose(args),
 		"determinant" => math::determinant(args),
 		"adj" => math::adj(args),
+		"inverse" => math::inverse(args),
 		_ => unreachable!(),
 	}
 }
