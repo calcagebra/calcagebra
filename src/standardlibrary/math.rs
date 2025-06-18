@@ -163,6 +163,42 @@ pub fn transpose(v: Vec<Number>) -> Number {
 	}
 }
 
+pub fn adj(v: Vec<Number>) -> Number {
+	match &v[0] {
+		Number::Matrix(matrix) => {
+			let cols = matrix.len();
+			let mut adj_matrix: Vec<Vec<Number>> = vec![];
+
+			for row in matrix {
+				if row.len() != cols {
+					panic!("matrix should be square for adj");
+				}
+				adj_matrix.push((0..cols).map(|_| Number::Real(0.0)).collect());
+			}
+
+			for i in 0..matrix.len() {
+				for (j, n) in matrix[i].iter().enumerate() {
+					let mut minor_matrix = matrix.clone();
+
+					minor_matrix.remove(i);
+
+					for row in &mut minor_matrix {
+						row.remove(j);
+					}
+
+					adj_matrix[j][i] = mul(
+						&mul(n, &Number::Int([1, -1][(i + j) % 2])),
+						&determinant(vec![Number::Matrix(minor_matrix)]),
+					);
+				}
+			}
+
+			Number::Matrix(adj_matrix)
+		}
+		_ => panic!("expected matrix for adj"),
+	}
+}
+
 pub fn graph(f: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
 	if let Expression::Identifier(f) = &f[0] {
 		let start = SystemTime::now();
