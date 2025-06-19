@@ -115,13 +115,11 @@ impl<'a> Parser<'a> {
 							}
 						}
 
-						args.push((
-							match &t.token {
-								Token::Identifier(i) => i.to_string(),
-								_ => unreachable!(),
-							},
-							datatype.unwrap(),
-						));
+						match &t.token {
+							Token::Identifier(i) => args.push((i.to_string(), datatype.unwrap())),
+							Token::Comma => {}
+							_ => unreachable!(),
+						};
 					}
 
 					let mut return_type = Some(NumberType::Real);
