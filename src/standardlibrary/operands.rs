@@ -87,6 +87,14 @@ pub fn mul(lhd: &Number, rhd: &Number) -> Number {
 			Number::Complex(a * n, b * n)
 		}
 		(Number::Complex(a, b), Number::Complex(c, d)) => Number::Complex(a * c - b * d, a * d + b * c),
+		(t @ Number::Int(..), Number::Matrix(b))
+		| (Number::Matrix(b), t @ Number::Int(..))
+		| (t @ Number::Real(..), Number::Matrix(b))
+		| (Number::Matrix(b), t @ Number::Real(..)) => Number::Matrix(
+			b.iter()
+				.map(|c| c.iter().map(|d| mul(t, d)).collect())
+				.collect(),
+		),
 		(Number::Matrix(a), Number::Matrix(b)) => {
 			// TODO: Check if matrices can be multipled
 
@@ -135,6 +143,13 @@ pub fn div(lhd: &Number, rhd: &Number) -> Number {
 			(a * c + b * d) / (c * c + d * d),
 			(b * c - a * d) / (c * c + d * d),
 		),
+		(Number::Matrix(b), t @ Number::Int(..)) | (Number::Matrix(b), t @ Number::Real(..)) => {
+			Number::Matrix(
+				b.iter()
+					.map(|c| c.iter().map(|d| div(d, t)).collect())
+					.collect(),
+			)
+		}
 		_ => unimplemented!(),
 	}
 }
