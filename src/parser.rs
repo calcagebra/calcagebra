@@ -30,6 +30,11 @@ impl<'a> Parser<'a> {
 				Token::Let => {
 					let mut datatype = None;
 
+					let name = match &tokens.next().unwrap().token {
+						Token::Identifier(name) => name,
+						_ => unreachable!(),
+					};
+
 					if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
 
@@ -46,11 +51,6 @@ impl<'a> Parser<'a> {
 							)
 						}
 					}
-
-					let name = match &tokens.next().unwrap().token {
-						Token::Identifier(name) => name,
-						_ => unreachable!(),
-					};
 
 					tokens.next(); // `=`
 
