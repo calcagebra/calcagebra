@@ -114,7 +114,7 @@ Returns $a + b\mathrm{i}$ such that $(a+b\mathrm{i})^{\text{second number}} = \t
 
 #### Matrix
 
-Returns the [determinant of the matrix](https://en.m.wikipedia.org/wiki/Determinant.
+Returns the [determinant of the matrix](https://en.m.wikipedia.org/wiki/Determinant).
 
 ### transpose
 
@@ -154,7 +154,7 @@ graph(name)
 
 ## Operators
 
-[Operators avaliable](/docs/operators.md) and [types.md supporting operations](/docs/types.md) are documented in their respective files.
+[Operators avaliable](/docs/operators.md) and [types supporting operations](/docs/types.md) are documented in their respective files.
 
 ## types.md
 

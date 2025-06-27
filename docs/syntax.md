@@ -9,7 +9,7 @@ let name: type = expr
 
 Here:
 * `name` is an [`ident`](#identifier).
-* `type` if provided is one of [`types.md`](/docs/types.md), if not provided will be inferred from the `expr`.
+* `type` if provided is one of [`types`](/docs/types.md), if not provided will be inferred from the `expr`.
 * `expr` is an [`expression`](#expression).
 
 > Note: Using the wrong type will throw an error instead of implicit conversation.
@@ -24,7 +24,7 @@ fn name(x: type, y: type, z: type ... ): type = expr
 
 Here:
 * `name, x, y, z ... ` are [`idents`](#identifier).
-* `type` if provided is one of [`types.md`](/docs/types.md), if not provided will be [`ℝ`](/docs/types.md#Real%20[ℝ]).
+* `type` if provided is one of [`types`](/docs/types.md), if not provided will be [`ℝ`](/docs/types.md#Real-[ℝ]).
 * `expr` is an [`expression`](#expression).
 
 ## Function Call
@@ -81,7 +81,7 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 1 2 3 4 5 6 7 8 9 10 ...
 ```
 
-[Integers](/docs/types.md#Int%20[ℤ]) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
+[Integers](/docs/types.md#Int-[ℤ]) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
 
 ## Real
 
@@ -89,7 +89,7 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 3.1415926535897931
 ```
 
-[Real](/docs/types.md#Real%20[ℝ]) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
+[Real](/docs/types.md#Real-[ℝ]) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
 
 ## Matrix
 
@@ -102,4 +102,4 @@ Here:
 
 ## Function Call
 
-[Ref](/docs/syntax.md#Function%20Call).
+[Ref](/docs/syntax.md#Function-Call).
