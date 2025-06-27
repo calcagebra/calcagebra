@@ -24,24 +24,21 @@ pub fn abs(a: Vec<Number>) -> Number {
 
 pub fn round(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
-		NumberType::Int => Number::Int(a[0].real().round() as i32),
-		NumberType::Real => Number::Real(a[0].real().round()),
+		NumberType::Real => Number::Int(a[0].real().round()),
 		_ => unimplemented!(),
 	}
 }
 
 pub fn ceil(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
-		NumberType::Int => Number::Int(a[0].real().ceil() as i32),
-		NumberType::Real => Number::Real(a[0].real().ceil()),
+		NumberType::Real => Number::Int(a[0].real().ceil()),
 		_ => unimplemented!(),
 	}
 }
 
 pub fn floor(a: Vec<Number>) -> Number {
 	match a[0].r#type() {
-		NumberType::Int => Number::Int(a[0].real().floor() as i32),
-		NumberType::Real => Number::Real(a[0].real().floor()),
+		NumberType::Real => Number::Int(a[0].real().floor()),
 		_ => unimplemented!(),
 	}
 }
