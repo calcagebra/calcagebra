@@ -24,7 +24,7 @@ fn name(x: type, y: type, z: type ... ): type = expr
 
 Here:
 * `name, x, y, z ... ` are [`idents`](#identifier).
-* `type` if provided is one of [`types`](/docs/types.md), if not provided will be [`ℝ`](/docs/types.md#Real-[ℝ]).
+* `type` if provided is one of [`types`](/docs/types.md), if not provided will be [`ℝ`](/docs/types.md#real-ℝ).
 * `expr` is an [`expression`](#expression).
 
 ## Function Call
@@ -56,7 +56,7 @@ expr operator expr
 
 Here:
 * `operator` is one of [`operators`](/docs/operators.md).
-* `expr` is an [`expression`](/docs/syntax.md#Expression).
+* `expr` is an [`expression`](#Expression).
 
 ## Branched
 
@@ -65,7 +65,7 @@ if expr then expr else expr end
 ```
 
 Here: 
-* `expr` is an [`expression`](/docs/syntax.md#Expression).
+* `expr` is an [`expression`](#Expression).
 
 ## Identifier
 
@@ -81,7 +81,7 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 1 2 3 4 5 6 7 8 9 10 ...
 ```
 
-[Integers](/docs/types.md#Int-[ℤ]) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
+[Integers](/docs/types.md#int-ℤ) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
 
 ## Real
 
@@ -89,7 +89,7 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 3.1415926535897931
 ```
 
-[Real](/docs/types.md#Real-[ℝ]) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
+[Real](/docs/types.md#real-ℝ) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
 
 ## Matrix
 
@@ -98,8 +98,8 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 ```
 
 Here:
-* `a_1, a_2, a_3, b_1, b_2, b_3, c_1, c_2, c_3` are all [`expressions`](/docs/syntax.md#Expression).
+* `a_1, a_2, a_3, b_1, b_2, b_3, c_1, c_2, c_3` are all [`expressions`](#Expression).
 
 ## Function Call
 
-[Ref](/docs/syntax.md#Function-Call).
+[Ref](#Function-Call).

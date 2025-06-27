@@ -8,7 +8,7 @@ Print numbers to stdout.
 
 ### read
 
-Read and return a [Real number](/docs/types.md#Real%20ℝ) from stdin.
+Read and return a [Real number](/docs/types.md#real-ℝ) from stdin.
 
 ## Math
 
@@ -136,7 +136,7 @@ Returns the [inverse of the matrix](https://en.wikipedia.org/wiki/Invertible_mat
 
 ### graph
 
-The graph function takes the name of the function ([`ident`](/docs/syntax.md#identifie)) as its argument and writes the image of the graph to the file system in PNG format with the name `graph-output-{TIME_SINCE_UNIX_EPOCH}.png`.
+The graph function takes the name of the function ([`ident`](/docs/syntax.md#identifier)) as its argument and writes the image of the graph to the file system in PNG format with the name `graph-output-{TIME_SINCE_UNIX_EPOCH}.png`.
 
 The function must itself be of the format:
 
@@ -144,7 +144,7 @@ The function must itself be of the format:
 fn name(x: R): type = expr
 ```
 
-That is, it should only take a single argument of type [Real](/docs/types.md#Real%20ℝ) and the return type must be [Real](/docs/types.md#Real%20ℝ) or [Integer](/docs/types.md#Int%20[ℤ]).
+That is, it should only take a single argument of type [Real](/docs/types.md#real-ℝ) and the return type must be [Real](/docs/types.md#real-ℝ) or [Integer](/docs/types.md#int-ℤ).
 
 Then the graph function can be called as:
 
@@ -156,16 +156,16 @@ graph(name)
 
 [Operators avaliable](/docs/operators.md) and [types supporting operations](/docs/types.md) are documented in their respective files.
 
-## types.md
+## Types
 
 ### real
 
 #### Integers
 
-Converts an [Integer](/docs/types.md#Int%20[ℤ]) to [Real](/docs/types.md#Real%20ℝ).
+Converts an [Integer](/docs/types.md#int-ℤ) to [Real](/docs/types.md#real-ℝ).
 
 ### int
 
 #### Reals
 
-Converts a [Real](/docs/types.md#Real%20ℝ) to [Integer](/docs/types.md#Int%20[ℤ]) by rounding towards zero.
+Converts a [Real](/docs/types.md#real-ℝ) to [Integer](/docs/types.md#int-ℤ) by rounding towards zero.
