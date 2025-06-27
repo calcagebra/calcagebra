@@ -141,15 +141,31 @@ impl<'a> Lexer<'a> {
 				break;
 			}
 
-			if let Token::Integer(_) = tokeninfo.token {
-				if let Token::Identifier(_) = tokens[i + 1].token {
-					offset += 1;
+			match tokeninfo.token {
+				Token::Integer(..) | Token::Float(..) => {
+					if let Token::Identifier(..) = tokens[i + 1].token {
+						offset += 1;
 
-					r.push(TokenInfo::new(
-						Token::Mul,
-						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
-					));
+						r.push(TokenInfo::new(
+							Token::Mul,
+							*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+						));
+					}
 				}
+				Token::Identifier(..) => {
+					match tokens[i + 1].token {
+						Token::Integer(..) | Token::Float(..) => {
+							offset += 1;
+
+							r.push(TokenInfo::new(
+								Token::Mul,
+								*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+							));
+						}
+						_ => {}
+					}
+				}
+				_ => {}
 			}
 		}
 
