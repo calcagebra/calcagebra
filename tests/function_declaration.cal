@@ -1,0 +1,5 @@
+fn f(x) = x
+
+fn f(x) = x^2
+
+fn f(x) = x + x - x * x / x % x ^ x

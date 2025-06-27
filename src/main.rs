@@ -97,6 +97,16 @@ mod tests {
 	use crate::run;
 
 	#[test]
+	fn assignment() {
+		run("tests/assignment.cal", false, false);
+	}
+
+	#[test]
+	fn function_declaration() {
+		run("tests/function_declaration.cal", false, false);
+	}
+
+	#[test]
 	fn matrix() {
 		run("tests/matrix.cal", false, false);
 	}

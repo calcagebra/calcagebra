@@ -1,0 +1,13 @@
+let a = 5
+
+let a = 5.0
+
+let a: Z = 5
+
+let a: R = 5.0
+
+let a: C = 3 + 4i
+
+let a: C = 3.0 + 4.0i
+
+let a: matrix = [3, -4.0, 3 + 4i]
