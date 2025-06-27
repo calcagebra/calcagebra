@@ -8,7 +8,7 @@ let name: type = expr
 ```
 
 Here:
-* `name` is an [`ident`](#ident).
+* `name` is an [`ident`](#identifier).
 * `type` if provided is one of [`types`](/docs/types), if not provided will be inferred from the `expr`.
 * `expr` is an [`expression`](#expression).
 
@@ -23,8 +23,8 @@ fn name(x: type, y: type, z: type ... ): type = expr
 ```
 
 Here:
-* `name, x, y, z ... ` are [`idents`](#ident).
-* `type` if provided is one of [`types`](/docs/types), if not provided will be [`ℝ`](/docs/types#Real [ℝ]).
+* `name, x, y, z ... ` are [`idents`](#identifier).
+* `type` if provided is one of [`types`](/docs/types), if not provided will be [`ℝ`](/docs/types#Real%20[ℝ]).
 * `expr` is an [`expression`](#expression).
 
 ## Function Call
@@ -36,7 +36,7 @@ name(x, y, z ... )
 ```
 
 Here:
-* `name, x, y, z ... ` are [`idents`](#ident).
+* `name, x, y, z ... ` are [`idents`](#identifier).
 
 # Expression
 
@@ -81,17 +81,17 @@ Identifiers are of non-zero length, denoted by alphabets the English language.
 1 2 3 4 5 6 7 8 9 10 ...
 ```
 
-[Integers](/docs/types#Int [ℤ]) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
+[Integers](/docs/types#Int%20[ℤ]) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
 
 ## Real
 
 ```rust
-3.1459
+3.1415926535897931
 ```
 
-[Real](/docs/types#Real [ℝ]) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
+[Real](/docs/types#Real%20[ℝ]) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
 
-Matrix
+## Matrix
 
 ```rust
 [a_1, a_2, a_3; b_1, b_2, b_3; c_1, c_2, c_3 ... ]
@@ -102,4 +102,4 @@ Here:
 
 ## Function Call
 
-[Ref](/docs/syntax#Function_Call).
+[Ref](/docs/syntax#Function%20Call).

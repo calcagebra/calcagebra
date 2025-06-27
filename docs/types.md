@@ -25,3 +25,12 @@ Complex numbers are defined as `a + ib` where a and b can be R or Z, Although if
 ### Operators
 
 Add, Sub, Mul, Div, Pow (ℂ, ℤ), Eq, Neq
+
+## Matrix [𝕄]
+
+Matrix can have any number of rows and columns with any number inside them.
+
+### Operators
+
+Add, Sub, Mul, Div (𝕄, ℤ | ℝ) , Pow (𝕄, ℤ), Eq, Neq
+
