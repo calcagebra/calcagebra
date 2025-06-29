@@ -1,3 +1,5 @@
+use clap::{Parser as ClapParser, Subcommand, command};
+
 use rustyline::{
 	Completer, Config, Editor, Helper, Hinter, Validator, error::ReadlineError,
 	highlight::Highlighter, validate::MatchingBracketValidator,
@@ -9,9 +11,36 @@ use std::{
 };
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
-use crate::{
-	errors::ErrorReporter, interpreter::Interpreter, lexer::Lexer, parser::Parser, version,
+use calcagebra_lib::{
+	errors::ErrorReporter, interpreter::Interpreter, lexer::Lexer, parser::Parser, run, version,
 };
+
+#[derive(ClapParser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+	/// Output debug information
+	#[clap(short, long, value_parser, global = true)]
+	debug: bool,
+
+	/// Print the time elapsed while executing code
+	#[clap(short, long, value_parser, global = true)]
+	time: bool,
+
+	#[command(subcommand)]
+	command: Subcommands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Subcommands {
+	/// Build calcagebra binary and then execute it
+	#[command(arg_required_else_help = true)]
+	Run {
+		/// Name of the file to run
+		name: String,
+	},
+
+	Repl,
+}
 
 #[derive(Helper, Completer, Hinter, Validator)]
 struct HighlightHelper {
@@ -67,6 +96,21 @@ impl Highlighter for HighlightHelper {
 	}
 }
 
+fn main() {
+	let args = Args::parse();
+
+	let input = match args.command {
+		Subcommands::Run { name } => name,
+		Subcommands::Repl => String::new(),
+	};
+
+	if input.is_empty() {
+		repl();
+	}
+
+	run(&input, args.debug, args.time);
+}
+
 pub fn repl() {
 	println!(
 		"Welcome to calcagebra v{}\nTo exit, press CTRL+C or CTRL+D",
@@ -111,7 +155,7 @@ pub fn repl() {
 				break;
 			}
 			Err(err) => {
-				println!("Error: {:?}", err);
+				println!("Error: {err:?}");
 				break;
 			}
 		}

@@ -4,7 +4,7 @@ use crate::types::Number;
 
 pub fn print(a: Vec<Number>) -> Number {
 	for b in a {
-		println!("{}", b);
+		println!("{b}");
 	}
 	Number::Real(0.0)
 }

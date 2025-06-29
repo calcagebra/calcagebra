@@ -100,7 +100,7 @@ impl Token {
 					} else if let Ok(f) = try_float {
 						Token::Float(f)
 					} else {
-						panic!("could not lex number: `{}`", token);
+						panic!("could not lex number: `{token}`");
 					}
 				} else {
 					Token::Identifier(token)
