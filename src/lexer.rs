@@ -138,6 +138,11 @@ impl<'a> Lexer<'a> {
 			let tokeninfo = token_iter.next().unwrap();
 
 			if token_iter.peek().is_none() {
+				r.push(TokenInfo::new(
+					tokeninfo.token,
+					*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+				));
+
 				break;
 			}
 
