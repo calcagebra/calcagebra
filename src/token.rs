@@ -1,13 +1,13 @@
-use std::{fmt::Display, ops::RangeInclusive};
+use std::{fmt::Display, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
 	pub token: Token,
-	pub range: RangeInclusive<usize>,
+	pub range: Range<usize>,
 }
 
 impl TokenInfo {
-	pub fn new(token: Token, range: RangeInclusive<usize>) -> Self {
+	pub fn new(token: Token, range: Range<usize>) -> Self {
 		Self { token, range }
 	}
 }
@@ -100,7 +100,7 @@ impl Token {
 					} else if let Ok(f) = try_float {
 						Token::Float(f)
 					} else {
-						panic!("could not lex number: `{}`", token);
+						panic!("could not lex number: `{token}`");
 					}
 				} else {
 					Token::Identifier(token)

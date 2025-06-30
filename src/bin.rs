@@ -1,3 +1,5 @@
+use clap::{Parser as ClapParser, Subcommand, command};
+
 use rustyline::{
 	Completer, Config, Editor, Helper, Hinter, Validator, error::ReadlineError,
 	highlight::Highlighter, validate::MatchingBracketValidator,
@@ -9,9 +11,41 @@ use std::{
 };
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
-use crate::{
-	errors::ErrorReporter, interpreter::Interpreter, lexer::Lexer, parser::Parser, version,
+use calcagebra_lib::{
+	ast::{AstNode, Expression},
+	errors::ErrorReporter,
+	interpreter::Interpreter,
+	lexer::Lexer,
+	parser::Parser,
+	print, run, version,
 };
+
+#[derive(ClapParser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+	/// Output debug information
+	#[clap(short, long, value_parser, global = true)]
+	debug: bool,
+
+	/// Print the time elapsed while executing code
+	#[clap(short, long, value_parser, global = true)]
+	time: bool,
+
+	#[command(subcommand)]
+	command: Subcommands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Subcommands {
+	/// Build calcagebra binary and then execute it
+	#[command(arg_required_else_help = true)]
+	Run {
+		/// Name of the file to run
+		name: String,
+	},
+
+	Repl,
+}
 
 #[derive(Helper, Completer, Hinter, Validator)]
 struct HighlightHelper {
@@ -67,6 +101,21 @@ impl Highlighter for HighlightHelper {
 	}
 }
 
+fn main() {
+	let args = Args::parse();
+
+	let input = match args.command {
+		Subcommands::Run { name } => name,
+		Subcommands::Repl => String::new(),
+	};
+
+	if input.is_empty() {
+		repl();
+	}
+
+	run(&input, args.debug, args.time);
+}
+
 pub fn repl() {
 	println!(
 		"Welcome to calcagebra v{}\nTo exit, press CTRL+C or CTRL+D",
@@ -100,7 +149,30 @@ pub fn repl() {
 
 				let reporter = ErrorReporter::new("REPL", &line);
 
-				interpreter.interpret(Parser::new(Lexer::new(&line).tokens(), reporter).ast());
+				let tokens = Lexer::new(&line).tokens();
+
+				let parser = Parser::new(&tokens);
+
+				match parser.ast() {
+					Ok(ast) => {
+						if let AstNode::FunctionCall(name, expr) = &ast[0] {
+							if name != "print" {
+								print(vec![interpreter.interpret_expression(
+									&Expression::FunctionCall(name.to_string(), expr.clone()),
+								)]);
+							}
+						} else {
+							interpreter.interpret(ast)
+						}
+					}
+					// REPL does not allow multi line inputs so tokens length is always 1
+					Err(..) => match parser.pratt_parser(tokens[0].iter().peekable(), 0) {
+						Ok((expr, _, _)) => {
+							print(vec![interpreter.interpret_expression(&expr)]);
+						}
+						Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+					},
+				}
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");
@@ -111,7 +183,7 @@ pub fn repl() {
 				break;
 			}
 			Err(err) => {
-				println!("Error: {:?}", err);
+				println!("Error: {err:?}");
 				break;
 			}
 		}

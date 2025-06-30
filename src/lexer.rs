@@ -1,5 +1,4 @@
 use crate::token::{Token, TokenInfo};
-use std::ops::RangeInclusive;
 
 pub struct Lexer<'a> {
 	contents: &'a str,
@@ -12,42 +11,38 @@ impl<'a> Lexer<'a> {
 
 	pub fn tokens(&self) -> Vec<Vec<TokenInfo>> {
 		let mut offset = 1;
+		let mut tokeninfos = vec![];
 
-		self
-			.contents
-			.lines()
-			.map(|line| {
-				if !line.starts_with("//") && !line.is_empty() {
-					let tokens = self.tokenize_line(line, offset);
+		for line in self.contents.lines() {
+			if !line.starts_with("//") && !line.is_empty() {
+				let tokens = self.tokenize_line(line, offset);
 
-					if let Some(token) = tokens.last() {
-						offset += *token.range.end();
-					}
-
-					tokens
-				} else {
-					offset += 1;
-					vec![]
+				if let Some(token) = tokens.last() {
+					offset += token.range.end;
 				}
-			})
-			.filter(|x| !x.is_empty())
-			.collect()
+
+				tokeninfos.push(tokens);
+			} else {
+				offset += 1;
+			}
+		}
+
+		tokeninfos
 	}
 
 	fn tokenize_line(&self, line: &str, mut c: usize) -> Vec<TokenInfo> {
 		let mut line = line.chars().peekable();
 		let mut tokens = vec![];
-		let mut token = String::new();
 
 		loop {
+			let mut token = String::new();
 			let char = line.next();
 
 			if char.is_none() {
 				if !token.is_empty() {
-					tokens.push(TokenInfo::new(
-						Token::new(token.clone()),
-						range_from_size(c, token.len()),
-					));
+					let size = token.len();
+
+					tokens.push(TokenInfo::new(Token::new(token), c..c + size));
 				}
 				break;
 			}
@@ -61,6 +56,7 @@ impl<'a> Lexer<'a> {
 
 			if char.is_ascii_alphabetic() {
 				token.push(char);
+
 				loop {
 					let char = line.peek();
 
@@ -72,14 +68,15 @@ impl<'a> Lexer<'a> {
 
 					token.push(char.unwrap());
 				}
-				tokens.push(TokenInfo::new(
-					Token::new(token.clone()),
-					range_from_size(c, token.len()),
-				));
-				c += token.len();
-				token.clear();
+
+				let size = token.len();
+
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+
+				c += size;
 			} else if char.is_ascii_digit() {
 				token.push(char);
+
 				loop {
 					let char = line.peek();
 
@@ -91,15 +88,17 @@ impl<'a> Lexer<'a> {
 
 					token.push(char.unwrap());
 				}
-				tokens.push(TokenInfo::new(
-					Token::new(token.clone()),
-					range_from_size(c, token.len()),
-				));
-				c += token.len();
-				token.clear();
+
+				let size = token.len();
+
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+
+				c += size;
 			} else {
 				token.push(char);
+
 				let punctuation = ['.', '(', ')', '{', '}', '[', ']', '|', ','];
+
 				loop {
 					let char = line.peek();
 
@@ -116,63 +115,80 @@ impl<'a> Lexer<'a> {
 
 					token.push(char.unwrap());
 				}
-				tokens.push(TokenInfo::new(
-					Token::new(token.clone()),
-					range_from_size(c, token.len()),
-				));
-				c += token.len();
-				token.clear();
+				let size = token.len();
+
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+
+				c += size;
 			}
 		}
 
 		let mut r = vec![];
 
 		let mut offset = 0;
+		let mut token_iter = tokens.into_iter().peekable();
 
-		for i in 0..tokens.len() {
-			let tokeninfo = tokens.get(i).unwrap();
+		loop {
+			let tokeninfo = token_iter.peek();
 
-			r.push(TokenInfo::new(
-				tokeninfo.token.clone(),
-				*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
-			));
+			if tokeninfo.is_none() {
+				break;
+			}
 
-			if tokens.get(i + 1).is_none() {
+			let tokeninfo = token_iter.next().unwrap();
+
+			if token_iter.peek().is_none() {
+				r.push(TokenInfo::new(
+					tokeninfo.token,
+					tokeninfo.range.start..tokeninfo.range.end + offset,
+				));
+
 				break;
 			}
 
 			match tokeninfo.token {
 				Token::Integer(..) | Token::Float(..) => {
-					if let Token::Identifier(..) = tokens[i + 1].token {
+					r.push(TokenInfo::new(
+						tokeninfo.token,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
+					));
+
+					if let Token::Identifier(..) = token_iter.peek().unwrap().token {
 						offset += 1;
 
 						r.push(TokenInfo::new(
 							Token::Mul,
-							*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+							tokeninfo.range.start..tokeninfo.range.end + offset,
 						));
 					}
 				}
 				Token::Identifier(..) => {
-					match tokens[i + 1].token {
+					r.push(TokenInfo::new(
+						tokeninfo.token,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
+					));
+
+					match token_iter.peek().unwrap().token {
 						Token::Integer(..) | Token::Float(..) => {
 							offset += 1;
 
 							r.push(TokenInfo::new(
 								Token::Mul,
-								*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+								tokeninfo.range.start..tokeninfo.range.end + offset,
 							));
 						}
 						_ => {}
 					}
 				}
-				_ => {}
+				_ => {
+					r.push(TokenInfo::new(
+						tokeninfo.token,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
+					));
+				}
 			}
 		}
 
 		r
 	}
-}
-
-fn range_from_size(start: usize, size: usize) -> RangeInclusive<usize> {
-	start..=start + size
 }

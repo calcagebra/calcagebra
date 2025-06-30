@@ -3,18 +3,30 @@ name = "calcagebra"
 version = "3.6.4"
 edition = "2024"
 
+[lib]
+name = "calcagebra_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "calcagebra_bin"
+path = "src/bin.rs"
+
 [dependencies]
 clap = { version = "4.0.9", features = ["derive"] }
 codespan-reporting = "0.11.1"
 plotters = "0.3.7"
-rand = "0.8.5"
 rustyline = { version = "14.0.0", features = ["derive"] }
 syntect = "5.2.0"
-unindent = "0.2.3"
-viuer = { version = "0.9.1", features = ["print-file"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "bench"
+harness = false
 
 [profile.release]
-opt-level = 'z'
+opt-level = 3
 lto = true
 codegen-units = 1
 panic = 'abort'
