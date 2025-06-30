@@ -27,28 +27,26 @@ impl Default for Interpreter {
 
 impl Interpreter {
 	pub fn new() -> Self {
-		Self {
-			globals: HashMap::new(),
-			functions: HashMap::new(),
-		}
-	}
+                let mut globals = HashMap::new();
 
-	pub fn setup(&mut self) {
-		let globals = vec![
+                let global_array = vec![
 			("i", Number::Complex(0.0, 1.0)),
 			("pi", Number::Real(PI)),
 			("π", Number::Real(PI)),
 			("e", Number::Real(E)),
 		];
 
-		for (global, data) in globals {
-			self.globals.insert(String::from(global), data);
+		for (global, data) in global_array {
+			globals.insert(global.to_string(), data);
+		}
+
+		Self {
+			globals,
+			functions: HashMap::new(),
 		}
 	}
 
 	pub fn interpret(&mut self, ast: Vec<AstNode>) {
-		self.setup();
-
 		for node in ast {
 			self.interpret_node(node);
 		}
