@@ -127,7 +127,7 @@ impl<'a> ErrorReporter<'a> {
 
 	pub fn error(&self, error_message: String, help_message: String, range: Range<usize>) -> ! {
 		let diagnostic = Diagnostic::error()
-			.with_message("incompatible types")
+			.with_message(&error_message)
 			.with_code("ERR")
 			.with_labels(vec![
 				Label::primary((), range.start - 1..range.end).with_message(error_message),
