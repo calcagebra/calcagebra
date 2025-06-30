@@ -18,7 +18,7 @@ impl<'a> Lexer<'a> {
 				let tokens = self.tokenize_line(line, offset);
 
 				if let Some(token) = tokens.last() {
-					offset += *token.range.end();
+					offset += token.range.end;
 				}
 
 				tokeninfos.push(tokens);
@@ -42,7 +42,7 @@ impl<'a> Lexer<'a> {
 				if !token.is_empty() {
 					let size = token.len();
 
-					tokens.push(TokenInfo::new(Token::new(token), c..=c + size));
+					tokens.push(TokenInfo::new(Token::new(token), c..c + size));
 				}
 				break;
 			}
@@ -71,7 +71,7 @@ impl<'a> Lexer<'a> {
 
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..=c + size));
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
 
 				c += size;
 			} else if char.is_ascii_digit() {
@@ -91,7 +91,7 @@ impl<'a> Lexer<'a> {
 
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..=c + size));
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
 
 				c += size;
 			} else {
@@ -117,7 +117,7 @@ impl<'a> Lexer<'a> {
 				}
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..=c + size));
+				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
 
 				c += size;
 			}
@@ -140,7 +140,7 @@ impl<'a> Lexer<'a> {
 			if token_iter.peek().is_none() {
 				r.push(TokenInfo::new(
 					tokeninfo.token,
-					*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+					tokeninfo.range.start..tokeninfo.range.end + offset,
 				));
 
 				break;
@@ -150,7 +150,7 @@ impl<'a> Lexer<'a> {
 				Token::Integer(..) | Token::Float(..) => {
 					r.push(TokenInfo::new(
 						tokeninfo.token,
-						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
 					));
 
 					if let Token::Identifier(..) = token_iter.peek().unwrap().token {
@@ -158,14 +158,14 @@ impl<'a> Lexer<'a> {
 
 						r.push(TokenInfo::new(
 							Token::Mul,
-							*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+							tokeninfo.range.start..tokeninfo.range.end + offset,
 						));
 					}
 				}
 				Token::Identifier(..) => {
 					r.push(TokenInfo::new(
 						tokeninfo.token,
-						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
 					));
 
 					match token_iter.peek().unwrap().token {
@@ -174,7 +174,7 @@ impl<'a> Lexer<'a> {
 
 							r.push(TokenInfo::new(
 								Token::Mul,
-								*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+								tokeninfo.range.start..tokeninfo.range.end + offset,
 							));
 						}
 						_ => {}
@@ -183,7 +183,7 @@ impl<'a> Lexer<'a> {
 				_ => {
 					r.push(TokenInfo::new(
 						tokeninfo.token,
-						*tokeninfo.range.start()..=tokeninfo.range.end() + offset,
+						tokeninfo.range.start..tokeninfo.range.end + offset,
 					));
 				}
 			}

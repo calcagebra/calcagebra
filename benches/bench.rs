@@ -1,6 +1,6 @@
 use std::fs::read_to_string;
 
-use calcagebra_lib::{errors::ErrorReporter, lexer::Lexer, parser::Parser};
+use calcagebra_lib::{lexer::Lexer, parser::Parser};
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -10,7 +10,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 	c.bench_function("lexer", |b| b.iter(|| Lexer::new(&lex).tokens()));
 
 	c.bench_function("parser", |b| {
-		b.iter(|| Parser::new(&parse, ErrorReporter::new("", "")).ast())
+		b.iter(|| Parser::new(&parse).ast())
 	});
 }
 

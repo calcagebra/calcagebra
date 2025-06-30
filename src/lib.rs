@@ -1,4 +1,4 @@
-mod ast;
+pub mod ast;
 pub mod errors;
 pub mod interpreter;
 pub mod lexer;
@@ -13,6 +13,8 @@ use errors::ErrorReporter;
 use interpreter::Interpreter;
 use lexer::Lexer;
 use parser::Parser;
+
+pub use standardlibrary::io::print;
 
 pub fn version() -> String {
 	env!("CARGO_PKG_VERSION").to_string()
@@ -32,7 +34,10 @@ pub fn run(input: &str, debug: bool, time: bool) {
 		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let ast = Parser::new(&tokens, reporter).ast();
+	let ast = match Parser::new(&tokens).ast() {
+		Ok(ast) => ast,
+		Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+	};
 
 	if debug {
 		let duration = main.elapsed();

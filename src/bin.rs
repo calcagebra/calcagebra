@@ -12,7 +12,12 @@ use std::{
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
 use calcagebra_lib::{
-	errors::ErrorReporter, interpreter::Interpreter, lexer::Lexer, parser::Parser, run, version,
+	ast::{AstNode, Expression},
+	errors::ErrorReporter,
+	interpreter::Interpreter,
+	lexer::Lexer,
+	parser::Parser,
+	print, run, version,
 };
 
 #[derive(ClapParser, Debug)]
@@ -144,7 +149,30 @@ pub fn repl() {
 
 				let reporter = ErrorReporter::new("REPL", &line);
 
-				interpreter.interpret(Parser::new(&Lexer::new(&line).tokens(), reporter).ast());
+				let tokens = Lexer::new(&line).tokens();
+
+				let parser = Parser::new(&tokens);
+
+				match parser.ast() {
+					Ok(ast) => {
+						if let AstNode::FunctionCall(name, expr) = &ast[0] {
+							if name != "print" {
+								print(vec![interpreter.interpret_expression(
+									&Expression::FunctionCall(name.to_string(), expr.clone()),
+								)]);
+							}
+						} else {
+							interpreter.interpret(ast)
+						}
+					}
+					// REPL does not allow multi line inputs so tokens length is always 1
+					Err(..) => match parser.pratt_parser(tokens[0].iter().peekable(), 0) {
+						Ok((expr, _, _)) => {
+							print(vec![interpreter.interpret_expression(&expr)]);
+						}
+						Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+					},
+				}
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");

@@ -1,23 +1,25 @@
-use std::{iter::Peekable, ops::RangeInclusive, slice::Iter};
+use std::{iter::Peekable, ops::Range, slice::Iter};
 
 use crate::{
 	ast::{AstNode, Expression},
-	errors::ErrorReporter,
+	errors::{ParserError, SyntaxError, TypeError},
 	token::{Token, TokenInfo},
 	types::NumberType,
 };
 
+type PrattParserReturnData<'b> =
+	Result<(Expression, Peekable<Iter<'b, TokenInfo>>, Range<usize>), ParserError>;
+
 pub struct Parser<'a> {
 	tokens: &'a Vec<Vec<TokenInfo>>,
-	reporter: ErrorReporter<'a>,
 }
 
 impl<'a> Parser<'a> {
-	pub fn new(tokens: &'a Vec<Vec<TokenInfo>>, reporter: ErrorReporter<'a>) -> Self {
-		Self { tokens, reporter }
+	pub fn new(tokens: &'a Vec<Vec<TokenInfo>>) -> Self {
+		Self { tokens }
 	}
 
-	pub fn ast(&self) -> Vec<AstNode> {
+	pub fn ast(&self) -> Result<Vec<AstNode>, ParserError> {
 		let mut ast = vec![];
 		let lines = self.tokens;
 
@@ -30,10 +32,20 @@ impl<'a> Parser<'a> {
 				Token::Let => {
 					let mut datatype = None;
 
-					let name = match &tokens.next().unwrap().token {
+					let name = match &tokens.peek().unwrap().token {
 						Token::Identifier(name) => name,
-						_ => unreachable!(),
+						_ => {
+							return Err(
+								SyntaxError::new(
+									Token::Identifier("ident".to_string()),
+									identifier.token.clone(),
+									identifier.range.clone(),
+								)
+								.to_parser_error(),
+							);
+						}
 					};
+					tokens.next();
 
 					if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
@@ -45,16 +57,29 @@ impl<'a> Parser<'a> {
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
-							self.reporter.syntax_error(
-								&tokeninfo.range,
-								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-							)
+							return Err(
+								SyntaxError::new(
+									Token::Identifier("ident".to_string()),
+									tokeninfo.token.clone(),
+									tokeninfo.range.clone(),
+								)
+								.to_parser_error(),
+							);
 						}
 					}
 
-					tokens.next(); // `=`
+					if let Token::Eq = &tokens.peek().unwrap().token {
+						tokens.next();
+					} else {
+						let tokeninfo = tokens.next().unwrap();
 
-					let (expr, _, range) = self.pratt_parser(tokens, 0);
+						return Err(
+							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+								.to_parser_error(),
+						);
+					}
+
+					let (expr, _, range) = self.pratt_parser(tokens, 0)?;
 
 					let expr_type = expr.infer_datatype();
 
@@ -64,21 +89,40 @@ impl<'a> Parser<'a> {
 
 					if let Some(expression_type) = expr_type {
 						if expr_type.unwrap() != datatype.unwrap() {
-							self
-								.reporter
-								.type_error(&range, (datatype.unwrap(), expression_type));
+							return Err(
+								TypeError::new(datatype.unwrap(), expression_type, range).to_parser_error(),
+							);
 						}
 					}
 
 					ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
 				}
 				Token::Fn => {
-					let name = match &tokens.next().unwrap().token {
+					let name = match &tokens.peek().unwrap().token {
 						Token::Identifier(name) => name,
-						_ => unreachable!(),
+						_ => {
+							return Err(
+								SyntaxError::new(
+									Token::Identifier("ident".to_string()),
+									identifier.token.clone(),
+									identifier.range.clone(),
+								)
+								.to_parser_error(),
+							);
+						}
 					};
+					tokens.next();
 
-					tokens.next(); // `(`
+					if let Token::LParen = &tokens.peek().unwrap().token {
+						tokens.next();
+					} else {
+						let tokeninfo = tokens.next().unwrap();
+
+						return Err(
+							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+								.to_parser_error(),
+						);
+					}
 
 					let mut args = vec![];
 
@@ -108,10 +152,14 @@ impl<'a> Parser<'a> {
 							} else {
 								let tokeninfo = tokens.next().unwrap();
 
-								self.reporter.syntax_error(
-									&tokeninfo.range,
-									(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-								)
+								return Err(
+									SyntaxError::new(
+										Token::Identifier("numbertype".to_string()),
+										tokeninfo.token.clone(),
+										tokeninfo.range.clone(),
+									)
+									.to_parser_error(),
+								);
 							}
 						}
 
@@ -134,30 +182,37 @@ impl<'a> Parser<'a> {
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
-							self.reporter.syntax_error(
-								&tokeninfo.range,
-								(&Token::Identifier("ident".to_string()), &tokeninfo.token),
-							)
+							return Err(
+								SyntaxError::new(
+									Token::Identifier("numbertype".to_string()),
+									tokeninfo.token.clone(),
+									tokeninfo.range.clone(),
+								)
+								.to_parser_error(),
+							);
 						}
 					}
 
-					let tokeninfo = tokens.next().unwrap();
+					if let Token::Eq = &tokens.peek().unwrap().token {
+						tokens.next();
+					} else {
+						let tokeninfo = tokens.next().unwrap();
 
-					if tokeninfo.token != Token::Eq {
-						self
-							.reporter
-							.syntax_error(&tokeninfo.range, (&Token::LParen, &tokeninfo.token));
+						return Err(
+							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+								.to_parser_error(),
+						);
 					}
 
-					let (expr, _, range) = self.pratt_parser(tokens, 0);
+					let (expr, _, range) = self.pratt_parser(tokens, 0)?;
 
 					let expr_type = expr.infer_datatype();
 
 					if let Some(expression_type) = expr_type {
-						if expr_type.unwrap() != return_type.unwrap() {
-							self
-								.reporter
-								.type_error(&range, (return_type.unwrap(), expression_type));
+						if expression_type != return_type.unwrap() {
+							return Err(
+								TypeError::new(return_type.unwrap(), expression_type, range).to_parser_error(),
+							);
 						}
 					}
 
@@ -169,36 +224,38 @@ impl<'a> Parser<'a> {
 					));
 				}
 				_ => {
-					let args = self.pratt_parser(line.iter().peekable(), 0).0;
+					let args = self.pratt_parser(line.iter().peekable(), 0)?.0;
 
 					match args {
 						Expression::FunctionCall(name, args) => {
 							ast.push(AstNode::FunctionCall(name.to_string(), args))
 						}
-						_ => unreachable!(),
+						_ => return Err(ParserError::LogicError("unknown statement".to_string())),
 					}
 				}
 			}
 		}
-		ast
+		Ok(ast)
 	}
 
 	pub fn pratt_parser<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		prec: u16,
-	) -> (
-		Expression,
-		Peekable<Iter<'b, TokenInfo>>,
-		RangeInclusive<usize>,
-	) {
+	) -> PrattParserReturnData<'b> {
+		if tokens.peek().is_none() {
+			return Err(ParserError::LogicError(
+				"expression parser did not find any tokens to parse".to_string(),
+			));
+		}
+
 		let tokeninfo = &tokens.next().unwrap();
 
 		let token = &tokeninfo.token;
 		let mut expr: Option<Expression> = None;
 
-		let start = *tokeninfo.range.start();
-		let mut end = *tokeninfo.range.end();
+		let start = tokeninfo.range.start;
+		let mut end = tokeninfo.range.end;
 
 		match token {
 			Token::Identifier(i) => {
@@ -209,9 +266,13 @@ impl<'a> Parser<'a> {
 					&& self.infix_binding_power(&tokens.peek().unwrap().token) == (0, 0)
 					&& ![Token::RParen, Token::Abs].contains(&tokens.peek().unwrap().token)
 				{
-					(expr, tokens, end) = self.parse_fn(tokens, i.clone());
+					let exp;
+
+					(exp, tokens, end) = self.parse_fn(tokens, i.clone())?;
+
+					expr = Some(exp)
 				} else {
-					end = *tokeninfo.range.end();
+					end = tokeninfo.range.end;
 					expr = Some(Expression::Identifier(i.to_string()))
 				};
 			}
@@ -219,9 +280,9 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.pratt_parser(tokens, 0);
+				(exp, tokens, range) = self.pratt_parser(tokens, 0)?;
 
-				end = *range.end();
+				end = range.end;
 				expr = Some(exp);
 				tokens.next();
 			}
@@ -245,12 +306,12 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
+							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 						}
 
-						end = *t.range.end();
+						end = t.range.end;
 						matrix.push(row);
 						break;
 					}
@@ -259,12 +320,12 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
+							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 							row_tokens.clear();
 						}
-						end = *t.range.end();
+						end = t.range.end;
 						matrix.push(row.clone());
 						row.clear();
 						continue;
@@ -273,14 +334,14 @@ impl<'a> Parser<'a> {
 					if t.token == Token::Comma {
 						let exp;
 
-						(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0);
+						(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
 
 						row.push(exp);
 						row_tokens.clear();
 						continue;
 					}
 
-					end = *t.range.end();
+					end = t.range.end;
 					row_tokens.push((*t).clone());
 				}
 
@@ -290,36 +351,40 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.pratt_parser(tokens, 0);
+				(exp, tokens, range) = self.pratt_parser(tokens, 0)?;
 
-				end = *range.end();
+				end = range.end;
 				expr = Some(Expression::Abs(Box::new(exp)));
 				tokens.next();
 			}
 			Token::If => {
-				(expr, tokens, end) = self.parse_if(tokens);
+				let exp;
+
+				(exp, tokens, end) = self.parse_if(tokens)?;
+
+				expr = Some(exp);
 			}
 			Token::Sub => {
 				if let Token::Integer(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Integer(-i));
-					end = *tokens.next().unwrap().range.end();
+					end = tokens.next().unwrap().range.end;
 				} else if let Token::Float(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Real(-i));
-					end = *tokens.next().unwrap().range.end();
+					end = tokens.next().unwrap().range.end;
 				} else {
-					end = *tokeninfo.range.end();
+					end = tokeninfo.range.end;
 				}
 			}
 			Token::Integer(n) => {
 				expr = Some(Expression::Integer(*n));
-				end = *tokeninfo.range.end();
+				end = tokeninfo.range.end;
 			}
 			Token::Float(n) => {
 				expr = Some(Expression::Real(*n));
-				end = *tokeninfo.range.end();
+				end = tokeninfo.range.end;
 			}
 			_ => {
-				end = *tokeninfo.range.end();
+				end = tokeninfo.range.end;
 			}
 		};
 
@@ -341,9 +406,9 @@ impl<'a> Parser<'a> {
 			let rhs;
 			let range;
 
-			(rhs, tokens, range) = self.pratt_parser(tokens, rbp);
+			(rhs, tokens, range) = self.pratt_parser(tokens, rbp)?;
 
-			end = *range.end();
+			end = range.end;
 			expr = Some(Expression::Binary(
 				Box::new(expr.unwrap()),
 				op.token.clone(),
@@ -351,19 +416,19 @@ impl<'a> Parser<'a> {
 			));
 		}
 
-		(expr.unwrap(), tokens, start..=end)
+		Ok((expr.unwrap(), tokens, start..end))
 	}
 
 	pub fn parse_fn<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		i: String,
-	) -> (Option<Expression>, Peekable<Iter<'b, TokenInfo>>, usize) {
+	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), ParserError> {
 		let mut depth = 0;
 		let mut params = vec![];
 		let mut expression = vec![];
 
-		let mut end = *tokens.next().unwrap().range.end();
+		let mut end = tokens.next().unwrap().range.end;
 
 		loop {
 			let tokeninfo = tokens.next();
@@ -376,13 +441,13 @@ impl<'a> Parser<'a> {
 
 			let token = &tokeninfo.token;
 
-			end = *tokeninfo.range.end();
+			end = tokeninfo.range.end;
 
 			if *token == Token::RParen {
 				if depth == 0 {
 					if !expression.is_empty() && depth == 0 {
 						let lex = expression.iter().peekable();
-						let data = self.pratt_parser(lex, 0).0;
+						let data = self.pratt_parser(lex, 0)?.0;
 
 						params.push(data);
 						expression.clear();
@@ -398,7 +463,7 @@ impl<'a> Parser<'a> {
 
 			if *token == Token::Comma && depth == 0 {
 				let lex = expression.iter().peekable();
-				let data = self.pratt_parser(lex, 0).0;
+				let data = self.pratt_parser(lex, 0)?.0;
 
 				params.push(data);
 
@@ -410,28 +475,24 @@ impl<'a> Parser<'a> {
 		}
 		if !expression.is_empty() {
 			let lex = expression.iter().peekable();
-			let data = self.pratt_parser(lex, 0).0;
+			let data = self.pratt_parser(lex, 0)?.0;
 
 			params.push(data);
 			expression.clear();
 		}
 
-		(
-			Some(Expression::FunctionCall(i.to_string(), params)),
-			tokens,
-			end,
-		)
+		Ok((Expression::FunctionCall(i.to_string(), params), tokens, end))
 	}
 
 	pub fn parse_if<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
-	) -> (Option<Expression>, Peekable<Iter<'b, TokenInfo>>, usize) {
+	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), ParserError> {
 		let mut depth = 1;
 		let mut params = vec![];
 		let mut expression = vec![];
 
-		let mut end = *tokens.peek().unwrap().range.end();
+		let mut end = tokens.peek().unwrap().range.end;
 
 		loop {
 			let tokeninfo = tokens.next();
@@ -444,11 +505,11 @@ impl<'a> Parser<'a> {
 
 			let token = &tokeninfo.token;
 
-			end = *tokeninfo.range.end();
+			end = tokeninfo.range.end;
 
 			if *token == Token::Then || *token == Token::Else {
 				let lex = expression.iter().peekable();
-				let data = self.pratt_parser(lex, 0).0;
+				let data = self.pratt_parser(lex, 0)?.0;
 
 				params.push(data);
 				expression.clear();
@@ -471,21 +532,21 @@ impl<'a> Parser<'a> {
 
 		if !expression.is_empty() {
 			let lex = expression.iter().peekable();
-			let data = self.pratt_parser(lex, 0).0;
+			let data = self.pratt_parser(lex, 0)?.0;
 
 			params.push(data);
 			expression.clear();
 		}
 
-		(
-			Some(Expression::Branched(
+		Ok((
+			Expression::Branched(
 				Box::new(params[0].clone()),
 				Box::new(params[1].clone()),
 				Box::new(params[2].clone()),
-			)),
+			),
 			tokens,
 			end,
-		)
+		))
 	}
 
 	fn infix_binding_power(&self, op: &Token) -> (u16, u16) {
