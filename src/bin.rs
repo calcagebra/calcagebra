@@ -144,7 +144,7 @@ pub fn repl() {
 
 				let reporter = ErrorReporter::new("REPL", &line);
 
-				interpreter.interpret(Parser::new(Lexer::new(&line).tokens(), reporter).ast());
+				interpreter.interpret(Parser::new(&Lexer::new(&line).tokens(), reporter).ast());
 			}
 			Err(ReadlineError::Interrupted) => {
 				println!("CTRL-C");

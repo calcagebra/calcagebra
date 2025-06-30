@@ -8,18 +8,18 @@ use crate::{
 };
 
 pub struct Parser<'a> {
-	tokens: Vec<Vec<TokenInfo>>,
+	tokens: &'a Vec<Vec<TokenInfo>>,
 	reporter: ErrorReporter<'a>,
 }
 
 impl<'a> Parser<'a> {
-	pub fn new(tokens: Vec<Vec<TokenInfo>>, reporter: ErrorReporter<'a>) -> Self {
+	pub fn new(tokens: &'a Vec<Vec<TokenInfo>>, reporter: ErrorReporter<'a>) -> Self {
 		Self { tokens, reporter }
 	}
 
 	pub fn ast(&self) -> Vec<AstNode> {
 		let mut ast = vec![];
-		let lines = &self.tokens;
+		let lines = self.tokens;
 
 		for line in lines {
 			let mut tokens = line.iter().peekable();

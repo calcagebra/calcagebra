@@ -22,7 +22,7 @@ syntect = "5.2.0"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
-name = "lexer"
+name = "bench"
 harness = false
 
 [profile.release]

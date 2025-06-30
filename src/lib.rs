@@ -32,7 +32,7 @@ pub fn run(input: &str, debug: bool, time: bool) {
 		println!("LEXER: {tokens:?}\n\nTIME: {duration:?}\n");
 	}
 
-	let ast = Parser::new(tokens, reporter).ast();
+	let ast = Parser::new(&tokens, reporter).ast();
 
 	if debug {
 		let duration = main.elapsed();
