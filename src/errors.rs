@@ -10,6 +10,7 @@ use codespan_reporting::{
 use crate::token::Token;
 use crate::types::NumberType;
 
+#[derive(Debug)]
 pub enum ParserError {
 	SyntaxError(SyntaxError),
 	TypeError(TypeError),
@@ -48,6 +49,7 @@ impl ParserError {
 	}
 }
 
+#[derive(Debug)]
 pub struct SyntaxError {
 	expected: Token,
 	got: Token,
@@ -79,6 +81,7 @@ impl SyntaxError {
 	}
 }
 
+#[derive(Debug)]
 pub struct TypeError {
 	expected: NumberType,
 	got: NumberType,
