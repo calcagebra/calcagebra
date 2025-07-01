@@ -27,9 +27,9 @@ impl Default for Interpreter {
 
 impl Interpreter {
 	pub fn new() -> Self {
-                let mut globals = HashMap::new();
+		let mut globals = HashMap::new();
 
-                let global_array = vec![
+		let global_array = vec![
 			("i", Number::Complex(0.0, 1.0)),
 			("pi", Number::Real(PI)),
 			("π", Number::Real(PI)),
@@ -69,35 +69,7 @@ impl Interpreter {
 				self.globals.insert(name, number);
 			}
 			AstNode::FunctionCall(name, exprs) => {
-				if is_std(&name) && !needs_ctx(&name) {
-					let mut args = vec![];
-
-					for expr in exprs {
-						args.push(self.interpret_expression(&expr))
-					}
-
-					call(&name, args);
-				} else if is_std(&name) && needs_ctx(&name) {
-					ctx_call(&name, exprs, self);
-				} else if self.functions.contains_key(&name) {
-					let f: Function = self.functions.get(&name).unwrap().clone();
-					let globals = self.globals.clone();
-
-					for (i, (arg, numbertype)) in f.params.iter().enumerate() {
-						let r = self.interpret_expression(&exprs[i]);
-
-						if r.r#type() != *numbertype {
-							// TODO: error handling
-							panic!("type mismatch")
-						}
-
-						self.globals.insert(arg.to_string(), r);
-					}
-
-					self.interpret_expression(&f.code);
-
-					self.globals = globals;
-				}
+				self.interpret_expression(&Expression::FunctionCall(name, exprs));
 			}
 			AstNode::FunctionDeclaration(name, items, number_type, expr) => {
 				self
