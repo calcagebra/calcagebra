@@ -3,8 +3,10 @@ pub mod math;
 pub mod operands;
 pub mod types;
 
+use std::collections::HashMap;
+
 use crate::ast::Expression;
-use crate::interpreter::Interpreter;
+use crate::interpreter::Function;
 use crate::types::{Number, NumberType};
 
 // TODO: Add operands in this
@@ -119,9 +121,13 @@ pub fn call(f: &str, args: Vec<Number>) -> Number {
 	}
 }
 
-pub fn ctx_call(f: &str, args: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
+pub fn ctx_call(
+	f: &str,
+	args: &[Expression],
+	ctx: &mut (&mut HashMap<String, Number>, &HashMap<String, Function>),
+) -> Number {
 	match f {
-		"graph" => math::graph(args, interpreter),
+		"graph" => math::graph(args, ctx),
 		_ => unreachable!(),
 	}
 }

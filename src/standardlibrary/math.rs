@@ -4,10 +4,11 @@ use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
+use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ast::Expression;
-use crate::interpreter::Interpreter;
+use crate::interpreter::{Function, Interpreter};
 use crate::standardlibrary::operands::{add, div, mul, sub};
 use crate::types::{Number, NumberType};
 
@@ -213,7 +214,10 @@ pub fn inverse(v: Vec<Number>) -> Number {
 	}
 }
 
-pub fn graph(f: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
+pub fn graph(
+	f: &[Expression],
+	ctx: &mut (&mut HashMap<String, Number>, &HashMap<String, Function>),
+) -> Number {
 	if let Expression::Identifier(f) = &f[0] {
 		let start = SystemTime::now();
 		let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
@@ -234,13 +238,13 @@ pub fn graph(f: Vec<Expression>, interpreter: &mut Interpreter) -> Number {
 		chart.configure_mesh().draw().unwrap();
 
 		let style = &GREY_A700;
-		let code = interpreter.functions.get(f).unwrap().code.clone();
+		let code = ctx.1.get(f).unwrap().code.clone();
 
 		chart
 			.draw_series(LineSeries::new(
 				(-500..=500).map(|x| x as f32 / 50.0).map(|x| {
-					interpreter.globals.insert("x".to_string(), Number::Real(x));
-					(x, interpreter.interpret_expression(&code).real())
+					ctx.0.insert("x".to_string(), Number::Real(x));
+					(x, Interpreter::interpret_expression(ctx, &code).real())
 				}),
 				&style,
 			))

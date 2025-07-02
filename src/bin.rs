@@ -159,7 +159,8 @@ pub fn repl() {
 							&& let AstNode::FunctionCall(name, expr) = &ast[0]
 						{
 							if name != "print" {
-								print(vec![interpreter.interpret_expression(
+								print(vec![Interpreter::interpret_expression(
+									&mut (&mut interpreter.globals, &interpreter.functions),
 									&Expression::FunctionCall(name.to_string(), expr.clone()),
 								)]);
 							}
@@ -170,7 +171,10 @@ pub fn repl() {
 					// REPL does not allow multi line inputs so tokens length is always 1
 					Err(..) => match parser.pratt_parser(tokens[0].iter().peekable(), 0) {
 						Ok((expr, _, _)) => {
-							print(vec![interpreter.interpret_expression(&expr)]);
+							print(vec![Interpreter::interpret_expression(
+								&mut (&mut interpreter.globals, &interpreter.functions),
+								&expr,
+							)]);
 						}
 						Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
 					},
