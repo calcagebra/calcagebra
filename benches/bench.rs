@@ -9,9 +9,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 	c.bench_function("lexer", |b| b.iter(|| Lexer::new(&lex).tokens()));
 
-	c.bench_function("parser", |b| {
-		b.iter(|| Parser::new(&parse).ast())
-	});
+	c.bench_function("parser", |b| b.iter(|| Parser::new(&parse).ast()));
 }
 
 criterion_group!(name = benches; config = Criterion::default().sample_size(1000); targets = criterion_benchmark);

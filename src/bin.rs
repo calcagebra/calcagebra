@@ -155,7 +155,9 @@ pub fn repl() {
 
 				match parser.ast() {
 					Ok(ast) => {
-						if let AstNode::FunctionCall(name, expr) = &ast[0] {
+						if !ast.is_empty()
+							&& let AstNode::FunctionCall(name, expr) = &ast[0]
+						{
 							if name != "print" {
 								print(vec![interpreter.interpret_expression(
 									&Expression::FunctionCall(name.to_string(), expr.clone()),
