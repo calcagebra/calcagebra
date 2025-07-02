@@ -4,73 +4,72 @@ use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
-use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::ast::Expression;
-use crate::interpreter::{Function, Interpreter};
-use crate::standardlibrary::operands::{add, div, mul, sub};
+use crate::interpreter::{Function, Interpreter, InterpreterContext};
+use crate::standardlibrary::operators::{add, div, mul, sub};
 use crate::types::{Number, NumberType};
 
-pub fn abs(a: Vec<Number>) -> Number {
-	let numbertype = a[0].r#type();
+pub fn abs(a: &Number) -> Number {
+	let numbertype = a.r#type();
 
 	match numbertype {
-		NumberType::Int => Number::Real(a[0].int().abs() as f32),
-		NumberType::Real => Number::Real(a[0].real().abs()),
-		NumberType::Complex => Number::Real(a[0].array().iter().map(|f| f * f).sum::<f32>().sqrt()),
+		NumberType::Int => Number::Real(a.int().abs() as f32),
+		NumberType::Real => Number::Real(a.real().abs()),
+		NumberType::Complex => Number::Real(a.array().iter().map(|f| f * f).sum::<f32>().sqrt()),
 		NumberType::Matrix => determinant(a),
 	}
 }
 
-pub fn round(a: Vec<Number>) -> Number {
-	match a[0].r#type() {
-		NumberType::Real => Number::Int(a[0].real().round() as i32),
+pub fn round(a: &Number) -> Number {
+	match a.r#type() {
+		NumberType::Real => Number::Int(a.real().round() as i32),
 		_ => unimplemented!(),
 	}
 }
 
-pub fn ceil(a: Vec<Number>) -> Number {
-	match a[0].r#type() {
-		NumberType::Real => Number::Int(a[0].real().ceil() as i32),
+pub fn ceil(a: &Number) -> Number {
+	match a.r#type() {
+		NumberType::Real => Number::Int(a.real().ceil() as i32),
 		_ => unimplemented!(),
 	}
 }
 
-pub fn floor(a: Vec<Number>) -> Number {
-	match a[0].r#type() {
-		NumberType::Real => Number::Int(a[0].real().floor() as i32),
+pub fn floor(a: &Number) -> Number {
+	match a.r#type() {
+		NumberType::Real => Number::Int(a.real().floor() as i32),
 		_ => unimplemented!(),
 	}
 }
 
-pub fn ln(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().ln())
+pub fn ln(a: &Number) -> Number {
+	Number::Real(a.real().ln())
 }
 
-pub fn log10(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().log10())
+pub fn log10(a: &Number) -> Number {
+	Number::Real(a.real().log10())
 }
 
-pub fn log(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().log(a[1].real()))
+pub fn log(a: &Number, b: &Number) -> Number {
+	Number::Real(a.real().log(b.real()))
 }
 
-pub fn sin(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().sin())
+pub fn sin(a: &Number) -> Number {
+	Number::Real(a.real().sin())
 }
 
-pub fn cos(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().cos())
+pub fn cos(a: &Number) -> Number {
+	Number::Real(a.real().cos())
 }
 
-pub fn tan(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().tan())
+pub fn tan(a: &Number) -> Number {
+	Number::Real(a.real().tan())
 }
 
-pub fn sqrt(a: Vec<Number>) -> Number {
-	match a[0] {
-		Number::Int(..) | Number::Real(..) => Number::Real(a[0].real().sqrt()),
+pub fn sqrt(a: &Number) -> Number {
+	match a {
+		Number::Int(..) | Number::Real(..) => Number::Real(a.real().sqrt()),
 		Number::Complex(a, b) => {
 			let r = (a * a + b * b).sqrt();
 
@@ -82,16 +81,16 @@ pub fn sqrt(a: Vec<Number>) -> Number {
 	}
 }
 
-pub fn cbrt(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().cbrt())
+pub fn cbrt(a: &Number) -> Number {
+	Number::Real(a.real().cbrt())
 }
 
-pub fn nrt(a: Vec<Number>) -> Number {
-	Number::Real(a[0].real().powf(1.0 / a[1].real()))
+pub fn nrt(a: &Number, b: &Number) -> Number {
+	Number::Real(a.real().powf(1.0 / b.real()))
 }
 
-pub fn determinant(v: Vec<Number>) -> Number {
-	match &v[0] {
+pub fn determinant(v: &Number) -> Number {
+	match v {
 		Number::Matrix(matrix) => {
 			let cols = matrix.len();
 
@@ -122,7 +121,7 @@ pub fn determinant(v: Vec<Number>) -> Number {
 						&delta,
 						&mul(
 							&mul(n, &Number::Int([1, -1][i % 2])),
-							&determinant(vec![Number::Matrix(minor_matrix)]),
+							&determinant(&Number::Matrix(minor_matrix)),
 						),
 					);
 				}
@@ -134,8 +133,8 @@ pub fn determinant(v: Vec<Number>) -> Number {
 	}
 }
 
-pub fn transpose(v: Vec<Number>) -> Number {
-	match &v[0] {
+pub fn transpose(v: &Number) -> Number {
+	match v {
 		Number::Matrix(matrix) => {
 			let cols = matrix.len();
 
@@ -146,6 +145,7 @@ pub fn transpose(v: Vec<Number>) -> Number {
 			}
 
 			let mut iters: Vec<_> = matrix.iter().map(|n| n.iter()).collect();
+
 			Number::Matrix(
 				(0..cols)
 					.map(|_| {
@@ -161,8 +161,8 @@ pub fn transpose(v: Vec<Number>) -> Number {
 	}
 }
 
-pub fn adj(v: Vec<Number>) -> Number {
-	match &v[0] {
+pub fn adj(v: &Number) -> Number {
+	match v {
 		Number::Matrix(matrix) => {
 			let cols = matrix.len();
 			let mut adj_matrix: Vec<Vec<Number>> = vec![];
@@ -186,7 +186,7 @@ pub fn adj(v: Vec<Number>) -> Number {
 
 					adj_matrix[j][i] = mul(
 						&mul(n, &Number::Int([1, -1][(i + j) % 2])),
-						&determinant(vec![Number::Matrix(minor_matrix)]),
+						&determinant(&Number::Matrix(minor_matrix)),
 					);
 				}
 			}
@@ -197,8 +197,8 @@ pub fn adj(v: Vec<Number>) -> Number {
 	}
 }
 
-pub fn inverse(v: Vec<Number>) -> Number {
-	match &v[0] {
+pub fn inverse(v: &Number) -> Number {
+	match v {
 		t @ Number::Matrix(matrix) => {
 			let cols = matrix.len();
 
@@ -207,18 +207,17 @@ pub fn inverse(v: Vec<Number>) -> Number {
 					panic!("matrix should be square for inverse");
 				}
 			}
-			let det = &determinant(vec![t.clone()]);
+			let det = &determinant(t);
 			div(t, det)
 		}
 		_ => panic!("expected matrix for inverse"),
 	}
 }
 
-pub fn graph(
-	f: &[Expression],
-	ctx: &mut (&mut HashMap<String, Number>, &HashMap<String, Function>),
-) -> Number {
-	if let Expression::Identifier(f) = &f[0] {
+pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Number {
+	if let Expression::Identifier(f) = f
+		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap()
+	{
 		let start = SystemTime::now();
 		let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
 		let name = format!("graph-output-{duration}.png");
@@ -238,13 +237,13 @@ pub fn graph(
 		chart.configure_mesh().draw().unwrap();
 
 		let style = &GREY_A700;
-		let code = ctx.1.get(f).unwrap().code.clone();
+		let code = &g.code;
 
 		chart
 			.draw_series(LineSeries::new(
 				(-500..=500).map(|x| x as f32 / 50.0).map(|x| {
 					ctx.0.insert("x".to_string(), Number::Real(x));
-					(x, Interpreter::interpret_expression(ctx, &code).real())
+					(x, Interpreter::interpret_expression(ctx, code).real())
 				}),
 				&style,
 			))

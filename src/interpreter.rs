@@ -3,11 +3,17 @@ use std::{
 	f32::consts::{E, PI},
 };
 
+pub type InterpreterContext<'a> = (
+	&'a mut HashMap<String, Number>,
+	&'a HashMap<String, Function>,
+);
+
 use crate::{
 	ast::{AstNode, Expression},
 	standardlibrary::{
-		call, ctx_call, is_std, math, needs_ctx,
-		operands::{add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
+		io, math,
+		operators::{self, add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
+		types as stdtypes,
 	},
 	token::Token,
 	types::{Number, NumberType},
@@ -28,6 +34,7 @@ impl Default for Interpreter {
 impl Interpreter {
 	pub fn new() -> Self {
 		let mut globals = HashMap::new();
+		let mut functions = HashMap::new();
 
 		[
 			("i", Number::Complex(0.0, 1.0)),
@@ -37,10 +44,52 @@ impl Interpreter {
 		]
 		.map(|(global, data)| globals.insert(global.to_string(), data));
 
-		Self {
-			globals,
-			functions: HashMap::new(),
-		}
+		[
+			"print",
+			"read",
+			"int",
+			"real",
+			"add",
+			"sub",
+			"mul",
+			"div",
+			"pow",
+			"rem",
+			"is_eq",
+			"neq",
+			"gt",
+			"gteq",
+			"lt",
+			"lteq",
+			"abs",
+			"round",
+			"ceil",
+			"floor",
+			"ln",
+			"log10",
+			"log",
+			"sin",
+			"cos",
+			"tan",
+			"sqrt",
+			"cbrt",
+			"nrt",
+			"graph",
+			"transpose",
+			"determinant",
+			"adj",
+			"inverse",
+		]
+		.map(|name| {
+			functions.insert(
+				name.to_string(),
+				Function::STD(STDFunction {
+					name: name.to_string(),
+				}),
+			)
+		});
+
+		Self { globals, functions }
 	}
 
 	pub fn interpret(&mut self, ast: Vec<AstNode>) {
@@ -72,19 +121,21 @@ impl Interpreter {
 				);
 			}
 			AstNode::FunctionDeclaration(name, items, number_type, expr) => {
-				self
-					.functions
-					.insert(name, Function::new(items, number_type, expr));
+				self.functions.insert(
+					name,
+					Function::UserDefined(UserDefinedFunction {
+						params: items,
+						return_type: number_type,
+						code: expr,
+					}),
+				);
 			}
 		}
 	}
 
-	pub fn interpret_expression(
-		ctx: &mut (&mut HashMap<String, Number>, &HashMap<String, Function>),
-		expr: &Expression,
-	) -> Number {
+	pub fn interpret_expression(ctx: &mut InterpreterContext, expr: &Expression) -> Number {
 		match expr {
-			Expression::Abs(expression) => math::abs(vec![Self::interpret_expression(ctx, expression)]),
+			Expression::Abs(expression) => math::abs(&Self::interpret_expression(ctx, expression)),
 			Expression::Binary(lhs, token, rhs) => {
 				let lhd = &Self::interpret_expression(ctx, lhs);
 
@@ -132,59 +183,106 @@ impl Interpreter {
 					.collect::<Vec<Vec<Number>>>(),
 			),
 			Expression::FunctionCall(name, exprs) => {
-				if is_std(name) && !needs_ctx(name) {
-					let mut args = vec![];
-
-					for expr in exprs {
-						args.push(Self::interpret_expression(ctx, expr))
-					}
-
-					return call(name, args);
-				} else if is_std(name) && needs_ctx(name) {
-					return ctx_call(name, exprs, ctx);
-				} else if ctx.1.contains_key(name) {
+				if ctx.1.contains_key(name) {
 					let f = ctx.1.get(name).unwrap();
 
-					for (i, (arg, numbertype)) in f.params.iter().enumerate() {
-						let r = Self::interpret_expression(ctx, &exprs[i]);
+					if let Function::UserDefined(g) = f {
+						for (i, (arg, numbertype)) in g.params.iter().enumerate() {
+							let r = Self::interpret_expression(ctx, &exprs[i]);
 
-						if r.r#type() != *numbertype {
-							// TODO: error handling
-							panic!("type mismatch")
+							if r.r#type() != *numbertype {
+								// TODO: error handling
+								panic!("type mismatch")
+							}
+
+							ctx.0.insert(arg.to_string(), r);
 						}
 
-						ctx.0.insert(arg.to_string(), r);
+						return g.execute(ctx);
+					} else if let Function::STD(g) = f {
+						return g.execute(ctx, exprs);
 					}
 
-					return f.execute(ctx);
+					unreachable!()
 				}
 
-				unreachable!()
+				panic!("undefined function")
 			}
 		}
 	}
 }
 
 #[derive(Debug, Clone)]
-pub struct Function {
+pub enum Function {
+	UserDefined(UserDefinedFunction),
+	STD(STDFunction),
+}
+
+#[derive(Debug, Clone)]
+pub struct UserDefinedFunction {
 	pub params: Vec<(String, NumberType)>,
 	pub return_type: NumberType,
 	pub code: Expression,
 }
 
-impl Function {
-	pub fn new(params: Vec<(String, NumberType)>, return_type: NumberType, code: Expression) -> Self {
-		Self {
-			params,
-			return_type,
-			code,
-		}
-	}
-
-	pub fn execute(
-		&self,
-		ctx: &mut (&mut HashMap<String, Number>, &HashMap<String, Function>),
-	) -> Number {
+impl UserDefinedFunction {
+	pub fn execute(&self, ctx: &mut InterpreterContext) -> Number {
 		Interpreter::interpret_expression(ctx, &self.code)
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct STDFunction {
+	pub name: String,
+}
+
+impl STDFunction {
+	pub fn execute(&self, ctx: &mut InterpreterContext, exprs: &Vec<Expression>) -> Number {
+		if &self.name == "graph" {
+			return math::graph(&exprs[0], ctx);
+		}
+
+		let mut args = vec![];
+
+		for expr in exprs {
+			args.push(Interpreter::interpret_expression(ctx, expr))
+		}
+
+		match self.name.as_str() {
+			"print" => io::print(args),
+			"read" => io::read(ctx),
+			"int" => stdtypes::int(&args[0]),
+			"real" => stdtypes::real(&args[0]),
+			"add" => operators::add(&args[0], &args[1]),
+			"sub" => operators::sub(&args[0], &args[1]),
+			"mul" => operators::mul(&args[0], &args[1]),
+			"div" => operators::div(&args[0], &args[1]),
+			"pow" => operators::pow(&args[0], &args[1]),
+			"rem" => operators::rem(&args[0], &args[1]),
+			"is_eq" => operators::is_eq(&args[0], &args[1]),
+			"neq" => operators::neq(&args[0], &args[1]),
+			"gt" => operators::gt(&args[0], &args[1]),
+			"gteq" => operators::gteq(&args[0], &args[1]),
+			"lt" => operators::lt(&args[0], &args[1]),
+			"lteq" => operators::lteq(&args[0], &args[1]),
+			"abs" => math::abs(&args[0]),
+			"round" => math::round(&args[0]),
+			"ceil" => math::ceil(&args[0]),
+			"floor" => math::floor(&args[0]),
+			"ln" => math::ln(&args[0]),
+			"log10" => math::log10(&args[0]),
+			"log" => math::log(&args[0], &args[1]),
+			"sin" => math::sin(&args[0]),
+			"cos" => math::cos(&args[0]),
+			"tan" => math::tan(&args[0]),
+			"sqrt" => math::sqrt(&args[0]),
+			"cbrt" => math::cbrt(&args[0]),
+			"nrt" => math::nrt(&args[0], &args[1]),
+			"transpose" => math::transpose(&args[0]),
+			"determinant" => math::determinant(&args[0]),
+			"adj" => math::adj(&args[0]),
+			"inverse" => math::inverse(&args[0]),
+			_ => unreachable!(),
+		}
 	}
 }

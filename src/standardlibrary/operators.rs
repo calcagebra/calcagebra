@@ -175,7 +175,7 @@ pub fn pow(lhd: &Number, rhd: &Number) -> Number {
 		}
 		(Number::Matrix(matrix), Number::Int(n)) => match n.cmp(&0) {
 			Ordering::Less => {
-				let mut resultant_matrix = inverse(vec![lhd.clone()]);
+				let mut resultant_matrix = inverse(lhd);
 
 				for _ in 0..*n {
 					resultant_matrix = mul(&resultant_matrix, &resultant_matrix);
