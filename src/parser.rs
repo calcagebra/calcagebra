@@ -366,7 +366,7 @@ impl<'a> Parser<'a> {
 				expr = Some(exp);
 			}
 			Token::Sub => {
-				if let Token::Float(i) = tokens.peek().unwrap().token {
+				if tokens.peek().is_some() && let Token::Float(i) = tokens.peek().unwrap().token {
 					expr = Some(Expression::Float(-i));
 					end = tokens.next().unwrap().range.end;
 				} else {
