@@ -24,10 +24,10 @@ impl Display for Data {
 			"{}",
 			match self {
 				Data::Number(a, b) => {
-					if *a == 0.0 {
-						format!("{b}i")
-					} else if *b == 0.0 {
+					if *b == 0.0 {
 						format!("{a}")
+					} else if *a == 0.0 {
+						format!("{b}i")
 					} else {
 						format!("{a} + {b}i")
 					}
