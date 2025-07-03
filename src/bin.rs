@@ -155,9 +155,12 @@ pub fn repl() {
 						if !ast.is_empty() {
 							let data;
 
-							(ctx, data) = ast[0].clone().evaluate(ctx);
+							(ctx, data) = match ast[0].clone().0.evaluate(ctx, ast[0].1.clone()) {
+								Ok(tuple) => tuple,
+								Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+							};
 
-							if let Expression::FunctionCall(name, _) = &ast[0]
+							if let Expression::FunctionCall(name, _) = &ast[0].0
 								&& name == "print"
 							{
 								continue;

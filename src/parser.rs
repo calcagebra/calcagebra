@@ -19,16 +19,16 @@ impl<'a> Parser<'a> {
 		Self { tokens }
 	}
 
-	pub fn ast(&self) -> Result<Vec<Expression>, Error> {
+	pub fn ast(&self) -> Result<Vec<(Expression, Range<usize>)>, Error> {
 		let mut ast = vec![];
 		let lines = self.tokens;
 
 		for line in lines {
 			let tokens = line.iter().peekable();
 
-			let (expr, _, _) = self.parser(tokens, 0)?;
+			let (expr, _, range) = self.parser(tokens, 0)?;
 
-			ast.push(expr);
+			ast.push((expr, range));
 		}
 
 		Ok(ast)
@@ -117,9 +117,7 @@ impl<'a> Parser<'a> {
 
 				if let Some(expression_type) = expr_type {
 					if expr_type.unwrap() != datatype.unwrap() {
-						return Err(
-							TypeError::new(datatype.unwrap(), expression_type, range).to_error(),
-						);
+						return Err(TypeError::new(datatype.unwrap(), expression_type, range).to_error());
 					}
 				}
 
@@ -245,9 +243,7 @@ impl<'a> Parser<'a> {
 
 				if let Some(expression_type) = expr_type {
 					if expression_type != return_type.unwrap() {
-						return Err(
-							TypeError::new(return_type.unwrap(), expression_type, range).to_error(),
-						);
+						return Err(TypeError::new(return_type.unwrap(), expression_type, range).to_error());
 					}
 				}
 
@@ -256,6 +252,7 @@ impl<'a> Parser<'a> {
 					args,
 					return_type.unwrap(),
 					Box::new(exp),
+					start..end,
 				));
 				end = range.end;
 			}
@@ -366,7 +363,9 @@ impl<'a> Parser<'a> {
 				expr = Some(exp);
 			}
 			Token::Sub => {
-				if tokens.peek().is_some() && let Token::Float(i) = tokens.peek().unwrap().token {
+				if tokens.peek().is_some()
+					&& let Token::Float(i) = tokens.peek().unwrap().token
+				{
 					expr = Some(Expression::Float(-i));
 					end = tokens.next().unwrap().range.end;
 				} else {
@@ -407,7 +406,7 @@ impl<'a> Parser<'a> {
 						return Err(t);
 					}
 					Error::LogicError(..) => {
-						return Err(EOLError::new(end..end+1).to_error());
+						return Err(EOLError::new(end..end + 1).to_error());
 					}
 				},
 			};
@@ -421,7 +420,7 @@ impl<'a> Parser<'a> {
 		}
 
 		if expr.is_none() {
-			return Err(EOLError::new(end..end+1).to_error());
+			return Err(EOLError::new(end..end + 1).to_error());
 		}
 
 		Ok((expr.unwrap(), tokens, start..end))
@@ -436,6 +435,7 @@ impl<'a> Parser<'a> {
 		let mut params = vec![];
 		let mut expression = vec![];
 
+		let start = tokens.peek().unwrap().range.start;
 		let mut end = tokens.next().unwrap().range.end;
 
 		loop {
@@ -457,7 +457,7 @@ impl<'a> Parser<'a> {
 						let lex = expression.iter().peekable();
 						let data = self.parser(lex, 0)?.0;
 
-						params.push(data);
+						params.push((data, start..end));
 						expression.clear();
 					}
 					break;
@@ -473,7 +473,7 @@ impl<'a> Parser<'a> {
 				let lex = expression.iter().peekable();
 				let data = self.parser(lex, 0)?.0;
 
-				params.push(data);
+				params.push((data, start..end));
 
 				expression.clear();
 				continue;
@@ -485,7 +485,7 @@ impl<'a> Parser<'a> {
 			let lex = expression.iter().peekable();
 			let data = self.parser(lex, 0)?.0;
 
-			params.push(data);
+			params.push((data, start..end));
 			expression.clear();
 		}
 

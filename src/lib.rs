@@ -44,7 +44,10 @@ pub fn run(input: &str, debug: bool, time: bool) {
 		println!("AST: {ast:?}\n\nTIME: {duration:?}\n");
 	}
 
-	Interpreter::new().interpret(ast);
+	match Interpreter::new().interpret(ast) {
+		Ok(..) => (),
+		Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+	}
 
 	if debug || time {
 		let duration = main.elapsed();

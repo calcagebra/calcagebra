@@ -12,7 +12,7 @@ impl Data {
 		match self {
 			Data::Number(..) => DataType::Number,
 			Data::Matrix(..) => DataType::Matrix,
-			Data::FnPointer(..) => DataType::FnPointer
+			Data::FnPointer(..) => DataType::FnPointer,
 		}
 	}
 }
@@ -23,7 +23,15 @@ impl Display for Data {
 			f,
 			"{}",
 			match self {
-				Data::Number(a, b) => format!("{a} + {b}i"),
+				Data::Number(a, b) => {
+					if *a == 0.0 {
+						format!("{b}i")
+					} else if *b == 0.0 {
+						format!("{a}")
+					} else {
+						format!("{a} + {b}i")
+					}
+				}
 				Data::Matrix(matrix) => {
 					let mut highest_padding_required = 0;
 					let mut whitespace_index_map = vec![];
@@ -70,7 +78,7 @@ impl Display for Data {
 						" ".repeat(highest_padding_required),
 					)
 				}
-				Data::FnPointer(str) => str.to_owned()
+				Data::FnPointer(str) => str.to_owned(),
 			}
 		)
 	}
@@ -80,7 +88,7 @@ impl Display for Data {
 pub enum DataType {
 	Number,
 	Matrix,
-	FnPointer
+	FnPointer,
 }
 
 impl DataType {
