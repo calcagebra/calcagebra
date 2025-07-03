@@ -159,6 +159,7 @@ pub fn repl() {
 								Ok(tuple) => tuple,
 								Err(err) => {
 									reporter.error_without_exit(err.error_message(), err.help_message(), err.range());
+									continue;
 								}
 							};
 
