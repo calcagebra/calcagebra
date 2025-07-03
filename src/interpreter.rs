@@ -31,13 +31,16 @@ impl Interpreter {
 		let mut globals = HashMap::new();
 		let mut functions = HashMap::new();
 
-		[
+		let sys_vrs = [
 			("i", Data::Number(0.0, 1.0)),
 			("pi", Data::Number(PI, 0.0)),
 			("π", Data::Number(PI, 0.0)),
 			("e", Data::Number(E, 0.0)),
-		]
-		.map(|(global, data)| globals.insert(global.to_string(), data));
+		];
+
+        for (name, val) in sys_vrs {
+            globals.insert(name.to_string(), val);
+        }
 
 		[
 			"print",
