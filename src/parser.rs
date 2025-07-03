@@ -420,6 +420,10 @@ impl<'a> Parser<'a> {
 			));
 		}
 
+		if expr.is_none() {
+			return Err(EOLError::new(end..end+1).to_parser_error());
+		}
+
 		Ok((expr.unwrap(), tokens, start..end))
 	}
 
