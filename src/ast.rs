@@ -1,11 +1,11 @@
-use crate::{standardlibrary, token::Token, types::NumberType};
+use crate::{standardlibrary, token::Token, types::DataType};
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum AstNode {
-	Assignment((String, Option<NumberType>), Expression),
+	Assignment((String, Option<DataType>), Expression),
 	FunctionCall(String, Vec<Expression>),
-	FunctionDeclaration(String, Vec<(String, NumberType)>, NumberType, Expression),
+	FunctionDeclaration(String, Vec<(String, DataType)>, DataType, Expression),
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -21,7 +21,7 @@ pub enum Expression {
 }
 
 impl Expression {
-	pub fn infer_datatype(&self) -> Option<NumberType> {
+	pub fn infer_datatype(&self) -> Option<DataType> {
 		match self {
 			Expression::Abs(expression) => expression.infer_datatype(),
 			Expression::Branched(..) => None,
@@ -37,18 +37,18 @@ impl Expression {
 				let rhs = rhs.unwrap();
 
 				Some(match (lhs, rhs) {
-					(NumberType::Int, NumberType::Int) => NumberType::Int,
-					(NumberType::Int, NumberType::Real)
-					| (NumberType::Real, NumberType::Int)
-					| (NumberType::Real, NumberType::Real) => NumberType::Real,
-					(NumberType::Complex, _) | (_, NumberType::Complex) => NumberType::Complex,
-					(NumberType::Matrix, _) | (_, NumberType::Matrix) => NumberType::Matrix,
+					(DataType::Int, DataType::Int) => DataType::Int,
+					(DataType::Int, DataType::Real)
+					| (DataType::Real, DataType::Int)
+					| (DataType::Real, DataType::Real) => DataType::Real,
+					(DataType::Complex, _) | (_, DataType::Complex) => DataType::Complex,
+					(DataType::Matrix, _) | (_, DataType::Matrix) => DataType::Matrix,
 				})
 			}
 			Expression::Identifier(_) => None,
-			Expression::Real(..) => Some(NumberType::Real),
-			Expression::Integer(..) => Some(NumberType::Int),
-			Expression::Matrix(..) => Some(NumberType::Matrix),
+			Expression::Real(..) => Some(DataType::Real),
+			Expression::Integer(..) => Some(DataType::Int),
+			Expression::Matrix(..) => Some(DataType::Matrix),
 			Expression::FunctionCall(ident, _) => {
 				if standardlibrary::is_std(ident) {
 					Some(standardlibrary::internal_type_map(ident).1)

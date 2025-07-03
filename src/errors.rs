@@ -8,7 +8,7 @@ use codespan_reporting::{
 };
 
 use crate::token::Token;
-use crate::types::NumberType;
+use crate::types::DataType;
 
 #[derive(Debug)]
 pub enum ParserError {
@@ -83,13 +83,13 @@ impl SyntaxError {
 
 #[derive(Debug)]
 pub struct TypeError {
-	expected: NumberType,
-	got: NumberType,
+	expected: DataType,
+	got: DataType,
 	pub range: Range<usize>,
 }
 
 impl TypeError {
-	pub fn new(expected: NumberType, got: NumberType, range: Range<usize>) -> Self {
+	pub fn new(expected: DataType, got: DataType, range: Range<usize>) -> Self {
 		Self {
 			expected,
 			got,

@@ -4,7 +4,7 @@ use crate::{
 	ast::{AstNode, Expression},
 	errors::{ParserError, SyntaxError, TypeError},
 	token::{Token, TokenInfo},
-	types::NumberType,
+	types::DataType,
 };
 
 type PrattParserReturnData<'b> =
@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
 						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
 
-							datatype = Some(NumberType::parse(ident))
+							datatype = Some(DataType::parse(ident))
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
 
 						let t = tokens.next().unwrap();
 
-						let mut datatype = Some(NumberType::Real);
+						let mut datatype = Some(DataType::Number);
 
 						if tokens.peek().unwrap().token == Token::Colon {
 							tokens.next();
@@ -148,7 +148,7 @@ impl<'a> Parser<'a> {
 							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 								tokens.next();
 
-								datatype = Some(NumberType::parse(ident))
+								datatype = Some(DataType::parse(ident))
 							} else {
 								let tokeninfo = tokens.next().unwrap();
 
@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
 						};
 					}
 
-					let mut return_type = Some(NumberType::Real);
+					let mut return_type = Some(DataType::Number);
 
 					if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
@@ -178,7 +178,7 @@ impl<'a> Parser<'a> {
 						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
 
-							return_type = Some(NumberType::parse(ident))
+							return_type = Some(DataType::parse(ident))
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 

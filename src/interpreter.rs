@@ -3,10 +3,7 @@ use std::{
 	f32::consts::{E, PI},
 };
 
-pub type InterpreterContext<'a> = (
-	&'a mut HashMap<String, Number>,
-	&'a HashMap<String, Function>,
-);
+pub type InterpreterContext<'a> = (&'a mut HashMap<String, Data>, &'a HashMap<String, Function>);
 
 use crate::{
 	ast::{AstNode, Expression},
@@ -16,12 +13,12 @@ use crate::{
 		types as stdtypes,
 	},
 	token::Token,
-	types::{Number, NumberType},
+	types::{Data, DataType},
 };
 
 #[derive(Debug, Clone)]
 pub struct Interpreter {
-	pub globals: HashMap<String, Number>,
+	pub globals: HashMap<String, Data>,
 	pub functions: HashMap<String, Function>,
 }
 
@@ -37,10 +34,10 @@ impl Interpreter {
 		let mut functions = HashMap::new();
 
 		[
-			("i", Number::Complex(0.0, 1.0)),
-			("pi", Number::Real(PI)),
-			("π", Number::Real(PI)),
-			("e", Number::Real(E)),
+			("i", Data::Complex(0.0, 1.0)),
+			("pi", Data::Number(PI)),
+			("π", Data::Number(PI)),
+			("e", Data::Number(E)),
 		]
 		.map(|(global, data)| globals.insert(global.to_string(), data));
 
@@ -133,7 +130,7 @@ impl Interpreter {
 		}
 	}
 
-	pub fn interpret_expression(ctx: &mut InterpreterContext, expr: &Expression) -> Number {
+	pub fn interpret_expression(ctx: &mut InterpreterContext, expr: &Expression) -> Data {
 		match expr {
 			Expression::Abs(expression) => math::abs(&Self::interpret_expression(ctx, expression)),
 			Expression::Binary(lhs, token, rhs) => {
@@ -170,17 +167,17 @@ impl Interpreter {
 				// TODO: Error handling for when name does not
 				ctx.0.get(name).unwrap().to_owned()
 			}
-			Expression::Real(f) => Number::Real(*f),
-			Expression::Integer(i) => Number::Int(*i),
-			Expression::Matrix(matrix) => Number::Matrix(
+			Expression::Real(f) => Data::Number(*f),
+			Expression::Integer(i) => Data::Int(*i),
+			Expression::Matrix(matrix) => Data::Matrix(
 				matrix
 					.iter()
 					.map(|f| {
 						f.iter()
 							.map(|g| Self::interpret_expression(ctx, g))
-							.collect::<Vec<Number>>()
+							.collect::<Vec<Data>>()
 					})
-					.collect::<Vec<Vec<Number>>>(),
+					.collect::<Vec<Vec<Data>>>(),
 			),
 			Expression::FunctionCall(name, exprs) => {
 				if ctx.1.contains_key(name) {
@@ -220,13 +217,13 @@ pub enum Function {
 
 #[derive(Debug, Clone)]
 pub struct UserDefinedFunction {
-	pub params: Vec<(String, NumberType)>,
-	pub return_type: NumberType,
+	pub params: Vec<(String, DataType)>,
+	pub return_type: DataType,
 	pub code: Expression,
 }
 
 impl UserDefinedFunction {
-	pub fn execute(&self, ctx: &mut InterpreterContext) -> Number {
+	pub fn execute(&self, ctx: &mut InterpreterContext) -> Data {
 		Interpreter::interpret_expression(ctx, &self.code)
 	}
 }
@@ -237,7 +234,7 @@ pub struct STDFunction {
 }
 
 impl STDFunction {
-	pub fn execute(&self, ctx: &mut InterpreterContext, exprs: &Vec<Expression>) -> Number {
+	pub fn execute(&self, ctx: &mut InterpreterContext, exprs: &Vec<Expression>) -> Data {
 		if &self.name == "graph" {
 			return math::graph(&exprs[0], ctx);
 		}

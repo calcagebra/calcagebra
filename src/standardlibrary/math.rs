@@ -9,89 +9,103 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::ast::Expression;
 use crate::interpreter::{Function, Interpreter, InterpreterContext};
 use crate::standardlibrary::operators::{add, div, mul, sub};
-use crate::types::{Number, NumberType};
+use crate::types::Data;
 
-pub fn abs(a: &Number) -> Number {
-	let numbertype = a.r#type();
-
-	match numbertype {
-		NumberType::Int => Number::Real(a.int().abs() as f32),
-		NumberType::Real => Number::Real(a.real().abs()),
-		NumberType::Complex => Number::Real(a.array().iter().map(|f| f * f).sum::<f32>().sqrt()),
-		NumberType::Matrix => determinant(a),
-	}
-}
-
-pub fn round(a: &Number) -> Number {
-	match a.r#type() {
-		NumberType::Real => Number::Int(a.real().round() as i32),
-		_ => unimplemented!(),
-	}
-}
-
-pub fn ceil(a: &Number) -> Number {
-	match a.r#type() {
-		NumberType::Real => Number::Int(a.real().ceil() as i32),
-		_ => unimplemented!(),
-	}
-}
-
-pub fn floor(a: &Number) -> Number {
-	match a.r#type() {
-		NumberType::Real => Number::Int(a.real().floor() as i32),
-		_ => unimplemented!(),
-	}
-}
-
-pub fn ln(a: &Number) -> Number {
-	Number::Real(a.real().ln())
-}
-
-pub fn log10(a: &Number) -> Number {
-	Number::Real(a.real().log10())
-}
-
-pub fn log(a: &Number, b: &Number) -> Number {
-	Number::Real(a.real().log(b.real()))
-}
-
-pub fn sin(a: &Number) -> Number {
-	Number::Real(a.real().sin())
-}
-
-pub fn cos(a: &Number) -> Number {
-	Number::Real(a.real().cos())
-}
-
-pub fn tan(a: &Number) -> Number {
-	Number::Real(a.real().tan())
-}
-
-pub fn sqrt(a: &Number) -> Number {
+pub fn abs(a: &Data) -> Data {
 	match a {
-		Number::Int(..) | Number::Real(..) => Number::Real(a.real().sqrt()),
-		Number::Complex(a, b) => {
+		Data::Number(a, b) => Data::Number((a * a + b * b).sqrt(), 0.0),
+		Data::Matrix(..) => determinant(a),
+	}
+}
+
+pub fn round(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number(x.round(), y.round()),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn ceil(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number(x.round(), y.round()),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn floor(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number(x.round(), y.round()),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn ln(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number((x * x + y * y).sqrt(), y.atan2(*x)),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn log10(a: &Data) -> Data {
+	match a {
+		Data::Number(..) => div(&ln(a), &ln(&Data::Number(10.0, 0.0))),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn log(a: &Data, b: &Data) -> Data {
+	match a {
+		Data::Number(..) => div(&ln(a), &ln(b)),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn sin(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number(x.sin()*y.cosh(), x.cos()*y.sinh()),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn cos(a: &Data) -> Data {
+	match a {
+		Data::Number(x, y) => Data::Number(x.cos()*y.cosh(), -x.sin()*y.sinh()),
+		_ => unimplemented!(),
+	}
+}
+
+pub fn tan(a: &Data) -> Data {
+	div(&sin(a), &cos(a))
+}
+
+pub fn sqrt(a: &Data) -> Data {
+	match a {
+		Data::Number(a, b) => {
 			let r = (a * a + b * b).sqrt();
 
 			let zr = ((a + r) * (a + r) + b * b).sqrt();
 
-			Number::Complex(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
+			Data::Number(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
 		}
 		_ => unimplemented!(),
 	}
 }
 
-pub fn cbrt(a: &Number) -> Number {
-	Number::Real(a.real().cbrt())
+// pub fn cbrt(a: &Data) -> Data {
+// 	Data::Number(a.real().cbrt())
+// }
+
+pub fn nrt(a: &Data, b: &Data) -> Data {
+	if let Data::Number(r, _) = abs(a) && let Data::Number(b, _) = b {
+		Data::Number(r.powf(1/b))
+	}
+
+	unimplemented!()
 }
 
-pub fn nrt(a: &Number, b: &Number) -> Number {
-	Number::Real(a.real().powf(1.0 / b.real()))
-}
-
-pub fn determinant(v: &Number) -> Number {
+pub fn determinant(v: &Data) -> Data {
 	match v {
-		Number::Matrix(matrix) => {
+		Data::Matrix(matrix) => {
 			let cols = matrix.len();
 
 			for row in matrix {
@@ -106,7 +120,7 @@ pub fn determinant(v: &Number) -> Number {
 					&mul(&matrix[0][1], &matrix[1][0]),
 				)
 			} else {
-				let mut delta = Number::Real(0.0);
+				let mut delta = Data::Number(0.0, 0.0);
 
 				for (i, n) in matrix[0].iter().enumerate() {
 					let mut minor_matrix = matrix.clone();
@@ -120,8 +134,8 @@ pub fn determinant(v: &Number) -> Number {
 					delta = add(
 						&delta,
 						&mul(
-							&mul(n, &Number::Int([1, -1][i % 2])),
-							&determinant(&Number::Matrix(minor_matrix)),
+							&mul(n, &Data::Number([1.0, -1.0][i % 2], 0.0)),
+							&determinant(&Data::Matrix(minor_matrix)),
 						),
 					);
 				}
@@ -133,9 +147,9 @@ pub fn determinant(v: &Number) -> Number {
 	}
 }
 
-pub fn transpose(v: &Number) -> Number {
+pub fn transpose(v: &Data) -> Data {
 	match v {
-		Number::Matrix(matrix) => {
+		Data::Matrix(matrix) => {
 			let cols = matrix.len();
 
 			for row in matrix {
@@ -146,13 +160,13 @@ pub fn transpose(v: &Number) -> Number {
 
 			let mut iters: Vec<_> = matrix.iter().map(|n| n.iter()).collect();
 
-			Number::Matrix(
+			Data::Matrix(
 				(0..cols)
 					.map(|_| {
 						iters
 							.iter_mut()
 							.map(|n| n.next().unwrap().clone())
-							.collect::<Vec<Number>>()
+							.collect::<Vec<Data>>()
 					})
 					.collect(),
 			)
@@ -161,17 +175,17 @@ pub fn transpose(v: &Number) -> Number {
 	}
 }
 
-pub fn adj(v: &Number) -> Number {
+pub fn adj(v: &Data) -> Data {
 	match v {
-		Number::Matrix(matrix) => {
+		Data::Matrix(matrix) => {
 			let cols = matrix.len();
-			let mut adj_matrix: Vec<Vec<Number>> = vec![];
+			let mut adj_matrix: Vec<Vec<Data>> = vec![];
 
 			for row in matrix {
 				if row.len() != cols {
 					panic!("matrix should be square for adj");
 				}
-				adj_matrix.push((0..cols).map(|_| Number::Real(0.0)).collect());
+				adj_matrix.push((0..cols).map(|_| Data::Number(0.0, 0.0)).collect());
 			}
 
 			for i in 0..matrix.len() {
@@ -185,21 +199,21 @@ pub fn adj(v: &Number) -> Number {
 					}
 
 					adj_matrix[j][i] = mul(
-						&mul(n, &Number::Int([1, -1][(i + j) % 2])),
-						&determinant(&Number::Matrix(minor_matrix)),
+						&mul(n, &Data::Number([1.0, -1.0][(i + j) % 2], 0.0)),
+						&determinant(&Data::Matrix(minor_matrix)),
 					);
 				}
 			}
 
-			Number::Matrix(adj_matrix)
+			Data::Matrix(adj_matrix)
 		}
 		_ => panic!("expected matrix for adj"),
 	}
 }
 
-pub fn inverse(v: &Number) -> Number {
+pub fn inverse(v: &Data) -> Data {
 	match v {
-		t @ Number::Matrix(matrix) => {
+		t @ Data::Matrix(matrix) => {
 			let cols = matrix.len();
 
 			for row in matrix {
@@ -214,7 +228,7 @@ pub fn inverse(v: &Number) -> Number {
 	}
 }
 
-pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Number {
+pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Data {
 	if let Expression::Identifier(f) = f
 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap()
 	{
@@ -242,8 +256,8 @@ pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Number {
 		chart
 			.draw_series(LineSeries::new(
 				(-500..=500).map(|x| x as f32 / 50.0).map(|x| {
-					ctx.0.insert("x".to_string(), Number::Real(x));
-					(x, Interpreter::interpret_expression(ctx, code).real())
+					ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
+					(x, match Interpreter::interpret_expression(ctx, code) { Data::Number(a, _) => a, _ => panic!("expected number for plotting") })
 				}),
 				&style,
 			))
@@ -268,8 +282,14 @@ pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Number {
 
 		root.present().unwrap();
 
-		return Number::Real(0.0);
+		return Data::Number(0.0, 0.0);
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")
 }
+
+// pub fn sum(f: &Expression, ctx: &mut InterpreterContext) -> Data {
+// 	if let Expression::Identifier(f) = f
+// 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap()
+// 	{}
+// }

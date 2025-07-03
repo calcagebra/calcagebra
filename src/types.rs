@@ -1,59 +1,19 @@
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Number {
-	Int(i32),
-	Real(f32),
-	Complex(f32, f32),
-	Matrix(Vec<Vec<Number>>),
+pub enum Data {
+	Number(f32, f32),
+	Matrix(Vec<Vec<Data>>),
 }
 
-impl Number {
-	pub fn r#type(&self) -> NumberType {
-		match self {
-			Number::Int(..) => NumberType::Int,
-			Number::Real(..) => NumberType::Real,
-			Number::Complex(..) => NumberType::Complex,
-			Number::Matrix(..) => NumberType::Matrix,
-		}
-	}
-
-	pub fn int(&self) -> i32 {
-		match self {
-			Number::Int(i) => *i,
-			Number::Real(f) => *f as i32,
-			_ => unimplemented!(),
-		}
-	}
-
-	pub fn real(&self) -> f32 {
-		match self {
-			Number::Int(i) => *i as f32,
-			Number::Real(f) => *f,
-			_ => unimplemented!(),
-		}
-	}
-
-	pub fn array(&self) -> Vec<f32> {
-		match self {
-			Number::Int(i) => vec![*i as f32],
-			Number::Real(f) => vec![*f],
-			Number::Complex(a, b) => vec![*a, *b],
-			_ => unimplemented!(),
-		}
-	}
-}
-
-impl Display for Number {
+impl Display for Data {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
 			"{}",
 			match self {
-				Number::Int(i) => i.to_string(),
-				Number::Real(f) => f.to_string(),
-				Number::Complex(a, b) => format!("{a} + {b}i"),
-				Number::Matrix(matrix) => {
+				Data::Number(a, b) => format!("{a} + {b}i"),
+				Data::Matrix(matrix) => {
 					let mut highest_padding_required = 0;
 					let mut whitespace_index_map = vec![];
 
@@ -105,35 +65,29 @@ impl Display for Number {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Ord, Eq)]
-pub enum NumberType {
-	Int,
-	Real,
-	Complex,
+pub enum DataType {
+	Number,
 	Matrix,
 }
 
-impl NumberType {
+impl DataType {
 	pub fn parse(ident: &str) -> Self {
 		match ident.to_uppercase().as_str() {
-			"Z" | "INT" | "INTEGER" => Self::Int,
-			"R" | "FLOAT" => Self::Real,
-			"C" | "COMPLEX" => Self::Complex,
-			"MATRIX" => Self::Matrix,
+			"C" | "COMPLEX" => Self::Number,
+			"M" | "MATRIX" => Self::Matrix,
 			_ => unimplemented!(),
 		}
 	}
 }
 
-impl Display for NumberType {
+impl Display for DataType {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(
 			f,
 			"{}",
 			match self {
-				NumberType::Int => "Z",
-				NumberType::Real => "R",
-				NumberType::Complex => "C",
-				NumberType::Matrix => "Matrix",
+				DataType::Number => "C",
+				DataType::Matrix => "Matrix",
 			}
 		)
 	}

@@ -4,17 +4,17 @@ use crate::{
 	interpreter::{Interpreter, InterpreterContext},
 	lexer::Lexer,
 	parser::Parser,
-	types::Number,
+	types::Data,
 };
 
-pub fn print(a: Vec<Number>) -> Number {
+pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
 		println!("{b}");
 	}
-	Number::Real(0.0)
+	Data::Number(0.0, 0.0)
 }
 
-pub fn read(ctx: &mut InterpreterContext) -> Number {
+pub fn read(ctx: &mut InterpreterContext) -> Data {
 	print!("Enter value: ");
 
 	stdout().flush().unwrap();
