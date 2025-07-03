@@ -1,7 +1,7 @@
 use std::{iter::Peekable, ops::Range, slice::Iter};
 
 use crate::{
-	errors::{ParserError, SyntaxError, TypeError},
+	errors::{EOLError, ParserError, SyntaxError, TypeError},
 	expr::Expression,
 	token::{Token, TokenInfo},
 	types::DataType,
@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
 
 			ast.push(expr);
 		}
-	
+
 		Ok(ast)
 	}
 
@@ -400,7 +400,17 @@ impl<'a> Parser<'a> {
 			let rhs;
 			let range;
 
-			(rhs, tokens, range) = self.parser(tokens, rbp)?;
+			(rhs, tokens, range) = match self.parser(tokens, rbp) {
+				Ok(t) => t,
+				Err(t) => match t {
+					ParserError::SyntaxError(..) | ParserError::TypeError(..) | ParserError::EOLError(..) => {
+						return Err(t);
+					}
+					ParserError::LogicError(..) => {
+						return Err(EOLError::new(end..end+1).to_parser_error());
+					}
+				},
+			};
 
 			end = range.end;
 			expr = Some(Expression::Binary(

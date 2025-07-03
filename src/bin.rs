@@ -166,7 +166,9 @@ pub fn repl() {
 							print(vec![data]);
 						}
 					}
-					Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+					Err(err) => {
+						reporter.error_without_exit(err.error_message(), err.help_message(), err.range())
+					}
 				}
 			}
 			Err(ReadlineError::Interrupted) => {
