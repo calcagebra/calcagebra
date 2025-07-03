@@ -89,6 +89,7 @@ pub fn mul(lhd: &Data, rhd: &Data) -> Data {
 
 			Data::Matrix(r)
 		}
+		_ => unimplemented!()
 	}
 }
 

@@ -12,11 +12,7 @@ use std::{
 use syntect::{easy::HighlightLines, highlighting::ThemeSet, parsing::SyntaxSet};
 
 use calcagebra_lib::{
-	ast::{AstNode, Expression},
-	errors::ErrorReporter,
-	interpreter::Interpreter,
-	lexer::Lexer,
-	parser::Parser,
+	errors::ErrorReporter, expr::Expression, interpreter::Interpreter, lexer::Lexer, parser::Parser,
 	print, run, version,
 };
 
@@ -132,6 +128,7 @@ pub fn repl() {
 	rl.set_helper(Some(h));
 
 	let mut interpreter = Interpreter::new();
+	let mut ctx = &mut (&mut interpreter.globals, &mut interpreter.functions);
 
 	loop {
 		"\x1b[1m\x1b[32m[In]:\x1b[0m "
@@ -155,29 +152,21 @@ pub fn repl() {
 
 				match parser.ast() {
 					Ok(ast) => {
-						if !ast.is_empty()
-							&& let AstNode::FunctionCall(name, expr) = &ast[0]
-						{
-							if name != "print" {
-								print(vec![Interpreter::interpret_expression(
-									&mut (&mut interpreter.globals, &interpreter.functions),
-									&Expression::FunctionCall(name.to_string(), expr.clone()),
-								)]);
+						if !ast.is_empty() {
+							let data;
+
+							(ctx, data) = ast[0].clone().evaluate(ctx);
+
+							if let Expression::FunctionCall(name, _) = &ast[0]
+								&& name == "print"
+							{
+								continue;
 							}
-						} else {
-							interpreter.interpret(ast)
+
+							print(vec![data]);
 						}
 					}
-					// REPL does not allow multi line inputs so tokens length is always 1
-					Err(..) => match parser.pratt_parser(tokens[0].iter().peekable(), 0) {
-						Ok((expr, _, _)) => {
-							print(vec![Interpreter::interpret_expression(
-								&mut (&mut interpreter.globals, &interpreter.functions),
-								&expr,
-							)]);
-						}
-						Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
-					},
+					Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
 				}
 			}
 			Err(ReadlineError::Interrupted) => {

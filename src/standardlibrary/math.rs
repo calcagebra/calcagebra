@@ -6,8 +6,8 @@ use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::ast::Expression;
-use crate::interpreter::{Function, Interpreter, InterpreterContext};
+use crate::expr::Expression;
+use crate::interpreter::{Function, InterpreterContext};
 use crate::standardlibrary::operators::{add, div, mul, sub};
 use crate::types::Data;
 
@@ -15,6 +15,7 @@ pub fn abs(a: &Data) -> Data {
 	match a {
 		Data::Number(a, b) => Data::Number((a * a + b * b).sqrt(), 0.0),
 		Data::Matrix(..) => determinant(a),
+		_ => unimplemented!(),
 	}
 }
 
@@ -41,7 +42,7 @@ pub fn floor(a: &Data) -> Data {
 
 pub fn ln(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number((x * x + y * y).sqrt(), y.atan2(*x)),
+		Data::Number(x, y) => Data::Number((x * x + y * y).sqrt().ln(), y.atan2(*x)),
 		_ => unimplemented!(),
 	}
 }
@@ -99,7 +100,7 @@ pub fn nrt(a: &Data, b: &Data) -> Data {
 		let z = r.powf(1.0 / b);
 
 		let theta = (y / x).atan() / b;
-		return Data::Number(z * theta.cos(), z * theta.sin())
+		return Data::Number(z * theta.cos(), z * theta.sin());
 	}
 
 	unimplemented!()
@@ -230,9 +231,12 @@ pub fn inverse(v: &Data) -> Data {
 	}
 }
 
-pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Data {
+pub fn graph<'a>(
+	f: &Expression,
+	mut ctx: &'a mut InterpreterContext<'a>,
+) -> (&'a mut InterpreterContext<'a>, Data) {
 	if let Expression::Identifier(f) = f
-		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap()
+		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap().clone()
 	{
 		let start = SystemTime::now();
 		let duration = start.duration_since(UNIX_EPOCH).unwrap().as_millis();
@@ -255,20 +259,28 @@ pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Data {
 		let style = &GREY_A700;
 		let code = &g.code;
 
+		let mut values = vec![];
+
+		for x in -500..=500 {
+			let x = x as f32 / 50.0;
+
+			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
+
+			let data;
+
+			(ctx, data) = code.clone().evaluate(ctx);
+
+			values.push((
+				x,
+				match data {
+					Data::Number(a, _) => a,
+					_ => panic!("expected number for plotting"),
+				},
+			));
+		}
+
 		chart
-			.draw_series(LineSeries::new(
-				(-500..=500).map(|x| x as f32 / 50.0).map(|x| {
-					ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
-					(
-						x,
-						match Interpreter::interpret_expression(ctx, code) {
-							Data::Number(a, _) => a,
-							_ => panic!("expected number for plotting"),
-						},
-					)
-				}),
-				&style,
-			))
+			.draw_series(LineSeries::new(values, &style))
 			.unwrap()
 			.label("Function")
 			.legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], *style));
@@ -290,7 +302,7 @@ pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Data {
 
 		root.present().unwrap();
 
-		return Data::Number(0.0, 0.0);
+		return (ctx, Data::Number(0.0, 0.0));
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")

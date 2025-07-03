@@ -1,4 +1,4 @@
-pub mod ast;
+pub mod expr;
 pub mod errors;
 pub mod interpreter;
 pub mod lexer;

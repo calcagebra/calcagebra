@@ -1,11 +1,6 @@
 use std::io::{Write, stdin, stdout};
 
-use crate::{
-	interpreter::{Interpreter, InterpreterContext},
-	lexer::Lexer,
-	parser::Parser,
-	types::Data,
-};
+use crate::{interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data};
 
 pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
@@ -14,7 +9,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	Data::Number(0.0, 0.0)
 }
 
-pub fn read(ctx: &mut InterpreterContext) -> Data {
+pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> (&'a mut InterpreterContext<'a>, Data) {
 	print!("Enter value: ");
 
 	stdout().flush().unwrap();
@@ -24,11 +19,9 @@ pub fn read(ctx: &mut InterpreterContext) -> Data {
 
 	let tokens = Lexer::new(buf.trim_end()).tokens();
 
-	Interpreter::interpret_expression(
-		ctx,
-		&Parser::new(&tokens)
-			.pratt_parser(tokens[0].iter().peekable(), 0)
-			.unwrap()
-			.0,
-	)
+	Parser::new(&tokens)
+		.parser(tokens[0].iter().peekable(), 0)
+		.unwrap()
+		.0
+		.evaluate(ctx)
 }

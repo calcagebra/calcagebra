@@ -4,6 +4,7 @@ use std::fmt::Display;
 pub enum Data {
 	Number(f32, f32),
 	Matrix(Vec<Vec<Data>>),
+	FnPointer(String),
 }
 
 impl Data {
@@ -11,6 +12,7 @@ impl Data {
 		match self {
 			Data::Number(..) => DataType::Number,
 			Data::Matrix(..) => DataType::Matrix,
+			Data::FnPointer(..) => DataType::FnPointer
 		}
 	}
 }
@@ -68,6 +70,7 @@ impl Display for Data {
 						" ".repeat(highest_padding_required),
 					)
 				}
+				Data::FnPointer(str) => str.to_owned()
 			}
 		)
 	}
@@ -77,6 +80,7 @@ impl Display for Data {
 pub enum DataType {
 	Number,
 	Matrix,
+	FnPointer
 }
 
 impl DataType {
@@ -84,6 +88,7 @@ impl DataType {
 		match ident.to_uppercase().as_str() {
 			"C" | "COMPLEX" => Self::Number,
 			"M" | "MATRIX" => Self::Matrix,
+			"FN" => Self::FnPointer,
 			_ => unimplemented!(),
 		}
 	}
@@ -97,6 +102,7 @@ impl Display for DataType {
 			match self {
 				DataType::Number => "C",
 				DataType::Matrix => "Matrix",
+				DataType::FnPointer => "Fn",
 			}
 		)
 	}

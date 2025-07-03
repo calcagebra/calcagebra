@@ -1,8 +1,8 @@
 use std::{iter::Peekable, ops::Range, slice::Iter};
 
 use crate::{
-	ast::{AstNode, Expression},
 	errors::{ParserError, SyntaxError, TypeError},
+	expr::Expression,
 	token::{Token, TokenInfo},
 	types::DataType,
 };
@@ -19,226 +19,22 @@ impl<'a> Parser<'a> {
 		Self { tokens }
 	}
 
-	pub fn ast(&self) -> Result<Vec<AstNode>, ParserError> {
+	pub fn ast(&self) -> Result<Vec<Expression>, ParserError> {
 		let mut ast = vec![];
 		let lines = self.tokens;
 
 		for line in lines {
-			let mut tokens = line.iter().peekable();
+			let tokens = line.iter().peekable();
 
-			let identifier = tokens.next().unwrap();
+			let (expr, _, _) = self.parser(tokens, 0)?;
 
-			match identifier.token {
-				Token::Let => {
-					let mut datatype = None;
-
-					let name = match &tokens.peek().unwrap().token {
-						Token::Identifier(name) => name,
-						_ => {
-							return Err(
-								SyntaxError::new(
-									Token::Identifier("ident".to_string()),
-									identifier.token.clone(),
-									identifier.range.clone(),
-								)
-								.to_parser_error(),
-							);
-						}
-					};
-					tokens.next();
-
-					if tokens.peek().unwrap().token == Token::Colon {
-						tokens.next();
-
-						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-							tokens.next();
-
-							datatype = Some(DataType::parse(ident))
-						} else {
-							let tokeninfo = tokens.next().unwrap();
-
-							return Err(
-								SyntaxError::new(
-									Token::Identifier("ident".to_string()),
-									tokeninfo.token.clone(),
-									tokeninfo.range.clone(),
-								)
-								.to_parser_error(),
-							);
-						}
-					}
-
-					if let Token::Eq = &tokens.peek().unwrap().token {
-						tokens.next();
-					} else {
-						let tokeninfo = tokens.next().unwrap();
-
-						return Err(
-							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-								.to_parser_error(),
-						);
-					}
-
-					let (expr, _, range) = self.pratt_parser(tokens, 0)?;
-
-					let expr_type = expr.infer_datatype();
-
-					if datatype.is_none() {
-						datatype = expr_type
-					}
-
-					if let Some(expression_type) = expr_type {
-						if expr_type.unwrap() != datatype.unwrap() {
-							return Err(
-								TypeError::new(datatype.unwrap(), expression_type, range).to_parser_error(),
-							);
-						}
-					}
-
-					ast.push(AstNode::Assignment((name.to_string(), datatype), expr));
-				}
-				Token::Fn => {
-					let name = match &tokens.peek().unwrap().token {
-						Token::Identifier(name) => name,
-						_ => {
-							return Err(
-								SyntaxError::new(
-									Token::Identifier("ident".to_string()),
-									identifier.token.clone(),
-									identifier.range.clone(),
-								)
-								.to_parser_error(),
-							);
-						}
-					};
-					tokens.next();
-
-					if let Token::LParen = &tokens.peek().unwrap().token {
-						tokens.next();
-					} else {
-						let tokeninfo = tokens.next().unwrap();
-
-						return Err(
-							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-								.to_parser_error(),
-						);
-					}
-
-					let mut args = vec![];
-
-					loop {
-						let t = tokens.peek();
-
-						if t.is_none() {
-							break;
-						}
-
-						if Token::RParen == t.unwrap().token {
-							tokens.next();
-							break;
-						}
-
-						let t = tokens.next().unwrap();
-
-						let mut datatype = Some(DataType::Number);
-
-						if tokens.peek().unwrap().token == Token::Colon {
-							tokens.next();
-
-							if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-								tokens.next();
-
-								datatype = Some(DataType::parse(ident))
-							} else {
-								let tokeninfo = tokens.next().unwrap();
-
-								return Err(
-									SyntaxError::new(
-										Token::Identifier("numbertype".to_string()),
-										tokeninfo.token.clone(),
-										tokeninfo.range.clone(),
-									)
-									.to_parser_error(),
-								);
-							}
-						}
-
-						match &t.token {
-							Token::Identifier(i) => args.push((i.to_string(), datatype.unwrap())),
-							Token::Comma => {}
-							_ => unreachable!(),
-						};
-					}
-
-					let mut return_type = Some(DataType::Number);
-
-					if tokens.peek().unwrap().token == Token::Colon {
-						tokens.next();
-
-						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
-							tokens.next();
-
-							return_type = Some(DataType::parse(ident))
-						} else {
-							let tokeninfo = tokens.next().unwrap();
-
-							return Err(
-								SyntaxError::new(
-									Token::Identifier("numbertype".to_string()),
-									tokeninfo.token.clone(),
-									tokeninfo.range.clone(),
-								)
-								.to_parser_error(),
-							);
-						}
-					}
-
-					if let Token::Eq = &tokens.peek().unwrap().token {
-						tokens.next();
-					} else {
-						let tokeninfo = tokens.next().unwrap();
-
-						return Err(
-							SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-								.to_parser_error(),
-						);
-					}
-
-					let (expr, _, range) = self.pratt_parser(tokens, 0)?;
-
-					let expr_type = expr.infer_datatype();
-
-					if let Some(expression_type) = expr_type {
-						if expression_type != return_type.unwrap() {
-							return Err(
-								TypeError::new(return_type.unwrap(), expression_type, range).to_parser_error(),
-							);
-						}
-					}
-
-					ast.push(AstNode::FunctionDeclaration(
-						name.to_string(),
-						args,
-						return_type.unwrap(),
-						expr,
-					));
-				}
-				_ => {
-					let args = self.pratt_parser(line.iter().peekable(), 0)?.0;
-
-					match args {
-						Expression::FunctionCall(name, args) => {
-							ast.push(AstNode::FunctionCall(name.to_string(), args))
-						}
-						_ => return Err(ParserError::LogicError("unknown statement".to_string())),
-					}
-				}
-			}
+			ast.push(expr);
 		}
+	
 		Ok(ast)
 	}
 
-	pub fn pratt_parser<'b>(
+	pub fn parser<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		prec: u16,
@@ -258,6 +54,211 @@ impl<'a> Parser<'a> {
 		let mut end = tokeninfo.range.end;
 
 		match token {
+			Token::Let => {
+				let mut datatype = None;
+
+				let name = match &tokens.peek().unwrap().token {
+					Token::Identifier(name) => name,
+					_ => {
+						return Err(
+							SyntaxError::new(
+								Token::Identifier("ident".to_string()),
+								token.clone(),
+								start..end,
+							)
+							.to_parser_error(),
+						);
+					}
+				};
+				tokens.next();
+
+				if tokens.peek().unwrap().token == Token::Colon {
+					tokens.next();
+
+					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+						tokens.next();
+
+						datatype = Some(DataType::parse(ident))
+					} else {
+						let tokeninfo = tokens.next().unwrap();
+
+						return Err(
+							SyntaxError::new(
+								Token::Identifier("ident".to_string()),
+								tokeninfo.token.clone(),
+								tokeninfo.range.clone(),
+							)
+							.to_parser_error(),
+						);
+					}
+				}
+
+				if let Token::Eq = &tokens.peek().unwrap().token {
+					tokens.next();
+				} else {
+					let tokeninfo = tokens.next().unwrap();
+
+					return Err(
+						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+							.to_parser_error(),
+					);
+				}
+
+				let exp;
+				let range;
+
+				(exp, tokens, range) = self.parser(tokens, 0)?;
+
+				let expr_type = exp.infer_datatype();
+
+				if datatype.is_none() {
+					datatype = expr_type
+				}
+
+				if let Some(expression_type) = expr_type {
+					if expr_type.unwrap() != datatype.unwrap() {
+						return Err(
+							TypeError::new(datatype.unwrap(), expression_type, range).to_parser_error(),
+						);
+					}
+				}
+
+				expr = Some(Expression::Assignment(
+					(name.to_string(), datatype),
+					Box::new(exp),
+				));
+				end = range.end;
+			}
+			Token::Fn => {
+				let name = match &tokens.peek().unwrap().token {
+					Token::Identifier(name) => name,
+					_ => {
+						return Err(
+							SyntaxError::new(
+								Token::Identifier("ident".to_string()),
+								token.clone(),
+								start..end,
+							)
+							.to_parser_error(),
+						);
+					}
+				};
+				tokens.next();
+
+				if let Token::LParen = &tokens.peek().unwrap().token {
+					tokens.next();
+				} else {
+					let tokeninfo = tokens.next().unwrap();
+
+					return Err(
+						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+							.to_parser_error(),
+					);
+				}
+
+				let mut args = vec![];
+
+				loop {
+					let t = tokens.peek();
+
+					if t.is_none() {
+						break;
+					}
+
+					if Token::RParen == t.unwrap().token {
+						tokens.next();
+						break;
+					}
+
+					let t = tokens.next().unwrap();
+
+					let mut datatype = Some(DataType::Number);
+
+					if tokens.peek().unwrap().token == Token::Colon {
+						tokens.next();
+
+						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+							tokens.next();
+
+							datatype = Some(DataType::parse(ident))
+						} else {
+							let tokeninfo = tokens.next().unwrap();
+
+							return Err(
+								SyntaxError::new(
+									Token::Identifier("numbertype".to_string()),
+									tokeninfo.token.clone(),
+									tokeninfo.range.clone(),
+								)
+								.to_parser_error(),
+							);
+						}
+					}
+
+					match &t.token {
+						Token::Identifier(i) => args.push((i.to_string(), datatype.unwrap())),
+						Token::Comma => {}
+						_ => unreachable!(),
+					};
+				}
+
+				let mut return_type = Some(DataType::Number);
+
+				if tokens.peek().unwrap().token == Token::Colon {
+					tokens.next();
+
+					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+						tokens.next();
+
+						return_type = Some(DataType::parse(ident))
+					} else {
+						let tokeninfo = tokens.next().unwrap();
+
+						return Err(
+							SyntaxError::new(
+								Token::Identifier("numbertype".to_string()),
+								tokeninfo.token.clone(),
+								tokeninfo.range.clone(),
+							)
+							.to_parser_error(),
+						);
+					}
+				}
+
+				if let Token::Eq = &tokens.peek().unwrap().token {
+					tokens.next();
+				} else {
+					let tokeninfo = tokens.next().unwrap();
+
+					return Err(
+						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
+							.to_parser_error(),
+					);
+				}
+
+				let exp;
+				let range;
+
+				(exp, tokens, range) = self.parser(tokens, 0)?;
+
+				let expr_type = exp.infer_datatype();
+
+				if let Some(expression_type) = expr_type {
+					if expression_type != return_type.unwrap() {
+						return Err(
+							TypeError::new(return_type.unwrap(), expression_type, range).to_parser_error(),
+						);
+					}
+				}
+
+				expr = Some(Expression::FunctionDeclaration(
+					name.to_string(),
+					args,
+					return_type.unwrap(),
+					Box::new(exp),
+				));
+				end = range.end;
+			}
 			Token::Identifier(i) => {
 				// An identifier can either be a function call, in multiplication with a mod
 				// or simply an identifier, eg read(), a|b|, c
@@ -280,7 +281,7 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.pratt_parser(tokens, 0)?;
+				(exp, tokens, range) = self.parser(tokens, 0)?;
 
 				end = range.end;
 				expr = Some(exp);
@@ -306,7 +307,7 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
+							(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 						}
@@ -320,7 +321,7 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
+							(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 							row_tokens.clear();
@@ -334,7 +335,7 @@ impl<'a> Parser<'a> {
 					if t.token == Token::Comma {
 						let exp;
 
-						(exp, _, _) = self.pratt_parser(row_tokens.iter().peekable(), 0)?;
+						(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
 
 						row.push(exp);
 						row_tokens.clear();
@@ -351,7 +352,7 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.pratt_parser(tokens, 0)?;
+				(exp, tokens, range) = self.parser(tokens, 0)?;
 
 				end = range.end;
 				expr = Some(Expression::Abs(Box::new(exp)));
@@ -399,7 +400,7 @@ impl<'a> Parser<'a> {
 			let rhs;
 			let range;
 
-			(rhs, tokens, range) = self.pratt_parser(tokens, rbp)?;
+			(rhs, tokens, range) = self.parser(tokens, rbp)?;
 
 			end = range.end;
 			expr = Some(Expression::Binary(
@@ -440,7 +441,7 @@ impl<'a> Parser<'a> {
 				if depth == 0 {
 					if !expression.is_empty() && depth == 0 {
 						let lex = expression.iter().peekable();
-						let data = self.pratt_parser(lex, 0)?.0;
+						let data = self.parser(lex, 0)?.0;
 
 						params.push(data);
 						expression.clear();
@@ -456,7 +457,7 @@ impl<'a> Parser<'a> {
 
 			if *token == Token::Comma && depth == 0 {
 				let lex = expression.iter().peekable();
-				let data = self.pratt_parser(lex, 0)?.0;
+				let data = self.parser(lex, 0)?.0;
 
 				params.push(data);
 
@@ -468,7 +469,7 @@ impl<'a> Parser<'a> {
 		}
 		if !expression.is_empty() {
 			let lex = expression.iter().peekable();
-			let data = self.pratt_parser(lex, 0)?.0;
+			let data = self.parser(lex, 0)?.0;
 
 			params.push(data);
 			expression.clear();
@@ -502,7 +503,7 @@ impl<'a> Parser<'a> {
 
 			if *token == Token::Then || *token == Token::Else {
 				let lex = expression.iter().peekable();
-				let data = self.pratt_parser(lex, 0)?.0;
+				let data = self.parser(lex, 0)?.0;
 
 				params.push(data);
 				expression.clear();
@@ -525,7 +526,7 @@ impl<'a> Parser<'a> {
 
 		if !expression.is_empty() {
 			let lex = expression.iter().peekable();
-			let data = self.pratt_parser(lex, 0)?.0;
+			let data = self.parser(lex, 0)?.0;
 
 			params.push(data);
 			expression.clear();
