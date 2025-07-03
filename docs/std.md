@@ -8,15 +8,11 @@ Print numbers to stdout.
 
 ### read
 
-Read and return a [Real number](/docs/types.md#real-ℝ) from stdin.
+Read is extremely powerful in calcagebra and provides you with all standard library functions, all user variables and user defined functions upto that loc to be used while inputting a value which can be a complex number or a matrix.
 
 ## Math
 
 ### abs
-
-#### Integers, Reals
-
-Returns non-negative value of the number without regard to its sign.
 
 #### Complex Numbers
 
@@ -28,83 +24,65 @@ Returns the [determinant of the matrix](https://en.m.wikipedia.org/wiki/Determin
 
 ### round
 
-#### Reals
+#### Complex Number
 
-Rounds half to even and returns an Integer.
+Rounds half to even both the real and imaginary part.
 
 ### ceil
 
-#### Reals
+#### Complex Number
 
-Returns the smallest integer more than or equal to the number.
+Rounds to the smallest integer more than or equal to the number for both the real and imaginary part
 
 ### floor
 
-#### Reals
+#### Complex Number
 
-Returns the greatest integer less than or equal to the number.
+Rounds to the greatest integer less than or equal to the number for both the real and imaginary part
 
 ### ln
 
-#### Integers, Reals
+#### Complex Number
 
-Returns the natural log or log to the base $e$ of a number.
+Returns the natural log or log to the base $e$ of the number.
 
 ### log10
 
-#### Integers, Reals
+#### Complex Number
 
-Returns the log to the base $10$ of a number.
+Returns the log to the base $10$ of the number.
 
 ### log
 
-#### Integers, Reals
+#### Complex Number
 
 Returns the log of first number to the base of the second number.
 
 ### sin
 
-#### Integers, Reals
+#### Complex Number
 
 Returns sin of number where number is in [radians](https://en.m.wikipedia.org/wiki/Radian).
 
 ### cos
 
-#### Integers, Reals
+#### Complex Number
 
 Returns cos of number where number is in [radians](https://en.m.wikipedia.org/wiki/Radian).
 
 ### tan
 
-#### Integers, Reals
+#### Complex Number
 
 Returns tan of number where number is in [radians](https://en.m.wikipedia.org/wiki/Radian).
 
 ### sqrt
 
-#### Integers, Reals
-
-Returns $\sqrt{\text{number}}$.
-
 #### Complex Numbers
 
 Returns [principal](https://en.m.wikipedia.org/wiki/Square_root#Principal_square_root_of_a_complex_number) $a + b\mathrm{i}$ such that $(a+b\mathrm{i})^2 = \text{number}$.
 
-### cbrt
-
-#### Integers, Reals
-
-Returns $\sqrt[3]{\text{number}}$.
-
-#### Complex Numbers
-
-Returns [principal](https://en.m.wikipedia.org/wiki/Cube_root#Complex_numbers) $a + b\mathrm{i}$ such that $(a+b\mathrm{i})^3 = \text{number}$.
-
 ### nrt
-
-#### Integers, Reals
-
-Returns $\sqrt[\text{second number}]{\text{first number}}$.
 
 #### Complex Numbers
 
@@ -144,7 +122,7 @@ The function must itself be of the format:
 fn name(x: R): type = expr
 ```
 
-That is, it should only take a single argument of type [Real](/docs/types.md#real-ℝ) and the return type must be [Real](/docs/types.md#real-ℝ) or [Integer](/docs/types.md#int-ℤ).
+That is, it should only take a single argument of type complex where imaginary part is 0.0 and the return type must be complex too.
 
 Then the graph function can be called as:
 
@@ -155,17 +133,3 @@ graph(name)
 ## Operators
 
 [Operators avaliable](/docs/operators.md) and [types supporting operations](/docs/types.md) are documented in their respective files.
-
-## Types
-
-### real
-
-#### Integers
-
-Converts an [Integer](/docs/types.md#int-ℤ) to [Real](/docs/types.md#real-ℝ).
-
-### int
-
-#### Reals
-
-Converts a [Real](/docs/types.md#real-ℝ) to [Integer](/docs/types.md#int-ℤ) by rounding towards zero.

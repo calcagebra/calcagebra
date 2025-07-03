@@ -2,9 +2,9 @@ let a = 5
 
 let a = 5.0
 
-let a: Z = 5
+let a: C = 5
 
-let a: R = 5.0
+let a: C = 5.0
 
 let a: C = 3 + 4i
 

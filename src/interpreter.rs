@@ -3,25 +3,21 @@ use std::{
 	f32::consts::{E, PI},
 };
 
-pub type InterpreterContext<'a> = (
-	&'a mut HashMap<String, Number>,
-	&'a HashMap<String, Function>,
-);
+pub type InterpreterContext<'a> = (&'a mut HashMap<String, Data>, &'a HashMap<String, Function>);
 
 use crate::{
 	ast::{AstNode, Expression},
 	standardlibrary::{
 		io, math,
 		operators::{self, add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
-		types as stdtypes,
 	},
 	token::Token,
-	types::{Number, NumberType},
+	types::{Data, DataType},
 };
 
 #[derive(Debug, Clone)]
 pub struct Interpreter {
-	pub globals: HashMap<String, Number>,
+	pub globals: HashMap<String, Data>,
 	pub functions: HashMap<String, Function>,
 }
 
@@ -37,10 +33,10 @@ impl Interpreter {
 		let mut functions = HashMap::new();
 
 		[
-			("i", Number::Complex(0.0, 1.0)),
-			("pi", Number::Real(PI)),
-			("π", Number::Real(PI)),
-			("e", Number::Real(E)),
+			("i", Data::Number(0.0, 1.0)),
+			("pi", Data::Number(PI, 0.0)),
+			("π", Data::Number(PI, 0.0)),
+			("e", Data::Number(E, 0.0)),
 		]
 		.map(|(global, data)| globals.insert(global.to_string(), data));
 
@@ -103,7 +99,7 @@ impl Interpreter {
 			AstNode::Assignment((name, numbertype), expr) => {
 				let number = Self::interpret_expression(&mut (&mut self.globals, &self.functions), &expr);
 
-				if numbertype.is_some() && number.r#type() != numbertype.unwrap() {
+				if numbertype.is_some() && number.ty() != numbertype.unwrap() {
 					// TODO: proper errors
 					panic!(
 						"type mismatch found {} expected {}",
@@ -133,7 +129,7 @@ impl Interpreter {
 		}
 	}
 
-	pub fn interpret_expression(ctx: &mut InterpreterContext, expr: &Expression) -> Number {
+	pub fn interpret_expression(ctx: &mut InterpreterContext, expr: &Expression) -> Data {
 		match expr {
 			Expression::Abs(expression) => math::abs(&Self::interpret_expression(ctx, expression)),
 			Expression::Binary(lhs, token, rhs) => {
@@ -158,29 +154,30 @@ impl Interpreter {
 				}
 			}
 			Expression::Branched(condition, then, otherwise) => {
-				let condition = Self::interpret_expression(ctx, condition).real();
-
-				if condition != 0.0 {
-					Self::interpret_expression(ctx, then)
-				} else {
-					Self::interpret_expression(ctx, otherwise)
+				if let Data::Number(condition, _) = Self::interpret_expression(ctx, condition) {
+					return if condition != 0.0 {
+						Self::interpret_expression(ctx, then)
+					} else {
+						Self::interpret_expression(ctx, otherwise)
+					};
 				}
+
+				panic!("expected number in condition for branch statement")
 			}
 			Expression::Identifier(name) => {
 				// TODO: Error handling for when name does not
 				ctx.0.get(name).unwrap().to_owned()
 			}
-			Expression::Real(f) => Number::Real(*f),
-			Expression::Integer(i) => Number::Int(*i),
-			Expression::Matrix(matrix) => Number::Matrix(
+			Expression::Float(f) => Data::Number(*f, 0.0),
+			Expression::Matrix(matrix) => Data::Matrix(
 				matrix
 					.iter()
 					.map(|f| {
 						f.iter()
 							.map(|g| Self::interpret_expression(ctx, g))
-							.collect::<Vec<Number>>()
+							.collect::<Vec<Data>>()
 					})
-					.collect::<Vec<Vec<Number>>>(),
+					.collect::<Vec<Vec<Data>>>(),
 			),
 			Expression::FunctionCall(name, exprs) => {
 				if ctx.1.contains_key(name) {
@@ -190,7 +187,7 @@ impl Interpreter {
 						for (i, (arg, numbertype)) in g.params.iter().enumerate() {
 							let r = Self::interpret_expression(ctx, &exprs[i]);
 
-							if r.r#type() != *numbertype {
+							if r.ty() != *numbertype {
 								// TODO: error handling
 								panic!("type mismatch")
 							}
@@ -220,13 +217,13 @@ pub enum Function {
 
 #[derive(Debug, Clone)]
 pub struct UserDefinedFunction {
-	pub params: Vec<(String, NumberType)>,
-	pub return_type: NumberType,
+	pub params: Vec<(String, DataType)>,
+	pub return_type: DataType,
 	pub code: Expression,
 }
 
 impl UserDefinedFunction {
-	pub fn execute(&self, ctx: &mut InterpreterContext) -> Number {
+	pub fn execute(&self, ctx: &mut InterpreterContext) -> Data {
 		Interpreter::interpret_expression(ctx, &self.code)
 	}
 }
@@ -237,7 +234,7 @@ pub struct STDFunction {
 }
 
 impl STDFunction {
-	pub fn execute(&self, ctx: &mut InterpreterContext, exprs: &Vec<Expression>) -> Number {
+	pub fn execute(&self, ctx: &mut InterpreterContext, exprs: &Vec<Expression>) -> Data {
 		if &self.name == "graph" {
 			return math::graph(&exprs[0], ctx);
 		}
@@ -251,8 +248,6 @@ impl STDFunction {
 		match self.name.as_str() {
 			"print" => io::print(args),
 			"read" => io::read(ctx),
-			"int" => stdtypes::int(&args[0]),
-			"real" => stdtypes::real(&args[0]),
 			"add" => operators::add(&args[0], &args[1]),
 			"sub" => operators::sub(&args[0], &args[1]),
 			"mul" => operators::mul(&args[0], &args[1]),
@@ -276,7 +271,6 @@ impl STDFunction {
 			"cos" => math::cos(&args[0]),
 			"tan" => math::tan(&args[0]),
 			"sqrt" => math::sqrt(&args[0]),
-			"cbrt" => math::cbrt(&args[0]),
 			"nrt" => math::nrt(&args[0], &args[1]),
 			"transpose" => math::transpose(&args[0]),
 			"determinant" => math::determinant(&args[0]),

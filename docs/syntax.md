@@ -75,21 +75,13 @@ ident
 
 Identifiers are of non-zero length, denoted by alphabets the English language.
 
-## Integer
-
-```rust
-1 2 3 4 5 6 7 8 9 10 ...
-```
-
-[Integers](/docs/types.md#int-ℤ) ([i64](https://doc.rust-lang.org/std/primitive.i64.html)).
-
-## Real
+## Float
 
 ```rust
 3.1415926535897931
 ```
 
-[Real](/docs/types.md#real-ℝ) numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
+Float numbers ([f64](https://doc.rust-lang.org/std/primitive.f64.html)).
 
 ## Matrix
 
