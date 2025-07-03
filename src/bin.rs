@@ -157,7 +157,9 @@ pub fn repl() {
 
 							(ctx, data) = match ast[0].clone().0.evaluate(ctx, ast[0].1.clone()) {
 								Ok(tuple) => tuple,
-								Err(err) => reporter.error(err.error_message(), err.help_message(), err.range()),
+								Err(err) => {
+									reporter.error_without_exit(err.error_message(), err.help_message(), err.range()),
+								}
 							};
 
 							if let Expression::FunctionCall(name, _) = &ast[0].0
