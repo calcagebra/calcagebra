@@ -147,7 +147,7 @@ impl<'a> Lexer<'a> {
 			}
 
 			match tokeninfo.token {
-				Token::Integer(..) | Token::Float(..) => {
+				Token::Float(..) => {
 					r.push(TokenInfo::new(
 						tokeninfo.token,
 						tokeninfo.range.start..tokeninfo.range.end + offset,
@@ -168,17 +168,14 @@ impl<'a> Lexer<'a> {
 						tokeninfo.range.start..tokeninfo.range.end + offset,
 					));
 
-					match token_iter.peek().unwrap().token {
-						Token::Integer(..) | Token::Float(..) => {
-							offset += 1;
+					if let Token::Float(..) = token_iter.peek().unwrap().token {
+     							offset += 1;
 
-							r.push(TokenInfo::new(
-								Token::Mul,
-								tokeninfo.range.start..tokeninfo.range.end + offset,
-							));
-						}
-						_ => {}
-					}
+     							r.push(TokenInfo::new(
+     								Token::Mul,
+     								tokeninfo.range.start..tokeninfo.range.end + offset,
+     							));
+     						}
 				}
 				_ => {
 					r.push(TokenInfo::new(

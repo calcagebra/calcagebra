@@ -1,7 +1,6 @@
 pub mod io;
 pub mod math;
 pub mod operators;
-pub mod types;
 
 use crate::types::DataType;
 
@@ -9,26 +8,24 @@ use crate::types::DataType;
 /// Returns argument type and return type
 pub fn internal_type_map(f: &str) -> (Vec<Vec<DataType>>, DataType) {
 	match f {
-		"read" => (vec![], DataType::Real),
-		"real" => (vec![vec![DataType::Int]], DataType::Real),
-		"int" => (vec![vec![DataType::Real]], DataType::Int),
+		"read" => (vec![], DataType::Number),
+		"real" => (vec![vec![DataType::Number]], DataType::Number),
+		"int" => (vec![vec![DataType::Number]], DataType::Number),
 		"print" | "round" | "ceil" | "floor" | "ln" | "log10" | "sin" | "cos" | "tan" | "sqrt"
-		| "cbrt" | "graph" => (vec![vec![DataType::Real]], DataType::Real),
+		| "cbrt" | "graph" => (vec![vec![DataType::Number]], DataType::Number),
 		"log" | "nrt" => (
-			vec![vec![DataType::Real], vec![DataType::Real]],
-			DataType::Real,
+			vec![vec![DataType::Number], vec![DataType::Number]],
+			DataType::Number,
 		),
 		"transpose" | "determinant" | "adj" | "inverse" => {
 			(vec![vec![DataType::Matrix]], DataType::Matrix)
 		}
 		"abs" => (
 			vec![vec![
-				DataType::Int,
-				DataType::Real,
-				DataType::Complex,
+				DataType::Number,
 				DataType::Matrix,
 			]],
-			DataType::Real,
+			DataType::Number,
 		),
 		_ => unimplemented!("type map not implemented for: {f}"),
 	}

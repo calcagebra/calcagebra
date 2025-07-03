@@ -365,22 +365,15 @@ impl<'a> Parser<'a> {
 				expr = Some(exp);
 			}
 			Token::Sub => {
-				if let Token::Integer(i) = tokens.peek().unwrap().token {
-					expr = Some(Expression::Integer(-i));
-					end = tokens.next().unwrap().range.end;
-				} else if let Token::Float(i) = tokens.peek().unwrap().token {
-					expr = Some(Expression::Real(-i));
+				if let Token::Float(i) = tokens.peek().unwrap().token {
+					expr = Some(Expression::Float(-i));
 					end = tokens.next().unwrap().range.end;
 				} else {
 					end = tokeninfo.range.end;
 				}
 			}
-			Token::Integer(n) => {
-				expr = Some(Expression::Integer(*n));
-				end = tokeninfo.range.end;
-			}
 			Token::Float(n) => {
-				expr = Some(Expression::Real(*n));
+				expr = Some(Expression::Float(*n));
 				end = tokeninfo.range.end;
 			}
 			_ => {

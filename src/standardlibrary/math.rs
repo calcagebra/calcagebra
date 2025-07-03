@@ -62,14 +62,14 @@ pub fn log(a: &Data, b: &Data) -> Data {
 
 pub fn sin(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.sin()*y.cosh(), x.cos()*y.sinh()),
+		Data::Number(x, y) => Data::Number(x.sin() * y.cosh(), x.cos() * y.sinh()),
 		_ => unimplemented!(),
 	}
 }
 
 pub fn cos(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.cos()*y.cosh(), -x.sin()*y.sinh()),
+		Data::Number(x, y) => Data::Number(x.cos() * y.cosh(), -x.sin() * y.sinh()),
 		_ => unimplemented!(),
 	}
 }
@@ -91,13 +91,15 @@ pub fn sqrt(a: &Data) -> Data {
 	}
 }
 
-// pub fn cbrt(a: &Data) -> Data {
-// 	Data::Number(a.real().cbrt())
-// }
-
 pub fn nrt(a: &Data, b: &Data) -> Data {
-	if let Data::Number(r, _) = abs(a) && let Data::Number(b, _) = b {
-		Data::Number(r.powf(1/b))
+	if let Data::Number(x, y) = a
+		&& let Data::Number(r, _) = abs(a)
+		&& let Data::Number(b, _) = b
+	{
+		let z = r.powf(1.0 / b);
+
+		let theta = (y / x).atan() / b;
+		return Data::Number(z * theta.cos(), z * theta.sin())
 	}
 
 	unimplemented!()
@@ -257,7 +259,13 @@ pub fn graph(f: &Expression, ctx: &mut InterpreterContext) -> Data {
 			.draw_series(LineSeries::new(
 				(-500..=500).map(|x| x as f32 / 50.0).map(|x| {
 					ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
-					(x, match Interpreter::interpret_expression(ctx, code) { Data::Number(a, _) => a, _ => panic!("expected number for plotting") })
+					(
+						x,
+						match Interpreter::interpret_expression(ctx, code) {
+							Data::Number(a, _) => a,
+							_ => panic!("expected number for plotting"),
+						},
+					)
 				}),
 				&style,
 			))

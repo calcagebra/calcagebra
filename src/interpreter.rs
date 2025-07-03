@@ -10,7 +10,6 @@ use crate::{
 	standardlibrary::{
 		io, math,
 		operators::{self, add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub},
-		types as stdtypes,
 	},
 	token::Token,
 	types::{Data, DataType},
@@ -34,10 +33,10 @@ impl Interpreter {
 		let mut functions = HashMap::new();
 
 		[
-			("i", Data::Complex(0.0, 1.0)),
-			("pi", Data::Number(PI)),
-			("π", Data::Number(PI)),
-			("e", Data::Number(E)),
+			("i", Data::Number(0.0, 1.0)),
+			("pi", Data::Number(PI, 0.0)),
+			("π", Data::Number(PI, 0.0)),
+			("e", Data::Number(E, 0.0)),
 		]
 		.map(|(global, data)| globals.insert(global.to_string(), data));
 
@@ -100,7 +99,7 @@ impl Interpreter {
 			AstNode::Assignment((name, numbertype), expr) => {
 				let number = Self::interpret_expression(&mut (&mut self.globals, &self.functions), &expr);
 
-				if numbertype.is_some() && number.r#type() != numbertype.unwrap() {
+				if numbertype.is_some() && number.ty() != numbertype.unwrap() {
 					// TODO: proper errors
 					panic!(
 						"type mismatch found {} expected {}",
@@ -155,20 +154,21 @@ impl Interpreter {
 				}
 			}
 			Expression::Branched(condition, then, otherwise) => {
-				let condition = Self::interpret_expression(ctx, condition).real();
-
-				if condition != 0.0 {
-					Self::interpret_expression(ctx, then)
-				} else {
-					Self::interpret_expression(ctx, otherwise)
+				if let Data::Number(condition, _) = Self::interpret_expression(ctx, condition) {
+					return if condition != 0.0 {
+						Self::interpret_expression(ctx, then)
+					} else {
+						Self::interpret_expression(ctx, otherwise)
+					};
 				}
+
+				panic!("expected number in condition for branch statement")
 			}
 			Expression::Identifier(name) => {
 				// TODO: Error handling for when name does not
 				ctx.0.get(name).unwrap().to_owned()
 			}
-			Expression::Real(f) => Data::Number(*f),
-			Expression::Integer(i) => Data::Int(*i),
+			Expression::Float(f) => Data::Number(*f, 0.0),
 			Expression::Matrix(matrix) => Data::Matrix(
 				matrix
 					.iter()
@@ -187,7 +187,7 @@ impl Interpreter {
 						for (i, (arg, numbertype)) in g.params.iter().enumerate() {
 							let r = Self::interpret_expression(ctx, &exprs[i]);
 
-							if r.r#type() != *numbertype {
+							if r.ty() != *numbertype {
 								// TODO: error handling
 								panic!("type mismatch")
 							}
@@ -248,8 +248,6 @@ impl STDFunction {
 		match self.name.as_str() {
 			"print" => io::print(args),
 			"read" => io::read(ctx),
-			"int" => stdtypes::int(&args[0]),
-			"real" => stdtypes::real(&args[0]),
 			"add" => operators::add(&args[0], &args[1]),
 			"sub" => operators::sub(&args[0], &args[1]),
 			"mul" => operators::mul(&args[0], &args[1]),
@@ -273,7 +271,6 @@ impl STDFunction {
 			"cos" => math::cos(&args[0]),
 			"tan" => math::tan(&args[0]),
 			"sqrt" => math::sqrt(&args[0]),
-			"cbrt" => math::cbrt(&args[0]),
 			"nrt" => math::nrt(&args[0], &args[1]),
 			"transpose" => math::transpose(&args[0]),
 			"determinant" => math::determinant(&args[0]),

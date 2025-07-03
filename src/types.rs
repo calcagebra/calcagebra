@@ -6,6 +6,15 @@ pub enum Data {
 	Matrix(Vec<Vec<Data>>),
 }
 
+impl Data {
+	pub fn ty(&self) -> DataType {
+		match self {
+			Data::Number(..) => DataType::Number,
+			Data::Matrix(..) => DataType::Matrix,
+		}
+	}
+}
+
 impl Display for Data {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(

@@ -15,7 +15,6 @@ impl TokenInfo {
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
 	Float(f32),
-	Integer(i32),
 	Identifier(String),
 
 	Let,
@@ -92,12 +91,9 @@ impl Token {
 			"}" => Token::RCurly,
 			_ => {
 				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_integer = token.parse::<i32>();
 					let try_float = token.parse::<f32>();
 
-					if let Ok(n) = try_integer {
-						Token::Integer(n)
-					} else if let Ok(f) = try_float {
+					if let Ok(f) = try_float {
 						Token::Float(f)
 					} else {
 						panic!("could not lex number: `{token}`");
@@ -116,7 +112,6 @@ impl Display for Token {
 			f,
 			"{}",
 			match self {
-				Token::Integer(n) => n.to_string(),
 				Token::Float(n) => n.to_string(),
 				Token::Identifier(ident) => ident.to_string(),
 				Token::Let => "let".to_string(),

@@ -14,8 +14,7 @@ pub enum Expression {
 	Binary(Box<Expression>, Token, Box<Expression>),
 	Branched(Box<Expression>, Box<Expression>, Box<Expression>),
 	Identifier(String),
-	Integer(i32),
-	Real(f32),
+	Float(f32),
 	Matrix(Vec<Vec<Expression>>),
 	FunctionCall(String, Vec<Expression>),
 }
@@ -37,17 +36,12 @@ impl Expression {
 				let rhs = rhs.unwrap();
 
 				Some(match (lhs, rhs) {
-					(DataType::Int, DataType::Int) => DataType::Int,
-					(DataType::Int, DataType::Real)
-					| (DataType::Real, DataType::Int)
-					| (DataType::Real, DataType::Real) => DataType::Real,
-					(DataType::Complex, _) | (_, DataType::Complex) => DataType::Complex,
+					(DataType::Number, DataType::Number) => DataType::Number,
 					(DataType::Matrix, _) | (_, DataType::Matrix) => DataType::Matrix,
 				})
 			}
 			Expression::Identifier(_) => None,
-			Expression::Real(..) => Some(DataType::Real),
-			Expression::Integer(..) => Some(DataType::Int),
+			Expression::Float(..) => Some(DataType::Number),
 			Expression::Matrix(..) => Some(DataType::Matrix),
 			Expression::FunctionCall(ident, _) => {
 				if standardlibrary::is_std(ident) {
