@@ -61,10 +61,7 @@ pub fn internal_type_map(f: &str) -> (Vec<Vec<DataType>>, DataType) {
 			(vec![vec![DataType::Matrix]], DataType::Matrix)
 		}
 		"abs" => (
-			vec![vec![
-				DataType::Number,
-				DataType::Matrix,
-			]],
+			vec![vec![DataType::Number, DataType::Matrix]],
 			DataType::Number,
 		),
 		_ => unimplemented!("type map not implemented for: {f}"),

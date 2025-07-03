@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
 
 			ast.push(expr);
 		}
-	
+
 		Ok(ast)
 	}
 

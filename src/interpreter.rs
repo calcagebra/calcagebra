@@ -38,9 +38,9 @@ impl Interpreter {
 			("e", Data::Number(E, 0.0)),
 		];
 
-        for (name, val) in sys_vrs {
-            globals.insert(name.to_string(), val);
-        }
+		for (name, val) in sys_vrs {
+			globals.insert(name.to_string(), val);
+		}
 
 		[
 			"print",

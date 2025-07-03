@@ -12,7 +12,7 @@ impl Data {
 		match self {
 			Data::Number(..) => DataType::Number,
 			Data::Matrix(..) => DataType::Matrix,
-			Data::FnPointer(..) => DataType::FnPointer
+			Data::FnPointer(..) => DataType::FnPointer,
 		}
 	}
 }
@@ -70,7 +70,7 @@ impl Display for Data {
 						" ".repeat(highest_padding_required),
 					)
 				}
-				Data::FnPointer(str) => str.to_owned()
+				Data::FnPointer(str) => str.to_owned(),
 			}
 		)
 	}
@@ -80,7 +80,7 @@ impl Display for Data {
 pub enum DataType {
 	Number,
 	Matrix,
-	FnPointer
+	FnPointer,
 }
 
 impl DataType {
