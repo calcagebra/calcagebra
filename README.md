@@ -18,6 +18,16 @@ print(a*b)
 
 ## Installation
 
+### Topocatber (recommended)
+
+[Topocatber](https://github.com/calcagebra/topocatber) is the official manager for calcagebra installations.
+
+1. Install topocatber: `curl --proto '=https' --tlsv1.2 -sLSf https://raw.githubusercontent.com/calcagebra/topocatber/refs/heads/main/install.sh | sh`
+2. View avaliable versions for calcagebra: `topocatber list`
+3. Install your preferred version: `topocatber install vx.y.z`
+
+### Manual
+
 Download the binary for your OS from the [releases page.](https://github.com/calcagebra/calcagebra/releases/latest)
 
 ## Commands
