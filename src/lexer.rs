@@ -169,13 +169,13 @@ impl<'a> Lexer<'a> {
 					));
 
 					if let Token::Float(..) = token_iter.peek().unwrap().token {
-     							offset += 1;
+						offset += 1;
 
-     							r.push(TokenInfo::new(
-     								Token::Mul,
-     								tokeninfo.range.start..tokeninfo.range.end + offset,
-     							));
-     						}
+						r.push(TokenInfo::new(
+							Token::Mul,
+							tokeninfo.range.start..tokeninfo.range.end + offset,
+						));
+					}
 				}
 				_ => {
 					r.push(TokenInfo::new(
