@@ -162,21 +162,6 @@ impl<'a> Lexer<'a> {
 						));
 					}
 				}
-				Token::Identifier(..) => {
-					r.push(TokenInfo::new(
-						tokeninfo.token,
-						tokeninfo.range.start..tokeninfo.range.end + offset,
-					));
-
-					if let Token::Float(..) = token_iter.peek().unwrap().token {
-						offset += 1;
-
-						r.push(TokenInfo::new(
-							Token::Mul,
-							tokeninfo.range.start..tokeninfo.range.end + offset,
-						));
-					}
-				}
 				_ => {
 					r.push(TokenInfo::new(
 						tokeninfo.token,
