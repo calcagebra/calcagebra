@@ -4,6 +4,7 @@ use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
+use std::f32;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::errors::Error;
@@ -262,16 +263,16 @@ where
 		let mut values = vec![];
 
 		for x in -500..=500 {
-			let x = x as f32 / 50.0;
+			let x = x as f64/ 50.0;
 
 			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
 
 			let data = code.clone().evaluate(ctx, g.range.clone())?;
 
 			values.push((
-				x,
+				x as f32,
 				match data {
-					Data::Number(a, _) => a,
+					Data::Number(a, _) => a as f32,
 					_ => panic!("expected number for plotting"),
 				},
 			));
@@ -332,7 +333,7 @@ where
 	};
 
 	for i in a.round() as i32..=b.round() as i32 {
-		sum = add(&sum, &func.execute(ctx, vec![Data::Number(i as f32, 0.0)])?)
+		sum = add(&sum, &func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?)
 	}
 
 	Ok(sum)
@@ -364,7 +365,7 @@ where
 	};
 
 	for i in a.round() as i32..=b.round() as i32 {
-		prod = mul(&prod, &func.execute(ctx, vec![Data::Number(i as f32, 0.0)])?)
+		prod = mul(&prod, &func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?)
 	}
 
 	Ok(prod)

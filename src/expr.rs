@@ -19,7 +19,7 @@ pub enum Expression {
 	Binary(Box<Expression>, Token, Box<Expression>),
 	Branched(Box<Expression>, Box<Expression>, Box<Expression>),
 	Identifier(String),
-	Float(f32),
+	Float(f64),
 	Matrix(Vec<Vec<Expression>>),
 	FunctionCall(String, Vec<(Expression, Range<usize>)>),
 	FunctionDeclaration(

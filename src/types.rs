@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Data {
-	Number(f32, f32),
+	Number(f64, f64),
 	Matrix(Vec<Vec<Data>>),
 	FnPointer(String),
 }

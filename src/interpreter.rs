@@ -1,6 +1,6 @@
 use std::{
 	collections::HashMap,
-	f32::consts::{E, PI},
+	f64::consts::{E, PI},
 	ops::Range,
 };
 

@@ -187,16 +187,16 @@ pub fn rem(lhd: &Data, rhd: &Data) -> Data {
 
 pub fn is_eq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
-		(Data::Number(a, b), Data::Number(c, d)) => Data::Number((a == c && b == d) as i32 as f32, 0.0),
-		(Data::Matrix(a), Data::Matrix(b)) => Data::Number((a == b) as i32 as f32, 0.0),
+		(Data::Number(a, b), Data::Number(c, d)) => Data::Number((a == c && b == d) as i32 as f64, 0.0),
+		(Data::Matrix(a), Data::Matrix(b)) => Data::Number((a == b) as i32 as f64, 0.0),
 		_ => unimplemented!(),
 	}
 }
 
 pub fn neq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
-		(Data::Number(a, b), Data::Number(c, d)) => Data::Number((a != c && b != d) as i32 as f32, 0.0),
-		(Data::Matrix(a), Data::Matrix(b)) => Data::Number((a != b) as i32 as f32, 0.0),
+		(Data::Number(a, b), Data::Number(c, d)) => Data::Number((a != c && b != d) as i32 as f64, 0.0),
+		(Data::Matrix(a), Data::Matrix(b)) => Data::Number((a != b) as i32 as f64, 0.0),
 		_ => unimplemented!(),
 	}
 }
@@ -207,7 +207,7 @@ pub fn gt(lhd: &Data, rhd: &Data) -> Data {
 			if *b != 0.0 || *d != 0.0 {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number((a > c) as i32 as f32, 0.0)
+			Data::Number((a > c) as i32 as f64, 0.0)
 		}
 		_ => unimplemented!(),
 	}
@@ -219,7 +219,7 @@ pub fn gteq(lhd: &Data, rhd: &Data) -> Data {
 			if *b != 0.0 || *d != 0.0 {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number((a >= c) as i32 as f32, 0.0)
+			Data::Number((a >= c) as i32 as f64, 0.0)
 		}
 		_ => unimplemented!(),
 	}
@@ -231,7 +231,7 @@ pub fn lt(lhd: &Data, rhd: &Data) -> Data {
 			if *b != 0.0 || *d != 0.0 {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number((a < c) as i32 as f32, 0.0)
+			Data::Number((a < c) as i32 as f64, 0.0)
 		}
 		_ => unimplemented!(),
 	}
@@ -243,7 +243,7 @@ pub fn lteq(lhd: &Data, rhd: &Data) -> Data {
 			if *b != 0.0 || *d != 0.0 {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number((a <= c) as i32 as f32, 0.0)
+			Data::Number((a <= c) as i32 as f64, 0.0)
 		}
 		_ => unimplemented!(),
 	}

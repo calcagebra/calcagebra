@@ -14,7 +14,7 @@ impl TokenInfo {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-	Float(f32),
+	Float(f64),
 	Identifier(String),
 
 	Let,
@@ -91,7 +91,7 @@ impl Token {
 			"}" => Token::RCurly,
 			_ => {
 				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_float = token.parse::<f32>();
+					let try_float = token.parse::<f64>();
 
 					if let Ok(f) = try_float {
 						Token::Float(f)
