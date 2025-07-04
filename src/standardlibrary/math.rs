@@ -263,7 +263,7 @@ where
 		let mut values = vec![];
 
 		for x in -500..=500 {
-			let x = x as f64/ 50.0;
+			let x = x as f64 / 50.0;
 
 			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
 
@@ -365,7 +365,10 @@ where
 	};
 
 	for i in a.round() as i32..=b.round() as i32 {
-		prod = mul(&prod, &func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?)
+		prod = mul(
+			&prod,
+			&func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?,
+		)
 	}
 
 	Ok(prod)

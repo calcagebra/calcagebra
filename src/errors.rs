@@ -15,7 +15,7 @@ pub enum Error {
 	SyntaxError(SyntaxError),
 	TypeError(TypeError),
 	LogicError(String),
-	EOLError(EOLError)
+	EOLError(EOLError),
 }
 
 impl From<&str> for Error {
@@ -120,7 +120,6 @@ impl TypeError {
 	}
 }
 
-
 #[derive(Debug)]
 pub struct EOLError {
 	pub range: Range<usize>,
@@ -128,9 +127,7 @@ pub struct EOLError {
 
 impl EOLError {
 	pub fn new(range: Range<usize>) -> Self {
-		Self {
-			range,
-		}
+		Self { range }
 	}
 
 	pub fn error_message(&self) -> String {
@@ -145,7 +142,6 @@ impl EOLError {
 		Error::EOLError(self)
 	}
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ErrorReporter<'a> {

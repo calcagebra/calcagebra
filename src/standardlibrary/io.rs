@@ -1,6 +1,8 @@
 use std::io::{Write, stdin, stdout};
 
-use crate::{errors::Error, interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data};
+use crate::{
+	errors::Error, interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data,
+};
 
 pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
@@ -9,7 +11,10 @@ pub fn print(a: Vec<Data>) -> Data {
 	Data::Number(0.0, 0.0)
 }
 
-pub fn read<'a, 'b>(ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error> where 'b: 'a {
+pub fn read<'a, 'b>(ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
+where
+	'b: 'a,
+{
 	print!("Enter value: ");
 
 	stdout().flush().unwrap();

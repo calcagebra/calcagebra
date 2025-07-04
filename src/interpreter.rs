@@ -77,7 +77,7 @@ impl Interpreter {
 			"adj",
 			"inverse",
 			"sum",
-			"prod"
+			"prod",
 		]
 		.map(|name| {
 			functions.insert(
