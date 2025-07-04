@@ -105,13 +105,13 @@ impl Expression {
 				Err(TypeError::new(DataType::Number, data.ty(), 0..0).to_error())
 			}
 			Expression::Identifier(name) => {
-				if !ctx.0.contains_key(&name) {
-					return Err(Error::LogicError(format!("undefined variable: `{name}`")));
+				if ctx.0.contains_key(&name) {
+					Ok(ctx.0.get(&name).unwrap().to_owned())
+				} else if ctx.1.contains_key(&name) {
+					Ok(Data::FnPointer(name))
+				} else {
+					Err(Error::LogicError(format!("undefined variable: `{name}`")))
 				}
-
-				let data = ctx.0.get(&name).unwrap().to_owned();
-
-				Ok(data)
 			}
 			Expression::Float(f) => Ok(Data::Number(f, 0.0)),
 			Expression::Matrix(matrix) => {
@@ -129,24 +129,30 @@ impl Expression {
 
 				Ok(Data::Matrix(matrix_data))
 			}
-			Expression::FunctionCall(name, mut exprs) => {
+			Expression::FunctionCall(name, exprs) => {
 				if ctx.1.contains_key(&name) {
 					let f = ctx.1.get(&name).unwrap().clone();
 
 					if let Function::UserDefined(g) = f {
-						for (i, (arg, numbertype)) in g.params.iter().enumerate() {
-							let r = exprs.remove(i).0.evaluate(ctx, range.clone())?;
+						let mut args = vec![];
 
-							if r.ty() != *numbertype {
-								return Err(TypeError::new(*numbertype, r.ty(), 0..0).to_error());
-							}
-
-							ctx.0.insert(arg.to_string(), r);
+						for (expr, range) in exprs {
+							let data = expr.evaluate(ctx, range)?;
+							args.push(data);
 						}
 
-						return g.execute(ctx);
+						let data = g.execute(ctx, args);
+
+						return data;
 					} else if let Function::STD(g) = f {
-						return g.execute(ctx, exprs);
+						let mut args = vec![];
+
+						for (expr, range) in exprs {
+							let data = expr.evaluate(ctx, range)?;
+							args.push(data);
+						}
+
+						return g.execute(ctx, args);
 					}
 				}
 

@@ -10,7 +10,7 @@ pub type InterpreterContext<'a> = (
 );
 
 use crate::{
-	errors::Error,
+	errors::{Error, TypeError},
 	expr::Expression,
 	standardlibrary::{io, math, operators},
 	types::{Data, DataType},
@@ -76,6 +76,8 @@ impl Interpreter {
 			"determinant",
 			"adj",
 			"inverse",
+			"sum",
+			"prod"
 		]
 		.map(|name| {
 			functions.insert(
@@ -106,6 +108,25 @@ pub enum Function {
 	STD(STDFunction),
 }
 
+impl Function {
+	pub fn execute<'a, 'b>(
+		&self,
+		ctx: &'a mut InterpreterContext<'b>,
+		args: Vec<Data>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
+		if let Function::UserDefined(user_defined_function) = self {
+			user_defined_function.execute(ctx, args)
+		} else if let Function::STD(stdfunction) = self {
+			stdfunction.execute(ctx, args)
+		} else {
+			unreachable!()
+		}
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct UserDefinedFunction {
 	pub params: Vec<(String, DataType)>,
@@ -115,11 +136,34 @@ pub struct UserDefinedFunction {
 }
 
 impl UserDefinedFunction {
-	pub fn execute<'a, 'b>(self, ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
+	pub fn execute<'a, 'b>(
+		&self,
+		ctx: &'a mut InterpreterContext<'b>,
+		mut args: Vec<Data>,
+	) -> Result<Data, Error>
 	where
 		'b: 'a,
 	{
-		self.code.evaluate(ctx, self.range)
+		let mut param_names = vec![];
+		for (i, (arg, numbertype)) in self.params.iter().enumerate() {
+			let r = args.remove(i);
+
+			if r.ty() != *numbertype {
+				return Err(TypeError::new(*numbertype, r.ty(), 0..0).to_error());
+			}
+
+			param_names.push(arg.to_string());
+
+			ctx.0.insert(arg.to_string(), r);
+		}
+
+		let data = self.code.clone().evaluate(ctx, self.range.clone());
+
+		for name in param_names {
+			ctx.0.remove(&name);
+		}
+
+		data
 	}
 }
 
@@ -130,21 +174,13 @@ pub struct STDFunction {
 
 impl STDFunction {
 	pub fn execute<'a, 'b>(
-		self,
+		&self,
 		ctx: &'a mut InterpreterContext<'b>,
-		exprs: Vec<(Expression, Range<usize>)>,
-	) -> Result<Data, Error> where 'b: 'a {
-		if &self.name == "graph" {
-			return math::graph(&exprs[0].0, ctx);
-		}
-
-		let mut args = vec![];
-
-		for (expr, range) in exprs {
-			let data = expr.evaluate(ctx, range)?;
-			args.push(data);
-		}
-
+		args: Vec<Data>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
 		let data = match self.name.as_str() {
 			"print" => io::print(args),
 			"read" => io::read(ctx)?,
@@ -176,6 +212,9 @@ impl STDFunction {
 			"determinant" => math::determinant(&args[0]),
 			"adj" => math::adj(&args[0]),
 			"inverse" => math::inverse(&args[0]),
+			"graph" => math::graph(&args[0], ctx)?,
+			"sum" => math::sum(&args[0], &args[1], &args[2], ctx)?,
+			"prod" => math::prod(&args[0], &args[1], &args[2], ctx)?,
 			_ => unreachable!(),
 		};
 

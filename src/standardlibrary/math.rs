@@ -7,7 +7,6 @@ use plotters::style::{Color, IntoFont, full_palette::*};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::errors::Error;
-use crate::expr::Expression;
 use crate::interpreter::{Function, InterpreterContext};
 use crate::standardlibrary::operators::{add, div, mul, sub};
 use crate::types::Data;
@@ -232,11 +231,11 @@ pub fn inverse(v: &Data) -> Data {
 	}
 }
 
-pub fn graph<'a, 'b>(
-	f: &Expression,
-	ctx: &'a mut InterpreterContext<'b>,
-) -> Result<Data, Error> where 'b: 'a {
-	if let Expression::Identifier(f) = f
+pub fn graph<'a, 'b>(f: &Data, ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
+where
+	'b: 'a,
+{
+	if let Data::FnPointer(f) = f
 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap().clone()
 	{
 		let start = SystemTime::now();
@@ -305,4 +304,68 @@ pub fn graph<'a, 'b>(
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")
+}
+
+pub fn sum<'a, 'b>(
+	f: &Data,
+	a: &Data,
+	b: &Data,
+	ctx: &'a mut InterpreterContext<'b>,
+) -> Result<Data, Error>
+where
+	'b: 'a,
+{
+	let Data::FnPointer(g) = f else {
+		unreachable!()
+	};
+
+	let func = ctx.1.get(g).unwrap().clone();
+
+	let mut sum = Data::Number(0.0, 0.0);
+
+	let Data::Number(a, _) = a else {
+		unreachable!()
+	};
+
+	let Data::Number(b, _) = b else {
+		unreachable!()
+	};
+
+	for i in a.round() as i32..=b.round() as i32 {
+		sum = add(&sum, &func.execute(ctx, vec![Data::Number(i as f32, 0.0)])?)
+	}
+
+	Ok(sum)
+}
+
+pub fn prod<'a, 'b>(
+	f: &Data,
+	a: &Data,
+	b: &Data,
+	ctx: &'a mut InterpreterContext<'b>,
+) -> Result<Data, Error>
+where
+	'b: 'a,
+{
+	let Data::FnPointer(g) = f else {
+		unreachable!()
+	};
+
+	let func = ctx.1.get(g).unwrap().clone();
+
+	let mut prod = Data::Number(1.0, 0.0);
+
+	let Data::Number(a, _) = a else {
+		unreachable!()
+	};
+
+	let Data::Number(b, _) = b else {
+		unreachable!()
+	};
+
+	for i in a.round() as i32..=b.round() as i32 {
+		prod = mul(&prod, &func.execute(ctx, vec![Data::Number(i as f32, 0.0)])?)
+	}
+
+	Ok(prod)
 }
