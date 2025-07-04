@@ -1,6 +1,6 @@
 use std::io::{Write, stdin, stdout};
 
-use crate::{interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data};
+use crate::{errors::Error, interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data};
 
 pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
@@ -9,7 +9,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	Data::Number(0.0, 0.0)
 }
 
-pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> (&'a mut InterpreterContext<'a>, Data) {
+pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> Result<Data, Error> {
 	print!("Enter value: ");
 
 	stdout().flush().unwrap();
@@ -23,5 +23,5 @@ pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> (&'a mut InterpreterCont
 		.parser(tokens[0].iter().peekable(), 0)
 		.unwrap()
 		.0
-		.evaluate(ctx)
+		.evaluate(ctx, 0..0)
 }

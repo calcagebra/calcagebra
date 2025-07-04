@@ -1,14 +1,14 @@
 use std::{iter::Peekable, ops::Range, slice::Iter};
 
 use crate::{
-	errors::{ParserError, SyntaxError, TypeError},
+	errors::{EOLError, Error, SyntaxError, TypeError},
 	expr::Expression,
 	token::{Token, TokenInfo},
 	types::DataType,
 };
 
 type PrattParserReturnData<'b> =
-	Result<(Expression, Peekable<Iter<'b, TokenInfo>>, Range<usize>), ParserError>;
+	Result<(Expression, Peekable<Iter<'b, TokenInfo>>, Range<usize>), Error>;
 
 pub struct Parser<'a> {
 	tokens: &'a Vec<Vec<TokenInfo>>,
@@ -19,16 +19,16 @@ impl<'a> Parser<'a> {
 		Self { tokens }
 	}
 
-	pub fn ast(&self) -> Result<Vec<Expression>, ParserError> {
+	pub fn ast(&self) -> Result<Vec<(Expression, Range<usize>)>, Error> {
 		let mut ast = vec![];
 		let lines = self.tokens;
 
 		for line in lines {
 			let tokens = line.iter().peekable();
 
-			let (expr, _, _) = self.parser(tokens, 0)?;
+			let (expr, _, range) = self.parser(tokens, 0)?;
 
-			ast.push(expr);
+			ast.push((expr, range));
 		}
 
 		Ok(ast)
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
 		prec: u16,
 	) -> PrattParserReturnData<'b> {
 		if tokens.peek().is_none() {
-			return Err(ParserError::LogicError(
+			return Err(Error::LogicError(
 				"expression parser did not find any tokens to parse".to_string(),
 			));
 		}
@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
 								token.clone(),
 								start..end,
 							)
-							.to_parser_error(),
+							.to_error(),
 						);
 					}
 				};
@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
 								tokeninfo.token.clone(),
 								tokeninfo.range.clone(),
 							)
-							.to_parser_error(),
+							.to_error(),
 						);
 					}
 				}
@@ -100,7 +100,7 @@ impl<'a> Parser<'a> {
 
 					return Err(
 						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_parser_error(),
+							.to_error(),
 					);
 				}
 
@@ -117,9 +117,7 @@ impl<'a> Parser<'a> {
 
 				if let Some(expression_type) = expr_type {
 					if expr_type.unwrap() != datatype.unwrap() {
-						return Err(
-							TypeError::new(datatype.unwrap(), expression_type, range).to_parser_error(),
-						);
+						return Err(TypeError::new(datatype.unwrap(), expression_type, range).to_error());
 					}
 				}
 
@@ -139,7 +137,7 @@ impl<'a> Parser<'a> {
 								token.clone(),
 								start..end,
 							)
-							.to_parser_error(),
+							.to_error(),
 						);
 					}
 				};
@@ -152,7 +150,7 @@ impl<'a> Parser<'a> {
 
 					return Err(
 						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_parser_error(),
+							.to_error(),
 					);
 				}
 
@@ -190,7 +188,7 @@ impl<'a> Parser<'a> {
 									tokeninfo.token.clone(),
 									tokeninfo.range.clone(),
 								)
-								.to_parser_error(),
+								.to_error(),
 							);
 						}
 					}
@@ -220,7 +218,7 @@ impl<'a> Parser<'a> {
 								tokeninfo.token.clone(),
 								tokeninfo.range.clone(),
 							)
-							.to_parser_error(),
+							.to_error(),
 						);
 					}
 				}
@@ -232,7 +230,7 @@ impl<'a> Parser<'a> {
 
 					return Err(
 						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_parser_error(),
+							.to_error(),
 					);
 				}
 
@@ -245,9 +243,7 @@ impl<'a> Parser<'a> {
 
 				if let Some(expression_type) = expr_type {
 					if expression_type != return_type.unwrap() {
-						return Err(
-							TypeError::new(return_type.unwrap(), expression_type, range).to_parser_error(),
-						);
+						return Err(TypeError::new(return_type.unwrap(), expression_type, range).to_error());
 					}
 				}
 
@@ -256,6 +252,7 @@ impl<'a> Parser<'a> {
 					args,
 					return_type.unwrap(),
 					Box::new(exp),
+					start..end,
 				));
 				end = range.end;
 			}
@@ -366,7 +363,9 @@ impl<'a> Parser<'a> {
 				expr = Some(exp);
 			}
 			Token::Sub => {
-				if let Token::Float(i) = tokens.peek().unwrap().token {
+				if tokens.peek().is_some()
+					&& let Token::Float(i) = tokens.peek().unwrap().token
+				{
 					expr = Some(Expression::Float(-i));
 					end = tokens.next().unwrap().range.end;
 				} else {
@@ -400,7 +399,17 @@ impl<'a> Parser<'a> {
 			let rhs;
 			let range;
 
-			(rhs, tokens, range) = self.parser(tokens, rbp)?;
+			(rhs, tokens, range) = match self.parser(tokens, rbp) {
+				Ok(t) => t,
+				Err(t) => match t {
+					Error::SyntaxError(..) | Error::TypeError(..) | Error::EOLError(..) => {
+						return Err(t);
+					}
+					Error::LogicError(..) => {
+						return Err(EOLError::new(end..end + 1).to_error());
+					}
+				},
+			};
 
 			end = range.end;
 			expr = Some(Expression::Binary(
@@ -410,6 +419,10 @@ impl<'a> Parser<'a> {
 			));
 		}
 
+		if expr.is_none() {
+			return Err(EOLError::new(end..end + 1).to_error());
+		}
+
 		Ok((expr.unwrap(), tokens, start..end))
 	}
 
@@ -417,11 +430,12 @@ impl<'a> Parser<'a> {
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
 		i: String,
-	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), ParserError> {
+	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), Error> {
 		let mut depth = 0;
 		let mut params = vec![];
 		let mut expression = vec![];
 
+		let start = tokens.peek().unwrap().range.start;
 		let mut end = tokens.next().unwrap().range.end;
 
 		loop {
@@ -443,7 +457,7 @@ impl<'a> Parser<'a> {
 						let lex = expression.iter().peekable();
 						let data = self.parser(lex, 0)?.0;
 
-						params.push(data);
+						params.push((data, start..end));
 						expression.clear();
 					}
 					break;
@@ -459,7 +473,7 @@ impl<'a> Parser<'a> {
 				let lex = expression.iter().peekable();
 				let data = self.parser(lex, 0)?.0;
 
-				params.push(data);
+				params.push((data, start..end));
 
 				expression.clear();
 				continue;
@@ -471,7 +485,7 @@ impl<'a> Parser<'a> {
 			let lex = expression.iter().peekable();
 			let data = self.parser(lex, 0)?.0;
 
-			params.push(data);
+			params.push((data, start..end));
 			expression.clear();
 		}
 
@@ -481,7 +495,7 @@ impl<'a> Parser<'a> {
 	pub fn parse_if<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
-	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), ParserError> {
+	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), Error> {
 		let mut depth = 1;
 		let mut params = vec![];
 		let mut expression = vec![];

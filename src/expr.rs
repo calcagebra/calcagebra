@@ -1,3 +1,6 @@
+use std::ops::Range;
+
+use crate::errors::{Error, TypeError};
 use crate::interpreter::UserDefinedFunction;
 use crate::standardlibrary::operators::{
 	add, div, gt, gteq, is_eq, lt, lteq, mul, neq, pow, rem, sub,
@@ -9,7 +12,7 @@ use crate::{
 	types::{Data, DataType},
 };
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
 	Assignment((String, Option<DataType>), Box<Expression>),
 	Abs(Box<Expression>),
@@ -18,114 +21,113 @@ pub enum Expression {
 	Identifier(String),
 	Float(f32),
 	Matrix(Vec<Vec<Expression>>),
-	FunctionCall(String, Vec<Expression>),
-	FunctionDeclaration(String, Vec<(String, DataType)>, DataType, Box<Expression>),
+	FunctionCall(String, Vec<(Expression, Range<usize>)>),
+	FunctionDeclaration(
+		String,
+		Vec<(String, DataType)>,
+		DataType,
+		Box<Expression>,
+		Range<usize>,
+	),
 }
 
 impl Expression {
-	pub fn evaluate<'a>(
+	pub fn evaluate<'a, 'b>(
 		self,
-		mut ctx: &'a mut InterpreterContext<'a>,
-	) -> (&'a mut InterpreterContext<'a>, Data) {
+		ctx: &'a mut InterpreterContext<'b>,
+		range: Range<usize>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
 		match self {
 			Expression::Assignment((name, numbertype), expr) => {
-				let number;
+				let number = expr.evaluate(ctx, range.clone())?;
 
-				(ctx, number) = expr.evaluate(ctx);
-
-				if numbertype.is_some() && number.ty() != numbertype.unwrap() {
-					// TODO: proper errors
-					panic!(
-						"type mismatch found {} expected {}",
-						number,
-						numbertype.unwrap()
-					)
+				if let Some(ty) = numbertype
+					&& number.ty() != numbertype.unwrap()
+				{
+					return Err(TypeError::new(ty, number.ty(), 0..0).to_error());
 				}
 
 				ctx.0.insert(name, number.clone());
 
-				(ctx, number)
+				Ok(number)
 			}
-			Expression::FunctionDeclaration(name, items, number_type, expr) => {
+			Expression::FunctionDeclaration(name, items, number_type, expr, range) => {
 				ctx.1.insert(
 					name.to_owned(),
 					Function::UserDefined(UserDefinedFunction {
 						params: items,
 						return_type: number_type,
 						code: *expr,
+						range,
 					}),
 				);
 
-				(ctx, Data::FnPointer(name))
+				Ok(Data::FnPointer(name))
 			}
 			Expression::Abs(expression) => {
-				let data;
-				(ctx, data) = expression.evaluate(ctx);
-				(ctx, math::abs(&data))
+				let data = expression.evaluate(ctx, range.clone())?;
+				Ok(math::abs(&data))
 			}
 			Expression::Binary(lhs, token, rhs) => {
-				let lhd;
-				let rhd;
+				let lhd = lhs.evaluate(ctx, range.clone())?;
+				let rhd = rhs.evaluate(ctx, range.clone())?;
 
-				(ctx, lhd) = lhs.evaluate(ctx);
-				(ctx, rhd) = rhs.evaluate(ctx);
-
-				(
-					ctx,
-					match token {
-						Token::Add => add(&lhd, &rhd),
-						Token::Sub => sub(&lhd, &rhd),
-						Token::Mul => mul(&lhd, &rhd),
-						Token::Div => div(&lhd, &rhd),
-						Token::Pow => pow(&lhd, &rhd),
-						Token::Rem => rem(&lhd, &rhd),
-						Token::IsEq => is_eq(&lhd, &rhd),
-						Token::NEq => neq(&lhd, &rhd),
-						Token::Gt => gt(&lhd, &rhd),
-						Token::GtEq => gteq(&lhd, &rhd),
-						Token::Lt => lt(&lhd, &rhd),
-						Token::LtEq => lteq(&lhd, &rhd),
-						_ => unreachable!(),
-					},
-				)
+				Ok(match token {
+					Token::Add => add(&lhd, &rhd),
+					Token::Sub => sub(&lhd, &rhd),
+					Token::Mul => mul(&lhd, &rhd),
+					Token::Div => div(&lhd, &rhd),
+					Token::Pow => pow(&lhd, &rhd),
+					Token::Rem => rem(&lhd, &rhd),
+					Token::IsEq => is_eq(&lhd, &rhd),
+					Token::NEq => neq(&lhd, &rhd),
+					Token::Gt => gt(&lhd, &rhd),
+					Token::GtEq => gteq(&lhd, &rhd),
+					Token::Lt => lt(&lhd, &rhd),
+					Token::LtEq => lteq(&lhd, &rhd),
+					_ => unreachable!(),
+				})
 			}
 			Expression::Branched(condition, then, otherwise) => {
-				let data;
-
-				(ctx, data) = condition.evaluate(ctx);
+				let data = condition.evaluate(ctx, range.clone())?;
 
 				if let Data::Number(condition, _) = data {
 					return if condition != 0.0 {
-						then.evaluate(ctx)
+						Ok(then.evaluate(ctx, range.clone())?)
 					} else {
-						otherwise.evaluate(ctx)
+						Ok(otherwise.evaluate(ctx, range.clone())?)
 					};
 				}
 
-				panic!("expected number in condition for branch statement")
+				Err(TypeError::new(DataType::Number, data.ty(), 0..0).to_error())
 			}
 			Expression::Identifier(name) => {
-				// TODO: Error handling for when name does not
+				if !ctx.0.contains_key(&name) {
+					return Err(Error::LogicError(format!("undefined variable: `{name}`")));
+				}
+
 				let data = ctx.0.get(&name).unwrap().to_owned();
-				(ctx, data)
+
+				Ok(data)
 			}
-			Expression::Float(f) => (ctx, Data::Number(f, 0.0)),
+			Expression::Float(f) => Ok(Data::Number(f, 0.0)),
 			Expression::Matrix(matrix) => {
 				let mut matrix_data = vec![];
 
 				for row in matrix {
 					let mut row_data = vec![];
 					for element in row {
-						let data;
-
-						(ctx, data) = element.evaluate(ctx);
+						let data = element.evaluate(ctx, range.clone())?;
 
 						row_data.push(data);
 					}
 					matrix_data.push(row_data);
 				}
 
-				(ctx, Data::Matrix(matrix_data))
+				Ok(Data::Matrix(matrix_data))
 			}
 			Expression::FunctionCall(name, mut exprs) => {
 				if ctx.1.contains_key(&name) {
@@ -133,13 +135,10 @@ impl Expression {
 
 					if let Function::UserDefined(g) = f {
 						for (i, (arg, numbertype)) in g.params.iter().enumerate() {
-							let r;
-
-							(ctx, r) = exprs.remove(i).evaluate(ctx);
+							let r = exprs.remove(i).0.evaluate(ctx, range.clone())?;
 
 							if r.ty() != *numbertype {
-								// TODO: error handling
-								panic!("type mismatch")
+								return Err(TypeError::new(*numbertype, r.ty(), 0..0).to_error());
 							}
 
 							ctx.0.insert(arg.to_string(), r);
@@ -149,11 +148,9 @@ impl Expression {
 					} else if let Function::STD(g) = f {
 						return g.execute(ctx, exprs);
 					}
-
-					unreachable!()
 				}
 
-				panic!("undefined function")
+				Err(Error::LogicError(format!("undefined function: `{name}`")))
 			}
 		}
 	}

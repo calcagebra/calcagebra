@@ -11,40 +11,44 @@ use crate::token::Token;
 use crate::types::DataType;
 
 #[derive(Debug)]
-pub enum ParserError {
+pub enum Error {
 	SyntaxError(SyntaxError),
 	TypeError(TypeError),
 	LogicError(String),
+	EOLError(EOLError)
 }
 
-impl From<&str> for ParserError {
+impl From<&str> for Error {
 	fn from(value: &str) -> Self {
-		ParserError::LogicError(value.to_string())
+		Error::LogicError(value.to_string())
 	}
 }
 
-impl ParserError {
+impl Error {
 	pub fn error_message(&self) -> String {
 		match self {
-			ParserError::SyntaxError(syntax_error) => syntax_error.error_message(),
-			ParserError::TypeError(type_error) => type_error.error_message(),
-			ParserError::LogicError(error_message) => error_message.to_string(),
+			Error::SyntaxError(syntax_error) => syntax_error.error_message(),
+			Error::TypeError(type_error) => type_error.error_message(),
+			Error::LogicError(error_message) => error_message.to_string(),
+			Error::EOLError(eol_error) => eol_error.error_message(),
 		}
 	}
 
 	pub fn help_message(&self) -> String {
 		match self {
-			ParserError::SyntaxError(syntax_error) => syntax_error.help_message(),
-			ParserError::TypeError(type_error) => type_error.help_message(),
-			ParserError::LogicError(help_message) => help_message.to_string(),
+			Error::SyntaxError(syntax_error) => syntax_error.help_message(),
+			Error::TypeError(type_error) => type_error.help_message(),
+			Error::LogicError(help_message) => help_message.to_string(),
+			Error::EOLError(eol_error) => eol_error.help_message(),
 		}
 	}
 
 	pub fn range(&self) -> Range<usize> {
 		match self {
-			ParserError::SyntaxError(syntax_error) => syntax_error.range.clone(),
-			ParserError::TypeError(type_error) => type_error.range.clone(),
-			ParserError::LogicError(..) => 0..0,
+			Error::SyntaxError(syntax_error) => syntax_error.range.clone(),
+			Error::TypeError(type_error) => type_error.range.clone(),
+			Error::LogicError(..) => 0..0,
+			Error::EOLError(eol_error) => eol_error.range.clone(),
 		}
 	}
 }
@@ -76,8 +80,8 @@ impl SyntaxError {
 		format!("\x1b[1mhelp:\x1b[0m add {} here", self.expected)
 	}
 
-	pub fn to_parser_error(self) -> ParserError {
-		ParserError::SyntaxError(self)
+	pub fn to_error(self) -> Error {
+		Error::SyntaxError(self)
 	}
 }
 
@@ -111,10 +115,37 @@ impl TypeError {
 		)
 	}
 
-	pub fn to_parser_error(self) -> ParserError {
-		ParserError::TypeError(self)
+	pub fn to_error(self) -> Error {
+		Error::TypeError(self)
 	}
 }
+
+
+#[derive(Debug)]
+pub struct EOLError {
+	pub range: Range<usize>,
+}
+
+impl EOLError {
+	pub fn new(range: Range<usize>) -> Self {
+		Self {
+			range,
+		}
+	}
+
+	pub fn error_message(&self) -> String {
+		"\x1b[1munexpected end of tokens \x1b[0m".to_string()
+	}
+
+	pub fn help_message(&self) -> String {
+		"\x1b[1mhelp:\x1b[0m more tokens were expected here".to_string()
+	}
+
+	pub fn to_error(self) -> Error {
+		Error::EOLError(self)
+	}
+}
+
 
 #[derive(Debug, Clone)]
 pub struct ErrorReporter<'a> {
@@ -131,9 +162,8 @@ impl<'a> ErrorReporter<'a> {
 	pub fn error(&self, error_message: String, help_message: String, range: Range<usize>) -> ! {
 		let diagnostic = Diagnostic::error()
 			.with_message(&error_message)
-			.with_code("ERR")
 			.with_labels(vec![
-				Label::primary((), range.start - 1..range.end).with_message(error_message),
+				Label::primary((), range.start.saturating_sub(1)..range.end).with_message(error_message),
 			])
 			.with_notes(vec![help_message]);
 
@@ -143,5 +173,24 @@ impl<'a> ErrorReporter<'a> {
 		term::emit(&mut writer.lock(), &config, &self.file, &diagnostic).unwrap();
 
 		std::process::exit(1);
+	}
+
+	pub fn error_without_exit(
+		&self,
+		error_message: String,
+		help_message: String,
+		range: Range<usize>,
+	) {
+		let diagnostic = Diagnostic::error()
+			.with_message(&error_message)
+			.with_labels(vec![
+				Label::primary((), range.start.saturating_sub(1)..range.end).with_message(error_message),
+			])
+			.with_notes(vec![help_message]);
+
+		let writer = StandardStream::stderr(ColorChoice::Always);
+		let config = codespan_reporting::term::Config::default();
+
+		term::emit(&mut writer.lock(), &config, &self.file, &diagnostic).unwrap();
 	}
 }

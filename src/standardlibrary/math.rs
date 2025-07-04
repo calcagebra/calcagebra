@@ -6,6 +6,7 @@ use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::errors::Error;
 use crate::expr::Expression;
 use crate::interpreter::{Function, InterpreterContext};
 use crate::standardlibrary::operators::{add, div, mul, sub};
@@ -233,8 +234,8 @@ pub fn inverse(v: &Data) -> Data {
 
 pub fn graph<'a>(
 	f: &Expression,
-	mut ctx: &'a mut InterpreterContext<'a>,
-) -> (&'a mut InterpreterContext<'a>, Data) {
+	ctx: &'a mut InterpreterContext<'a>,
+) -> Result<Data, Error> {
 	if let Expression::Identifier(f) = f
 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap().clone()
 	{
@@ -266,9 +267,7 @@ pub fn graph<'a>(
 
 			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
 
-			let data;
-
-			(ctx, data) = code.clone().evaluate(ctx);
+			let data = code.clone().evaluate(ctx, g.range.clone())?;
 
 			values.push((
 				x,
@@ -302,14 +301,8 @@ pub fn graph<'a>(
 
 		root.present().unwrap();
 
-		return (ctx, Data::Number(0.0, 0.0));
+		return Ok(Data::Number(0.0, 0.0));
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")
 }
-
-// pub fn sum(f: &Expression, ctx: &mut InterpreterContext) -> Data {
-// 	if let Expression::Identifier(f) = f
-// 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap()
-// 	{}
-// }
