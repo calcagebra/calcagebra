@@ -99,7 +99,7 @@ pub fn nrt(a: &Data, b: &Data) -> Data {
 	{
 		let z = r.powf(1.0 / b);
 
-		let theta = (y / x).atan() / b;
+		let theta = y.atan2(*x) / b;
 		return Data::Number(z * theta.cos(), z * theta.sin());
 	}
 

@@ -117,7 +117,9 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 
 			let modulus = (a * a + b * b).sqrt();
 
-			let argument = (b / a).atan();
+			let argument = b.atan2(*a);
+
+			dbg!(argument);
 
 			Data::Number(
 				modulus.powf(*n) * (*n * argument).cos(),
