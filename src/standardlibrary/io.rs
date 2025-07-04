@@ -9,7 +9,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	Data::Number(0.0, 0.0)
 }
 
-pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> Result<(&'a mut InterpreterContext<'a>, Data), Error> {
+pub fn read<'a>(ctx: &'a mut InterpreterContext<'a>) -> Result<Data, Error> {
 	print!("Enter value: ");
 
 	stdout().flush().unwrap();

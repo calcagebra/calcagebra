@@ -1,6 +1,7 @@
 use std::{
 	collections::HashMap,
-	f32::consts::{E, PI}, ops::Range,
+	f32::consts::{E, PI},
+	ops::Range,
 };
 
 pub type InterpreterContext<'a> = (
@@ -9,7 +10,10 @@ pub type InterpreterContext<'a> = (
 );
 
 use crate::{
-	errors::Error, expr::Expression, standardlibrary::{io, math, operators}, types::{Data, DataType}
+	errors::Error,
+	expr::Expression,
+	standardlibrary::{io, math, operators},
+	types::{Data, DataType},
 };
 
 #[derive(Debug, Clone)]
@@ -86,10 +90,10 @@ impl Interpreter {
 	}
 
 	pub fn interpret(&mut self, ast: Vec<(Expression, Range<usize>)>) -> Result<(), Error> {
-		let mut ctx = &mut (&mut self.globals, &mut self.functions);
+		let ctx = &mut (&mut self.globals, &mut self.functions);
 
 		for (expr, range) in ast {
-			(ctx, _) = expr.evaluate(ctx, range)?;
+			expr.evaluate(ctx, range)?;
 		}
 
 		Ok(())
@@ -107,14 +111,14 @@ pub struct UserDefinedFunction {
 	pub params: Vec<(String, DataType)>,
 	pub return_type: DataType,
 	pub code: Expression,
-	pub range: Range<usize>
+	pub range: Range<usize>,
 }
 
 impl UserDefinedFunction {
-	pub fn execute<'a>(
-		self,
-		ctx: &'a mut InterpreterContext<'a>,
-	) -> Result<(&'a mut InterpreterContext<'a>, Data), Error> {
+	pub fn execute<'a, 'b>(self, ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
 		self.code.evaluate(ctx, self.range)
 	}
 }
@@ -127,9 +131,9 @@ pub struct STDFunction {
 impl STDFunction {
 	pub fn execute<'a>(
 		self,
-		mut ctx: &'a mut InterpreterContext<'a>,
+		ctx: &'a mut InterpreterContext<'a>,
 		exprs: Vec<(Expression, Range<usize>)>,
-	) -> Result<(&'a mut InterpreterContext<'a>, Data), Error> {
+	) -> Result<Data, Error> {
 		if &self.name == "graph" {
 			return math::graph(&exprs[0].0, ctx);
 		}
@@ -137,19 +141,13 @@ impl STDFunction {
 		let mut args = vec![];
 
 		for (expr, range) in exprs {
-			let data;
-
-			(ctx, data) = expr.evaluate(ctx, range)?;
+			let data = expr.evaluate(ctx, range)?;
 			args.push(data);
 		}
 
 		let data = match self.name.as_str() {
 			"print" => io::print(args),
-			"read" => {
-				let data;
-				(ctx, data) = io::read(ctx)?;
-				data
-			}
+			"read" => io::read(ctx)?,
 			"add" => operators::add(&args[0], &args[1]),
 			"sub" => operators::sub(&args[0], &args[1]),
 			"mul" => operators::mul(&args[0], &args[1]),
@@ -181,6 +179,6 @@ impl STDFunction {
 			_ => unreachable!(),
 		};
 
-		Ok((ctx, data))
+		Ok(data)
 	}
 }

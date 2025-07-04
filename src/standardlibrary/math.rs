@@ -234,8 +234,8 @@ pub fn inverse(v: &Data) -> Data {
 
 pub fn graph<'a>(
 	f: &Expression,
-	mut ctx: &'a mut InterpreterContext<'a>,
-) -> Result<(&'a mut InterpreterContext<'a>, Data), Error> {
+	ctx: &'a mut InterpreterContext<'a>,
+) -> Result<Data, Error> {
 	if let Expression::Identifier(f) = f
 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap().clone()
 	{
@@ -267,9 +267,7 @@ pub fn graph<'a>(
 
 			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
 
-			let data;
-
-			(ctx, data) = code.clone().evaluate(ctx, g.range.clone())?;
+			let data = code.clone().evaluate(ctx, g.range.clone())?;
 
 			values.push((
 				x,
@@ -303,7 +301,7 @@ pub fn graph<'a>(
 
 		root.present().unwrap();
 
-		return Ok((ctx, Data::Number(0.0, 0.0)));
+		return Ok(Data::Number(0.0, 0.0));
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")

@@ -128,7 +128,7 @@ pub fn repl() {
 	rl.set_helper(Some(h));
 
 	let mut interpreter = Interpreter::new();
-	let mut ctx = &mut (&mut interpreter.globals, &mut interpreter.functions);
+	let ctx = &mut (&mut interpreter.globals, &mut interpreter.functions);
 
 	loop {
 		"\x1b[1m\x1b[32m[In]:\x1b[0m "
@@ -153,9 +153,7 @@ pub fn repl() {
 				match parser.ast() {
 					Ok(ast) => {
 						if !ast.is_empty() {
-							let data;
-
-							(ctx, data) = match ast[0].clone().0.evaluate(ctx, ast[0].1.clone()) {
+							let data = match ast[0].clone().0.evaluate(ctx, ast[0].1.clone()) {
 								Ok(tuple) => tuple,
 								Err(err) => {
 									reporter.error_without_exit(err.error_message(), err.help_message(), err.range());
