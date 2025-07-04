@@ -140,7 +140,7 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "calcagebra"
-version = "4.1.3"
+version = "4.1.4"
 dependencies = [
  "clap",
  "codespan-reporting",
