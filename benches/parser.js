@@ -24,11 +24,11 @@ for (let i = 0; i < 100_00; i++) {
   let x = Math.floor(Math.random() * 3);
 
   if (x == 0) {
-    s += `let name: R = R(${generate_expression()})`;
+    s += `let name: C = C(${generate_expression()})`;
   } else if (x === 1) {
-    s += `fn name(x: R): R = R(${generate_expression()})`
+    s += `fn name(x: C): C = C(${generate_expression()})`
   } else {
-    s +=`print(R(${generate_expression()}))`
+    s +=`print(C(${generate_expression()}))`
   }
 
   s += "\n"
