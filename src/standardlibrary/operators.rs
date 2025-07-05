@@ -120,6 +120,10 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 				unimplemented!("raising to complex number powers is not supported yet")
 			}
 
+			if *b == Decimal::ZERO {
+				return Data::Number(a.powd(*n), Decimal::ZERO);
+			}
+
 			let modulus = (a * a + b * b).sqrt().unwrap();
 
 			let Data::Number(argument, _) = atan2(
