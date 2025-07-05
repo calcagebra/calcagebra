@@ -1,8 +1,9 @@
+use rust_decimal::Decimal;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Data {
-	Number(f64, f64),
+	Number(Decimal, Decimal),
 	Matrix(Vec<Vec<Data>>),
 	FnPointer(String),
 }
@@ -24,9 +25,9 @@ impl Display for Data {
 			"{}",
 			match self {
 				Data::Number(a, b) => {
-					if *b == 0.0 {
+					if *b == Decimal::ZERO {
 						format!("{a}")
-					} else if *a == 0.0 {
+					} else if *a == Decimal::ZERO {
 						format!("{b}i")
 					} else {
 						format!("{a} + {b}i")

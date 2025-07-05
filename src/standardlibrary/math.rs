@@ -4,6 +4,8 @@ use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
 use plotters::style::{Color, IntoFont, full_palette::*};
+use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::{Decimal, MathematicalOps, dec, prelude::*};
 use std::f32;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -14,7 +16,7 @@ use crate::types::Data;
 
 pub fn abs(a: &Data) -> Data {
 	match a {
-		Data::Number(a, b) => Data::Number((a * a + b * b).sqrt(), 0.0),
+		Data::Number(a, b) => Data::Number((a * a + b * b).sqrt().unwrap(), Decimal::ZERO),
 		Data::Matrix(..) => determinant(a),
 		_ => unimplemented!(),
 	}
@@ -41,16 +43,35 @@ pub fn floor(a: &Data) -> Data {
 	}
 }
 
+pub fn exp(a: &Data) -> Data {
+	let Data::Number(x, _) = a else {
+		unreachable!()
+	};
+
+	Data::Number(
+		x.exp_with_tolerance(Decimal::from_parts(2, 0, 0, false, 28)),
+		Decimal::ZERO,
+	)
+}
+
 pub fn ln(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number((x * x + y * y).sqrt().ln(), y.atan2(*x)),
+		Data::Number(x, y) => {
+			let Data::Number(t, _) = atan2(
+				&Data::Number(*y, Decimal::ZERO),
+				&Data::Number(*x, Decimal::ZERO),
+			) else {
+				unreachable!()
+			};
+			Data::Number((x * x + y * y).sqrt().unwrap().ln(), t)
+		}
 		_ => unimplemented!(),
 	}
 }
 
 pub fn log10(a: &Data) -> Data {
 	match a {
-		Data::Number(..) => div(&ln(a), &ln(&Data::Number(10.0, 0.0))),
+		Data::Number(..) => div(&ln(a), &ln(&Data::Number(Decimal::TEN, Decimal::ZERO))),
 		_ => unimplemented!(),
 	}
 }
@@ -64,30 +85,360 @@ pub fn log(a: &Data, b: &Data) -> Data {
 
 pub fn sin(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.sin() * y.cosh(), x.cos() * y.sinh()),
+		Data::Number(x, y) => {
+			let Data::Number(p, _) = &mul(
+				&Data::Number(x.sin(), Decimal::ZERO),
+				&cosh(&Data::Number(*y, Decimal::ZERO)),
+			) else {
+				unreachable!()
+			};
+			let Data::Number(q, _) = &mul(
+				&Data::Number(x.cos(), Decimal::ZERO),
+				&sinh(&Data::Number(*y, Decimal::ZERO)),
+			) else {
+				unreachable!()
+			};
+
+			Data::Number(*p, *q)
+		}
 		_ => unimplemented!(),
 	}
 }
 
+pub fn sinh(a: &Data) -> Data {
+	div(
+		&sub(
+			&exp(a),
+			&exp(&mul(a, &Data::Number(Decimal::NEGATIVE_ONE, Decimal::ZERO))),
+		),
+		&Data::Number(Decimal::TWO, Decimal::ZERO),
+	)
+}
+
 pub fn cos(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.cos() * y.cosh(), -x.sin() * y.sinh()),
+		Data::Number(x, y) => {
+			let Data::Number(p, _) = &mul(
+				&Data::Number(x.cos(), Decimal::ZERO),
+				&cosh(&Data::Number(*y, Decimal::ZERO)),
+			) else {
+				unreachable!()
+			};
+			let Data::Number(q, _) = &mul(
+				&Data::Number(-x.sin(), Decimal::ZERO),
+				&sinh(&Data::Number(*y, Decimal::ZERO)),
+			) else {
+				unreachable!()
+			};
+
+			Data::Number(*p, *q)
+		}
 		_ => unimplemented!(),
 	}
+}
+
+pub fn cosh(a: &Data) -> Data {
+	div(
+		&add(
+			&exp(a),
+			&exp(&mul(a, &Data::Number(Decimal::NEGATIVE_ONE, Decimal::ZERO))),
+		),
+		&Data::Number(Decimal::TWO, Decimal::ZERO),
+	)
 }
 
 pub fn tan(a: &Data) -> Data {
 	div(&sin(a), &cos(a))
 }
 
+/* atan, atan2 and i macro implementations from libm (rust) */
+/* origin: FreeBSD /usr/src/lib/msun/src/e_atan2.c */
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ *
+ */
+
+macro_rules! i {
+	($array:expr, $index:expr) => {
+		*$array.get($index).unwrap()
+	};
+	($array:expr, $index:expr, = , $rhs:expr) => {
+		*$array.get_mut($index).unwrap() = $rhs;
+	};
+	($array:expr, $index:expr, -= , $rhs:expr) => {
+		*$array.get_mut($index).unwrap() -= $rhs;
+	};
+	($array:expr, $index:expr, += , $rhs:expr) => {
+		*$array.get_mut($index).unwrap() += $rhs;
+	};
+	($array:expr, $index:expr, &= , $rhs:expr) => {
+		*$array.get_mut($index).unwrap() &= $rhs;
+	};
+	($array:expr, $index:expr, == , $rhs:expr) => {
+		*$array.get_mut($index).unwrap() == $rhs
+	};
+}
+
+pub fn atan2(x: &Data, y: &Data) -> Data {
+	let Data::Number(x, _) = x else {
+		unimplemented!()
+	};
+
+	let Data::Number(y, _) = y else {
+		unimplemented!()
+	};
+
+	let x = *x;
+	let y = *y;
+
+	const PI_LO: Decimal = dec!(1.224646799147E-16);
+
+	let mut ix = (x.to_f64().unwrap().to_bits() >> 32) as u32;
+
+	let lx = x.to_f64().unwrap().to_bits() as u32;
+
+	let mut iy = (y.to_f64().unwrap().to_bits() >> 32) as u32;
+
+	let ly = y.to_f64().unwrap().to_bits() as u32;
+
+	if ((ix.wrapping_sub(0x3ff00000)) | lx) == 0 {
+		/* x = 1.0 */
+
+		return atan(&Data::Number(y, Decimal::ZERO));
+	}
+
+	let m = ((iy >> 31) & 1) | ((ix >> 30) & 2); /* 2*sign(x)+sign(y) */
+
+	ix &= 0x7fffffff;
+
+	iy &= 0x7fffffff;
+
+	/* when y = 0 */
+
+	if (iy | ly) == 0 {
+		return Data::Number(
+			match m {
+				0 | 1 => y, /* atan(+-0,+anything)=+-0 */
+
+				2 => Decimal::PI, /* atan(+0,-anything) = Decimal::PI */
+
+				_ => -Decimal::PI, /* atan(-0,-anything) =-Decimal::PI */
+			},
+			Decimal::ZERO,
+		);
+	}
+
+	/* when x = 0 */
+
+	if (ix | lx) == 0 {
+		return Data::Number(
+			if m & 1 != 0 {
+				-Decimal::HALF_PI
+			} else {
+				Decimal::HALF_PI
+			},
+			Decimal::ZERO,
+		);
+	}
+
+	/* when x is INF */
+
+	if ix == 0x7ff00000 {
+		if iy == 0x7ff00000 {
+			return Data::Number(
+				match m {
+					0 => Decimal::QUARTER_PI, /* atan(+INF,+INF) */
+
+					1 => -Decimal::QUARTER_PI, /* atan(-INF,+INF) */
+
+					2 => dec!(3.0) * Decimal::QUARTER_PI, /* atan(+INF,-INF) */
+
+					_ => dec!(3.0) * Decimal::QUARTER_PI, /* atan(-INF,-INF) */
+				},
+				Decimal::ZERO,
+			);
+		} else {
+			return Data::Number(
+				match m {
+					0 => Decimal::ZERO, /* atan(+...,+INF) */
+
+					1 => -Decimal::ZERO, /* atan(-...,+INF) */
+
+					2 => Decimal::PI, /* atan(+...,-INF) */
+
+					_ => -Decimal::PI, /* atan(-...,-INF) */
+				},
+				Decimal::ZERO,
+			);
+		}
+	}
+
+	/* |y/x| > 0x1p64 */
+
+	if ix.wrapping_add(64 << 20) < iy || iy == 0x7ff00000 {
+		return Data::Number(
+			if m & 1 != 0 {
+				-Decimal::HALF_PI
+			} else {
+				Decimal::HALF_PI
+			},
+			Decimal::ZERO,
+		);
+	}
+
+	/* z = atan(|y/x|) without spurious underflow */
+
+	let z = if (m & 2 != 0) && iy.wrapping_add(64 << 20) < ix {
+		/* |y/x| < 0x1p-64, x<0 */
+
+		Decimal::ZERO
+	} else {
+		let Data::Number(t, _) = atan(&Data::Number((y / x).abs(), Decimal::ZERO)) else {
+			unimplemented!()
+		};
+
+		t
+	};
+
+	Data::Number(
+		match m {
+			0 => z, /* atan(+,+) */
+
+			1 => -z, /* atan(-,+) */
+
+			2 => Decimal::PI - (z - PI_LO), /* atan(+,-) */
+
+			_ => (z - PI_LO) - Decimal::PI, /* atan(-,-) */
+		},
+		Decimal::ZERO,
+	)
+}
+
+pub fn atan(x: &Data) -> Data {
+	let Data::Number(x, _) = x else {
+		unimplemented!()
+	};
+
+	let mut x = *x;
+
+	const ATANHI: [Decimal; 4] = [
+		dec!(4.63647609000806093515e-01), /* atan(0.5)hi 0x3FDDAC67, 0x0561BB4F */
+		dec!(7.85398163397448278999e-01), /* atan(1.0)hi 0x3FE921FB, 0x54442D18 */
+		dec!(9.82793723247329054082e-01), /* atan(1.5)hi 0x3FEF730B, 0xD281F69B */
+		dec!(1.57079632679489655800e+00), /* atan(inf)hi 0x3FF921FB, 0x54442D18 */
+	];
+
+	const ATANLO: [Decimal; 4] = [
+		dec!(2.26987774529e-17), /* atan(0.5)lo 0x3C7A2B7F, 0x222F65E2 */
+		dec!(3.06161699786e-17), /* atan(1.0)lo 0x3C81A626, 0x33145C07 */
+		dec!(1.39033110312e-17), /* atan(1.5)lo 0x3C700788, 0x7AF0CBBD */
+		dec!(6.12323399573e-17), /* atan(inf)lo 0x3C91A626, 0x33145C07 */
+	];
+
+	const AT: [Decimal; 11] = [
+		dec!(3.33333333333329318027e-01),  /* 0x3FD55555, 0x5555550D */
+		dec!(-1.99999999998764832476e-01), /* 0xBFC99999, 0x9998EBC4 */
+		dec!(1.42857142725034663711e-01),  /* 0x3FC24924, 0x920083FF */
+		dec!(-1.11111104054623557880e-01), /* 0xBFBC71C6, 0xFE231671 */
+		dec!(9.09088713343650656196e-02),  /* 0x3FB745CD, 0xC54C206E */
+		dec!(-7.69187620504482999495e-02), /* 0xBFB3B0F2, 0xAF749A6D */
+		dec!(6.66107313738753120669e-02),  /* 0x3FB10D66, 0xA0D03D51 */
+		dec!(-5.83357013379057348645e-02), /* 0xBFADDE2D, 0x52DEFD9A */
+		dec!(4.97687799461593236017e-02),  /* 0x3FA97B4B, 0x24760DEB */
+		dec!(-3.65315727442169155270e-02), /* 0xBFA2B444, 0x2C6A6C2F */
+		dec!(1.62858201153657823623e-02),  /* 0x3F90AD3A, 0xE322DA11 */
+	];
+
+	let mut ix = (x.to_f64().unwrap().to_bits() >> 32) as u32;
+
+	let sign = ix >> 31;
+
+	ix &= 0x7fff_ffff;
+
+	if ix >= 0x4410_0000 {
+		let z = ATANHI[3] + Decimal::from_f64(f64::from_bits(0x0380_0000)).unwrap(); // 0x1p-120f
+
+		return Data::Number(if sign != 0 { -z } else { z }, Decimal::ZERO);
+	}
+
+	let id = if ix < 0x3fdc_0000 {
+		/* |x| < 0.4375 */
+
+		if ix < 0x3e40_0000 {
+			/* |x| < 2^-27 */
+
+			return Data::Number(x, Decimal::ZERO);
+		}
+
+		-1
+	} else {
+		x = x.abs();
+
+		if ix < 0x3ff30000 {
+			/* |x| < 1.1875 */
+
+			if ix < 0x3fe60000 {
+				/* 7/16 <= |x| < 11/16 */
+
+				x = (Decimal::TWO * x - Decimal::ONE) / (Decimal::TWO + x);
+
+				0
+			} else {
+				/* 11/16 <= |x| < 19/16 */
+
+				x = (x - Decimal::ONE) / (x + Decimal::ONE);
+
+				1
+			}
+		} else if ix < 0x40038000 {
+			/* |x| < 2.4375 */
+
+			x = (x - dec!(1.5)) / (Decimal::ONE + dec!(1.5) * x);
+
+			2
+		} else {
+			/* 2.4375 <= |x| < 2^66 */
+
+			x = -Decimal::ONE / x;
+
+			3
+		}
+	};
+
+	let z = x * x;
+
+	let w = z * z;
+
+	/* break sum from i=0 to 10 AT[i]z**(i+1) into odd and even poly */
+
+	let s1 = z * (AT[0] + w * (AT[2] + w * (AT[4] + w * (AT[6] + w * (AT[8] + w * AT[10])))));
+
+	let s2 = w * (AT[1] + w * (AT[3] + w * (AT[5] + w * (AT[7] + w * AT[9]))));
+
+	if id < 0 {
+		return Data::Number(x - x * (s1 + s2), Decimal::ZERO);
+	}
+
+	let z = i!(ATANHI, id as usize) - (x * (s1 + s2) - i!(ATANLO, id as usize) - x);
+
+	Data::Number(if sign != 0 { -z } else { z }, Decimal::ZERO)
+}
+
 pub fn sqrt(a: &Data) -> Data {
 	match a {
 		Data::Number(a, b) => {
-			let r = (a * a + b * b).sqrt();
+			let r = (a * a + b * b).sqrt().unwrap();
 
-			let zr = ((a + r) * (a + r) + b * b).sqrt();
+			let zr = ((a + r) * (a + r) + b * b).sqrt().unwrap();
 
-			Data::Number(r.sqrt() * (a + r) / zr, r.sqrt() * b / zr)
+			Data::Number(r.sqrt().unwrap() * (a + r) / zr, r.sqrt().unwrap() * b / zr)
 		}
 		_ => unimplemented!(),
 	}
@@ -98,9 +449,17 @@ pub fn nrt(a: &Data, b: &Data) -> Data {
 		&& let Data::Number(r, _) = abs(a)
 		&& let Data::Number(b, _) = b
 	{
-		let z = r.powf(1.0 / b);
+		let z = r.powd(Decimal::ONE / b);
 
-		let theta = y.atan2(*x) / b;
+		let Data::Number(theta, _) = atan2(
+			&Data::Number(*y, Decimal::ZERO),
+			&Data::Number(*x, Decimal::ZERO),
+		) else {
+			unreachable!()
+		};
+
+		let theta = theta / b;
+
 		return Data::Number(z * theta.cos(), z * theta.sin());
 	}
 
@@ -124,7 +483,7 @@ pub fn determinant(v: &Data) -> Data {
 					&mul(&matrix[0][1], &matrix[1][0]),
 				)
 			} else {
-				let mut delta = Data::Number(0.0, 0.0);
+				let mut delta = Data::Number(Decimal::ZERO, Decimal::ZERO);
 
 				for (i, n) in matrix[0].iter().enumerate() {
 					let mut minor_matrix = matrix.clone();
@@ -138,7 +497,10 @@ pub fn determinant(v: &Data) -> Data {
 					delta = add(
 						&delta,
 						&mul(
-							&mul(n, &Data::Number([1.0, -1.0][i % 2], 0.0)),
+							&mul(
+								n,
+								&Data::Number([Decimal::ONE, Decimal::NEGATIVE_ONE][i % 2], Decimal::ZERO),
+							),
 							&determinant(&Data::Matrix(minor_matrix)),
 						),
 					);
@@ -189,7 +551,11 @@ pub fn adj(v: &Data) -> Data {
 				if row.len() != cols {
 					panic!("matrix should be square for adj");
 				}
-				adj_matrix.push((0..cols).map(|_| Data::Number(0.0, 0.0)).collect());
+				adj_matrix.push(
+					(0..cols)
+						.map(|_| Data::Number(Decimal::ZERO, Decimal::ZERO))
+						.collect(),
+				);
 			}
 
 			for i in 0..matrix.len() {
@@ -203,7 +569,10 @@ pub fn adj(v: &Data) -> Data {
 					}
 
 					adj_matrix[j][i] = mul(
-						&mul(n, &Data::Number([1.0, -1.0][(i + j) % 2], 0.0)),
+						&mul(
+							n,
+							&Data::Number([Decimal::ONE, Decimal::NEGATIVE_ONE][(i + j) % 2], Decimal::ZERO),
+						),
 						&determinant(&Data::Matrix(minor_matrix)),
 					);
 				}
@@ -265,14 +634,17 @@ where
 		for x in -500..=500 {
 			let x = x as f64 / 50.0;
 
-			ctx.0.insert("x".to_string(), Data::Number(x, 0.0));
+			ctx.0.insert(
+				"x".to_string(),
+				Data::Number(Decimal::from_f64(x).unwrap(), Decimal::ZERO),
+			);
 
 			let data = code.clone().evaluate(ctx, g.range.clone())?;
 
 			values.push((
 				x as f32,
 				match data {
-					Data::Number(a, _) => a as f32,
+					Data::Number(a, _) => a.to_string().parse::<f32>().unwrap(),
 					_ => panic!("expected number for plotting"),
 				},
 			));
@@ -301,7 +673,7 @@ where
 
 		root.present().unwrap();
 
-		return Ok(Data::Number(0.0, 0.0));
+		return Ok(Data::Number(Decimal::ZERO, Decimal::ZERO));
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")
@@ -322,7 +694,7 @@ where
 
 	let func = ctx.1.get(g).unwrap().clone();
 
-	let mut sum = Data::Number(0.0, 0.0);
+	let mut sum = Data::Number(Decimal::ZERO, Decimal::ZERO);
 
 	let Data::Number(a, _) = a else {
 		unreachable!()
@@ -332,8 +704,16 @@ where
 		unreachable!()
 	};
 
-	for i in a.round() as i32..=b.round() as i32 {
-		sum = add(&sum, &func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?)
+	for i in
+		a.round().to_string().parse::<i64>().unwrap()..=b.round().to_string().parse::<i64>().unwrap()
+	{
+		sum = add(
+			&sum,
+			&func.execute(
+				ctx,
+				vec![Data::Number(Decimal::from_i64(i).unwrap(), Decimal::ZERO)],
+			)?,
+		)
 	}
 
 	Ok(sum)
@@ -354,7 +734,7 @@ where
 
 	let func = ctx.1.get(g).unwrap().clone();
 
-	let mut prod = Data::Number(1.0, 0.0);
+	let mut prod = Data::Number(Decimal::ONE, Decimal::ZERO);
 
 	let Data::Number(a, _) = a else {
 		unreachable!()
@@ -364,10 +744,15 @@ where
 		unreachable!()
 	};
 
-	for i in a.round() as i32..=b.round() as i32 {
+	for i in
+		a.round().to_string().parse::<i64>().unwrap()..=b.round().to_string().parse::<i64>().unwrap()
+	{
 		prod = mul(
 			&prod,
-			&func.execute(ctx, vec![Data::Number(i as f64, 0.0)])?,
+			&func.execute(
+				ctx,
+				vec![Data::Number(Decimal::from_i64(i).unwrap(), Decimal::ZERO)],
+			)?,
 		)
 	}
 

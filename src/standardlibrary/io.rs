@@ -1,5 +1,7 @@
 use std::io::{Write, stdin, stdout};
 
+use rust_decimal::Decimal;
+
 use crate::{
 	errors::Error, interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data,
 };
@@ -8,7 +10,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
 		println!("{b}");
 	}
-	Data::Number(0.0, 0.0)
+	Data::Number(Decimal::ZERO, Decimal::ZERO)
 }
 
 pub fn read<'a, 'b>(ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>

@@ -1,4 +1,6 @@
-use std::{fmt::Display, ops::Range};
+use std::{fmt::Display, ops::Range, str::FromStr};
+
+use rust_decimal::Decimal;
 
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
@@ -14,7 +16,7 @@ impl TokenInfo {
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
-	Float(f64),
+	Float(Decimal),
 	Identifier(String),
 
 	Let,
@@ -91,9 +93,9 @@ impl Token {
 			"}" => Token::RCurly,
 			_ => {
 				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_float = token.parse::<f64>();
+					let try_decimal = Decimal::from_str(&token);
 
-					if let Ok(f) = try_float {
+					if let Ok(f) = try_decimal {
 						Token::Float(f)
 					} else {
 						panic!("could not lex number: `{token}`");

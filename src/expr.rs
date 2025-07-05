@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use rust_decimal::Decimal;
+
 use crate::errors::{Error, TypeError};
 use crate::interpreter::UserDefinedFunction;
 use crate::standardlibrary::operators::{
@@ -19,7 +21,7 @@ pub enum Expression {
 	Binary(Box<Expression>, Token, Box<Expression>),
 	Branched(Box<Expression>, Box<Expression>, Box<Expression>),
 	Identifier(String),
-	Float(f64),
+	Float(Decimal),
 	Matrix(Vec<Vec<Expression>>),
 	FunctionCall(String, Vec<(Expression, Range<usize>)>),
 	FunctionDeclaration(
@@ -95,7 +97,7 @@ impl Expression {
 				let data = condition.evaluate(ctx, range.clone())?;
 
 				if let Data::Number(condition, _) = data {
-					return if condition != 0.0 {
+					return if condition != Decimal::ZERO {
 						Ok(then.evaluate(ctx, range.clone())?)
 					} else {
 						Ok(otherwise.evaluate(ctx, range.clone())?)
@@ -113,7 +115,7 @@ impl Expression {
 					Err(Error::LogicError(format!("undefined variable: `{name}`")))
 				}
 			}
-			Expression::Float(f) => Ok(Data::Number(f, 0.0)),
+			Expression::Float(f) => Ok(Data::Number(f, Decimal::ZERO)),
 			Expression::Matrix(matrix) => {
 				let mut matrix_data = vec![];
 

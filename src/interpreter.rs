@@ -1,13 +1,11 @@
-use std::{
-	collections::HashMap,
-	f64::consts::{E, PI},
-	ops::Range,
-};
+use std::{collections::HashMap, ops::Range};
 
 pub type InterpreterContext<'a> = (
 	&'a mut HashMap<String, Data>,
 	&'a mut HashMap<String, Function>,
 );
+
+use rust_decimal::Decimal;
 
 use crate::{
 	errors::{Error, TypeError},
@@ -34,10 +32,10 @@ impl Interpreter {
 		let mut functions = HashMap::new();
 
 		[
-			("i", Data::Number(0.0, 1.0)),
-			("pi", Data::Number(PI, 0.0)),
-			("π", Data::Number(PI, 0.0)),
-			("e", Data::Number(E, 0.0)),
+			("i", Data::Number(Decimal::ZERO, Decimal::ONE)),
+			("pi", Data::Number(Decimal::PI, Decimal::ZERO)),
+			("π", Data::Number(Decimal::PI, Decimal::ZERO)),
+			("e", Data::Number(Decimal::E, Decimal::ZERO)),
 		]
 		.map(|(global, data)| globals.insert(global.to_string(), data));
 
@@ -66,8 +64,12 @@ impl Interpreter {
 			"log10",
 			"log",
 			"sin",
+			"sinh",
 			"cos",
+			"cosh",
 			"tan",
+			"atan",
+			"atan2",
 			"sqrt",
 			"cbrt",
 			"nrt",
@@ -204,8 +206,12 @@ impl STDFunction {
 			"log10" => math::log10(&args[0]),
 			"log" => math::log(&args[0], &args[1]),
 			"sin" => math::sin(&args[0]),
+			"sinh" => math::sinh(&args[0]),
 			"cos" => math::cos(&args[0]),
+			"cosh" => math::cosh(&args[0]),
 			"tan" => math::tan(&args[0]),
+			"atan" => math::atan(&args[0]),
+			"atan2" => math::atan2(&args[0], &args[0]),
 			"sqrt" => math::sqrt(&args[0]),
 			"nrt" => math::nrt(&args[0], &args[1]),
 			"transpose" => math::transpose(&args[0]),
