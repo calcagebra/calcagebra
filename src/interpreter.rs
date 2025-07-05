@@ -10,7 +10,7 @@ use rust_decimal::Decimal;
 use crate::{
 	errors::{Error, TypeError},
 	expr::Expression,
-	standardlibrary::{io, math, operators},
+	standardlibrary::{io, iter, math, operators},
 	types::{Data, DataType},
 };
 
@@ -80,6 +80,7 @@ impl Interpreter {
 			"inverse",
 			"sum",
 			"prod",
+			"map",
 		]
 		.map(|name| {
 			functions.insert(
@@ -221,6 +222,7 @@ impl STDFunction {
 			"graph" => math::graph(&args[0], ctx)?,
 			"sum" => math::sum(&args[0], &args[1], &args[2], ctx)?,
 			"prod" => math::prod(&args[0], &args[1], &args[2], ctx)?,
+			"map" => iter::map(&args[0], &args[1], ctx)?,
 			_ => unreachable!(),
 		};
 
