@@ -123,9 +123,11 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 			let modulus = (a * a + b * b).sqrt().unwrap();
 
 			let Data::Number(argument, _) = atan2(
-				&Data::Number(*b, Decimal::ZERO),
 				&Data::Number(*a, Decimal::ZERO),
-			) else { unreachable!() };
+				&Data::Number(*b, Decimal::ZERO),
+			) else {
+				unreachable!()
+			};
 
 			Data::Number(
 				modulus.powd(*n) * (*n * argument).cos(),

@@ -58,8 +58,8 @@ pub fn ln(a: &Data) -> Data {
 	match a {
 		Data::Number(x, y) => {
 			let Data::Number(t, _) = atan2(
-				&Data::Number(*y, Decimal::ZERO),
 				&Data::Number(*x, Decimal::ZERO),
+				&Data::Number(*y, Decimal::ZERO),
 			) else {
 				unreachable!()
 			};
@@ -452,8 +452,8 @@ pub fn nrt(a: &Data, b: &Data) -> Data {
 		let z = r.powd(Decimal::ONE / b);
 
 		let Data::Number(theta, _) = atan2(
-			&Data::Number(*y, Decimal::ZERO),
 			&Data::Number(*x, Decimal::ZERO),
+			&Data::Number(*y, Decimal::ZERO),
 		) else {
 			unreachable!()
 		};
