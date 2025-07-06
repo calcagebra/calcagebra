@@ -12,15 +12,15 @@ name = "calcagebra_bin"
 path = "src/bin.rs"
 
 [dependencies]
-clap = { version = "4.0.9", features = ["derive"] }
-codespan-reporting = "0.11.1"
+clap = { version = "4.5.40", features = ["derive"] }
+codespan-reporting = "0.12.0"
 plotters = "0.3.7"
 rust_decimal = { version = "1.37.2", features = ["maths", "macros"] }
-rustyline = { version = "14.0.0", features = ["derive"] }
+rustyline = { version = "16.0.0", features = ["derive"] }
 syntect = "5.2.0"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.6", features = ["html_reports"] }
 
 [[bench]]
 name = "bench"

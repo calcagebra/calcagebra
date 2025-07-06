@@ -1,8 +1,10 @@
 use clap::{Parser as ClapParser, Subcommand, command};
 
 use rustyline::{
-	Completer, Config, Editor, Helper, Hinter, Validator, error::ReadlineError,
-	highlight::Highlighter, validate::MatchingBracketValidator,
+	Completer, Config, Editor, Helper, Hinter, Validator,
+	error::ReadlineError,
+	highlight::{CmdKind, Highlighter},
+	validate::MatchingBracketValidator,
 };
 use std::{
 	borrow::Cow::{self, Borrowed, Owned},
@@ -92,7 +94,7 @@ impl Highlighter for HighlightHelper {
 		Cow::Owned(highlighted)
 	}
 
-	fn highlight_char(&self, _: &str, _: usize, _: bool) -> bool {
+	fn highlight_char(&self, _: &str, _: usize, _: CmdKind) -> bool {
 		true
 	}
 }
