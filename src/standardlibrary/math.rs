@@ -79,6 +79,10 @@ pub fn sin(a: &Data) -> Data {
 	let x = a.to_real();
 	let y = a.to_img();
 
+	if y == Decimal::ZERO {
+		return Data::new_real(x.sin());
+	}
+
 	let p = &mul(&Data::new_real(x.sin()), &cosh(&Data::new_real(y)));
 	let q = &mul(&Data::new_real(x.cos()), &sinh(&Data::new_real(y)));
 
@@ -98,6 +102,10 @@ pub fn sinh(a: &Data) -> Data {
 pub fn cos(a: &Data) -> Data {
 	let x = a.to_real();
 	let y = a.to_img();
+
+	if y == Decimal::ZERO {
+		return Data::new_real(x.cos());
+	}
 
 	let p = &mul(&Data::new_real(x.cos()), &cosh(&Data::new_real(y)));
 	let q = &mul(&Data::new_real(-x.sin()), &sinh(&Data::new_real(y)));
