@@ -10,7 +10,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
 		println!("{b}");
 	}
-	Data::Number(Decimal::ZERO, Decimal::ZERO)
+	Data::new_zero()
 }
 
 pub fn read<'a, 'b>(ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>

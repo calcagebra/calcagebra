@@ -16,7 +16,7 @@ use crate::types::Data;
 
 pub fn abs(a: &Data) -> Data {
 	match a {
-		Data::Number(a, b) => Data::Number((a * a + b * b).sqrt().unwrap(), Decimal::ZERO),
+		Data::Number(a, b) => Data::new_real((a * a + b * b).sqrt().unwrap()),
 		Data::Matrix(..) => determinant(a),
 		_ => unimplemented!(),
 	}
@@ -44,9 +44,7 @@ pub fn floor(a: &Data) -> Data {
 }
 
 pub fn exp(a: &Data) -> Data {
-	let Data::Number(x, _) = a else {
-		unreachable!()
-	};
+	let x = a.to_real();
 
 	Data::Number(
 		x.exp_with_tolerance(Decimal::from_parts(2, 0, 0, false, 28)),
@@ -55,23 +53,17 @@ pub fn exp(a: &Data) -> Data {
 }
 
 pub fn ln(a: &Data) -> Data {
-	match a {
-		Data::Number(x, y) => {
-			let Data::Number(t, _) = atan2(
-				&Data::Number(*x, Decimal::ZERO),
-				&Data::Number(*y, Decimal::ZERO),
-			) else {
-				unreachable!()
-			};
-			Data::Number((x * x + y * y).sqrt().unwrap().ln(), t)
-		}
-		_ => unimplemented!(),
-	}
+	let x = a.to_real();
+	let y = a.to_img();
+
+	let t = atan2(&Data::new_real(x), &Data::new_real(y)).to_real();
+
+	Data::Number((x * x + y * y).sqrt().unwrap().ln(), t)
 }
 
 pub fn log10(a: &Data) -> Data {
 	match a {
-		Data::Number(..) => div(&ln(a), &ln(&Data::Number(Decimal::TEN, Decimal::ZERO))),
+		Data::Number(..) => div(&ln(a), &ln(&Data::new_real(Decimal::TEN))),
 		_ => unimplemented!(),
 	}
 }
@@ -84,66 +76,42 @@ pub fn log(a: &Data, b: &Data) -> Data {
 }
 
 pub fn sin(a: &Data) -> Data {
-	match a {
-		Data::Number(x, y) => {
-			let Data::Number(p, _) = &mul(
-				&Data::Number(x.sin(), Decimal::ZERO),
-				&cosh(&Data::Number(*y, Decimal::ZERO)),
-			) else {
-				unreachable!()
-			};
-			let Data::Number(q, _) = &mul(
-				&Data::Number(x.cos(), Decimal::ZERO),
-				&sinh(&Data::Number(*y, Decimal::ZERO)),
-			) else {
-				unreachable!()
-			};
+	let x = a.to_real();
+	let y = a.to_img();
 
-			Data::Number(*p, *q)
-		}
-		_ => unimplemented!(),
-	}
+	let p = &mul(&Data::new_real(x.sin()), &cosh(&Data::new_real(y)));
+	let q = &mul(&Data::new_real(x.cos()), &sinh(&Data::new_real(y)));
+
+	Data::Number(p.to_real(), q.to_real())
 }
 
 pub fn sinh(a: &Data) -> Data {
 	div(
 		&sub(
 			&exp(a),
-			&exp(&mul(a, &Data::Number(Decimal::NEGATIVE_ONE, Decimal::ZERO))),
+			&exp(&mul(a, &Data::new_real(Decimal::NEGATIVE_ONE))),
 		),
-		&Data::Number(Decimal::TWO, Decimal::ZERO),
+		&Data::new_real(Decimal::TWO),
 	)
 }
 
 pub fn cos(a: &Data) -> Data {
-	match a {
-		Data::Number(x, y) => {
-			let Data::Number(p, _) = &mul(
-				&Data::Number(x.cos(), Decimal::ZERO),
-				&cosh(&Data::Number(*y, Decimal::ZERO)),
-			) else {
-				unreachable!()
-			};
-			let Data::Number(q, _) = &mul(
-				&Data::Number(-x.sin(), Decimal::ZERO),
-				&sinh(&Data::Number(*y, Decimal::ZERO)),
-			) else {
-				unreachable!()
-			};
+	let x = a.to_real();
+	let y = a.to_img();
 
-			Data::Number(*p, *q)
-		}
-		_ => unimplemented!(),
-	}
+	let p = &mul(&Data::new_real(x.cos()), &cosh(&Data::new_real(y)));
+	let q = &mul(&Data::new_real(-x.sin()), &sinh(&Data::new_real(y)));
+
+	Data::Number(p.to_real(), q.to_real())
 }
 
 pub fn cosh(a: &Data) -> Data {
 	div(
 		&add(
 			&exp(a),
-			&exp(&mul(a, &Data::Number(Decimal::NEGATIVE_ONE, Decimal::ZERO))),
+			&exp(&mul(a, &Data::new_real(Decimal::NEGATIVE_ONE))),
 		),
-		&Data::Number(Decimal::TWO, Decimal::ZERO),
+		&Data::new_real(Decimal::TWO),
 	)
 }
 
@@ -432,16 +400,14 @@ pub fn atan(x: &Data) -> Data {
 }
 
 pub fn sqrt(a: &Data) -> Data {
-	match a {
-		Data::Number(a, b) => {
-			let r = (a * a + b * b).sqrt().unwrap();
+	let b = a.to_img();
+	let a = a.to_real();
 
-			let zr = ((a + r) * (a + r) + b * b).sqrt().unwrap();
+	let r = (a * a + b * b).sqrt().unwrap();
 
-			Data::Number(r.sqrt().unwrap() * (a + r) / zr, r.sqrt().unwrap() * b / zr)
-		}
-		_ => unimplemented!(),
-	}
+	let zr = ((a + r) * (a + r) + b * b).sqrt().unwrap();
+
+	Data::Number(r.sqrt().unwrap() * (a + r) / zr, r.sqrt().unwrap() * b / zr)
 }
 
 pub fn nrt(a: &Data, b: &Data) -> Data {
@@ -483,7 +449,7 @@ pub fn determinant(v: &Data) -> Data {
 					&mul(&matrix[0][1], &matrix[1][0]),
 				)
 			} else {
-				let mut delta = Data::Number(Decimal::ZERO, Decimal::ZERO);
+				let mut delta = Data::new_zero();
 
 				for (i, n) in matrix[0].iter().enumerate() {
 					let mut minor_matrix = matrix.clone();
@@ -499,7 +465,7 @@ pub fn determinant(v: &Data) -> Data {
 						&mul(
 							&mul(
 								n,
-								&Data::Number([Decimal::ONE, Decimal::NEGATIVE_ONE][i % 2], Decimal::ZERO),
+								&Data::new_real([Decimal::ONE, Decimal::NEGATIVE_ONE][i % 2]),
 							),
 							&determinant(&Data::Matrix(minor_matrix)),
 						),
@@ -551,11 +517,7 @@ pub fn adj(v: &Data) -> Data {
 				if row.len() != cols {
 					panic!("matrix should be square for adj");
 				}
-				adj_matrix.push(
-					(0..cols)
-						.map(|_| Data::Number(Decimal::ZERO, Decimal::ZERO))
-						.collect(),
-				);
+				adj_matrix.push((0..cols).map(|_| Data::new_zero()).collect());
 			}
 
 			for i in 0..matrix.len() {
@@ -571,7 +533,7 @@ pub fn adj(v: &Data) -> Data {
 					adj_matrix[j][i] = mul(
 						&mul(
 							n,
-							&Data::Number([Decimal::ONE, Decimal::NEGATIVE_ONE][(i + j) % 2], Decimal::ZERO),
+							&Data::new_real([Decimal::ONE, Decimal::NEGATIVE_ONE][i % 2]),
 						),
 						&determinant(&Data::Matrix(minor_matrix)),
 					);
@@ -636,7 +598,7 @@ where
 
 			ctx.0.insert(
 				"x".to_string(),
-				Data::Number(Decimal::from_f64(x).unwrap(), Decimal::ZERO),
+				Data::new_real(Decimal::from_f64(x).unwrap()),
 			);
 
 			let data = code.clone().evaluate(ctx, g.range.clone())?;
@@ -673,7 +635,7 @@ where
 
 		root.present().unwrap();
 
-		return Ok(Data::Number(Decimal::ZERO, Decimal::ZERO));
+		return Ok(Data::new_zero());
 	}
 	// TODO: error handle this
 	panic!("expected indentifier")
@@ -694,25 +656,15 @@ where
 
 	let func = ctx.1.get(g).unwrap().clone();
 
-	let mut sum = Data::Number(Decimal::ZERO, Decimal::ZERO);
+	let mut sum = Data::new_zero();
 
-	let Data::Number(a, _) = a else {
-		unreachable!()
-	};
+	let a = a.to_real();
+	let b = b.to_real();
 
-	let Data::Number(b, _) = b else {
-		unreachable!()
-	};
-
-	for i in
-		a.round().to_string().parse::<i64>().unwrap()..=b.round().to_string().parse::<i64>().unwrap()
-	{
+	for i in a.to_i64().unwrap()..=b.to_i64().unwrap() {
 		sum = add(
 			&sum,
-			&func.execute(
-				ctx,
-				vec![Data::Number(Decimal::from_i64(i).unwrap(), Decimal::ZERO)],
-			)?,
+			&func.execute(ctx, vec![Data::new_real(Decimal::from_i64(i).unwrap())])?,
 		)
 	}
 
@@ -734,25 +686,15 @@ where
 
 	let func = ctx.1.get(g).unwrap().clone();
 
-	let mut prod = Data::Number(Decimal::ONE, Decimal::ZERO);
+	let mut prod = Data::new_real(Decimal::ONE);
 
-	let Data::Number(a, _) = a else {
-		unreachable!()
-	};
+	let a = a.to_real();
+	let b = b.to_real();
 
-	let Data::Number(b, _) = b else {
-		unreachable!()
-	};
-
-	for i in
-		a.round().to_string().parse::<i64>().unwrap()..=b.round().to_string().parse::<i64>().unwrap()
-	{
+	for i in a.to_i64().unwrap()..=b.to_i64().unwrap() {
 		prod = mul(
 			&prod,
-			&func.execute(
-				ctx,
-				vec![Data::Number(Decimal::from_i64(i).unwrap(), Decimal::ZERO)],
-			)?,
+			&func.execute(ctx, vec![Data::new_real(Decimal::from_i64(i).unwrap())])?,
 		)
 	}
 

@@ -16,6 +16,32 @@ impl Data {
 			Data::FnPointer(..) => DataType::FnPointer,
 		}
 	}
+
+	pub fn to_real(&self) -> Decimal {
+		match &self {
+			Data::Number(a, _) => *a,
+			_ => unimplemented!(),
+		}
+	}
+
+	pub fn to_img(&self) -> Decimal {
+		match &self {
+			Data::Number(_, b) => *b,
+			_ => unimplemented!(),
+		}
+	}
+
+	pub fn new_real(a: Decimal) -> Self {
+		Self::Number(a, Decimal::ZERO)
+	}
+
+	pub fn new_img(b: Decimal) -> Self {
+		Self::Number(Decimal::ZERO, b)
+	}
+
+	pub fn new_zero() -> Self {
+		Self::Number(Decimal::ZERO, Decimal::ZERO)
+	}
 }
 
 impl Display for Data {

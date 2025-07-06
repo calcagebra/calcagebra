@@ -79,7 +79,7 @@ pub fn mul(lhd: &Data, rhd: &Data) -> Data {
 			for row in a {
 				let mut c = 0;
 				while b[0].len() != c {
-					let mut sum = Data::Number(Decimal::ZERO, Decimal::ZERO);
+					let mut sum = Data::new_zero();
 
 					for (k, number) in row.iter().enumerate() {
 						sum = add(&sum, &mul(number, &b[k][c]));
@@ -121,17 +121,12 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 			}
 
 			if *b == Decimal::ZERO {
-				return Data::Number(a.powd(*n), Decimal::ZERO);
+				return Data::new_real(a.powd(*n));
 			}
 
 			let modulus = (a * a + b * b).sqrt().unwrap();
 
-			let Data::Number(argument, _) = atan2(
-				&Data::Number(*a, Decimal::ZERO),
-				&Data::Number(*b, Decimal::ZERO),
-			) else {
-				unreachable!()
-			};
+			let argument = atan2(&Data::new_real(*a), &Data::new_real(*b)).to_real();
 
 			Data::Number(
 				modulus.powd(*n) * (*n * argument).cos(),
@@ -196,7 +191,7 @@ pub fn rem(lhd: &Data, rhd: &Data) -> Data {
 			if *b != Decimal::ZERO || *d != Decimal::ZERO {
 				unimplemented!("remainder of complex number powers is not supported yet")
 			}
-			Data::Number(a.rem(c), Decimal::ZERO)
+			Data::new_real(a.rem(c))
 		}
 		_ => unimplemented!(),
 	}
@@ -204,26 +199,20 @@ pub fn rem(lhd: &Data, rhd: &Data) -> Data {
 
 pub fn is_eq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
-		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(
-			Decimal::from_u8((a == c && b == d) as u8).unwrap(),
-			Decimal::ZERO,
-		),
-		(Data::Matrix(a), Data::Matrix(b)) => {
-			Data::Number(Decimal::from_u8((a == b) as u8).unwrap(), Decimal::ZERO)
+		(Data::Number(a, b), Data::Number(c, d)) => {
+			Data::new_real(Decimal::from_u8((a == c && b == d) as u8).unwrap())
 		}
+		(Data::Matrix(a), Data::Matrix(b)) => Data::new_real(Decimal::from_u8((a == b) as u8).unwrap()),
 		_ => unimplemented!(),
 	}
 }
 
 pub fn neq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
-		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(
-			Decimal::from_u8((a != c && b != d) as u8).unwrap(),
-			Decimal::ZERO,
-		),
-		(Data::Matrix(a), Data::Matrix(b)) => {
-			Data::Number(Decimal::from_u8((a != b) as u8).unwrap(), Decimal::ZERO)
+		(Data::Number(a, b), Data::Number(c, d)) => {
+			Data::new_real(Decimal::from_u8((a != c && b != d) as u8).unwrap())
 		}
+		(Data::Matrix(a), Data::Matrix(b)) => Data::new_real(Decimal::from_u8((a != b) as u8).unwrap()),
 		_ => unimplemented!(),
 	}
 }
@@ -234,7 +223,7 @@ pub fn gt(lhd: &Data, rhd: &Data) -> Data {
 			if *b != Decimal::ZERO || *d != Decimal::ZERO {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number(Decimal::from_u8((a > c) as u8).unwrap(), Decimal::ZERO)
+			Data::new_real(Decimal::from_u8((a > c) as u8).unwrap())
 		}
 		_ => unimplemented!(),
 	}
@@ -246,7 +235,7 @@ pub fn gteq(lhd: &Data, rhd: &Data) -> Data {
 			if *b != Decimal::ZERO || *d != Decimal::ZERO {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number(Decimal::from_u8((a >= c) as u8).unwrap(), Decimal::ZERO)
+			Data::new_real(Decimal::from_u8((a >= c) as u8).unwrap())
 		}
 		_ => unimplemented!(),
 	}
@@ -258,7 +247,7 @@ pub fn lt(lhd: &Data, rhd: &Data) -> Data {
 			if *b != Decimal::ZERO || *d != Decimal::ZERO {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number(Decimal::from_u8((a < c) as u8).unwrap(), Decimal::ZERO)
+			Data::new_real(Decimal::from_u8((a < c) as u8).unwrap())
 		}
 		_ => unimplemented!(),
 	}
@@ -270,7 +259,7 @@ pub fn lteq(lhd: &Data, rhd: &Data) -> Data {
 			if *b != Decimal::ZERO || *d != Decimal::ZERO {
 				unimplemented!("relational operators on complex number powers is not supported yet")
 			}
-			Data::Number(Decimal::from_u8((a <= c) as u8).unwrap(), Decimal::ZERO)
+			Data::new_real(Decimal::from_u8((a <= c) as u8).unwrap())
 		}
 		_ => unimplemented!(),
 	}

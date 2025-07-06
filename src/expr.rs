@@ -115,7 +115,7 @@ impl Expression {
 					Err(Error::LogicError(format!("undefined variable: `{name}`")))
 				}
 			}
-			Expression::Float(f) => Ok(Data::Number(f, Decimal::ZERO)),
+			Expression::Float(f) => Ok(Data::new_real(f)),
 			Expression::Matrix(matrix) => {
 				let mut matrix_data = vec![];
 
