@@ -5,9 +5,7 @@ pub fn map(f: &Data, a: &Data, ctx: &mut InterpreterContext) -> Result<Data, Err
 		unreachable!()
 	};
 
-	let Data::FnPointer(g) = f else {
-		unreachable!()
-	};
+	let Data::Ident(g) = f else { unreachable!() };
 
 	let func = ctx.1.get(g).unwrap().clone();
 

@@ -1,3 +1,4 @@
+use crate::expr::Expression;
 use rust_decimal::Decimal;
 use std::fmt::Display;
 
@@ -5,7 +6,8 @@ use std::fmt::Display;
 pub enum Data {
 	Number(Decimal, Decimal),
 	Matrix(Vec<Vec<Data>>),
-	FnPointer(String),
+	Ident(String),
+	Expression(Expression),
 }
 
 impl Data {
@@ -13,7 +15,8 @@ impl Data {
 		match self {
 			Data::Number(..) => DataType::Number,
 			Data::Matrix(..) => DataType::Matrix,
-			Data::FnPointer(..) => DataType::FnPointer,
+			Data::Ident(..) => DataType::Ident,
+			Data::Expression(..) => DataType::Expression,
 		}
 	}
 
@@ -105,7 +108,8 @@ impl Display for Data {
 						" ".repeat(highest_padding_required),
 					)
 				}
-				Data::FnPointer(str) => str.to_owned(),
+				Data::Ident(str) => str.to_owned(),
+				Data::Expression(expr) => expr.to_string(),
 			}
 		)
 	}
@@ -115,7 +119,8 @@ impl Display for Data {
 pub enum DataType {
 	Number,
 	Matrix,
-	FnPointer,
+	Ident,
+	Expression,
 }
 
 impl DataType {
@@ -123,7 +128,7 @@ impl DataType {
 		match ident.to_uppercase().as_str() {
 			"C" | "COMPLEX" => Self::Number,
 			"M" | "MATRIX" => Self::Matrix,
-			"FN" => Self::FnPointer,
+			"FN" => Self::Ident,
 			_ => unimplemented!(),
 		}
 	}
@@ -137,7 +142,8 @@ impl Display for DataType {
 			match self {
 				DataType::Number => "C",
 				DataType::Matrix => "Matrix",
-				DataType::FnPointer => "Fn",
+				DataType::Ident => "Fn",
+				DataType::Expression => "Expr",
 			}
 		)
 	}

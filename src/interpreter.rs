@@ -1,7 +1,7 @@
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, ops::Range, str::FromStr};
 
 pub type InterpreterContext<'a> = (
-	&'a mut HashMap<String, Data>,
+	&'a mut HashMap<String, Variable>,
 	&'a mut HashMap<String, Function>,
 );
 
@@ -11,12 +11,13 @@ use crate::{
 	errors::{Error, TypeError},
 	expr::Expression,
 	standardlibrary::{io, iter, math, operators},
+	token::Token,
 	types::{Data, DataType},
 };
 
 #[derive(Debug, Clone)]
 pub struct Interpreter {
-	pub globals: HashMap<String, Data>,
+	pub globals: HashMap<String, Variable>,
 	pub functions: HashMap<String, Function>,
 }
 
@@ -32,12 +33,12 @@ impl Interpreter {
 		let mut functions = HashMap::new();
 
 		[
-			("i", Data::Number(Decimal::ZERO, Decimal::ONE)),
-			("pi", Data::Number(Decimal::PI, Decimal::ZERO)),
-			("π", Data::Number(Decimal::PI, Decimal::ZERO)),
-			("e", Data::Number(Decimal::E, Decimal::ZERO)),
+			("i", Data::new_img(Decimal::ONE)),
+			("pi", Data::new_real(Decimal::PI)),
+			("π", Data::new_real(Decimal::PI)),
+			("e", Data::new_real(Decimal::E)),
 		]
-		.map(|(global, data)| globals.insert(global.to_string(), data));
+		.map(|(global, data)| globals.insert(global.to_string(), Variable::new(data, true)));
 
 		[
 			"print",
@@ -60,6 +61,7 @@ impl Interpreter {
 			"round",
 			"ceil",
 			"floor",
+			"exp",
 			"ln",
 			"log10",
 			"log",
@@ -81,6 +83,7 @@ impl Interpreter {
 			"sum",
 			"prod",
 			"map",
+			"differentiate",
 		]
 		.map(|name| {
 			functions.insert(
@@ -106,6 +109,18 @@ impl Interpreter {
 }
 
 #[derive(Debug, Clone)]
+pub struct Variable {
+	pub value: Data,
+	pub is_global: bool,
+}
+
+impl Variable {
+	pub fn new(value: Data, is_global: bool) -> Self {
+		Self { value, is_global }
+	}
+}
+
+#[derive(Debug, Clone)]
 pub enum Function {
 	UserDefined(UserDefinedFunction),
 	STD(STDFunction),
@@ -124,6 +139,23 @@ impl Function {
 			user_defined_function.execute(ctx, args)
 		} else if let Function::STD(stdfunction) = self {
 			stdfunction.execute(ctx, args)
+		} else {
+			unreachable!()
+		}
+	}
+
+	pub fn differentiate<'a, 'b>(
+		&self,
+		a: &Data,
+		ctx: &'a mut InterpreterContext<'b>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
+		if let Function::UserDefined(user_defined_function) = self {
+			user_defined_function.differentiate(a, ctx)
+		} else if let Function::STD(stdfunction) = self {
+			stdfunction.differentiate(a, ctx)
 		} else {
 			unreachable!()
 		}
@@ -157,7 +189,7 @@ impl UserDefinedFunction {
 
 			param_names.push(arg.to_string());
 
-			ctx.0.insert(arg.to_string(), r);
+			ctx.0.insert(arg.to_string(), Variable::new(r, false));
 		}
 
 		let data = self.code.clone().evaluate(ctx, self.range.clone());
@@ -167,6 +199,17 @@ impl UserDefinedFunction {
 		}
 
 		data
+	}
+
+	pub fn differentiate<'a, 'b>(
+		&self,
+		wrt: &Data,
+		ctx: &'a mut InterpreterContext<'b>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
+		Ok(Data::Expression(self.code.differentiate(wrt, ctx)?))
 	}
 }
 
@@ -184,7 +227,7 @@ impl STDFunction {
 	where
 		'b: 'a,
 	{
-		let data = match self.name.as_str() {
+		Ok(match self.name.as_str() {
 			"print" => io::print(args),
 			"read" => io::read(ctx)?,
 			"add" => operators::add(&args[0], &args[1]),
@@ -203,6 +246,7 @@ impl STDFunction {
 			"round" => math::round(&args[0]),
 			"ceil" => math::ceil(&args[0]),
 			"floor" => math::floor(&args[0]),
+			"exp" => math::exp(&args[0]),
 			"ln" => math::ln(&args[0]),
 			"log10" => math::log10(&args[0]),
 			"log" => math::log(&args[0], &args[1]),
@@ -223,9 +267,104 @@ impl STDFunction {
 			"sum" => math::sum(&args[0], &args[1], &args[2], ctx)?,
 			"prod" => math::prod(&args[0], &args[1], &args[2], ctx)?,
 			"map" => iter::map(&args[0], &args[1], ctx)?,
+			"differentiate" => math::differentiate(&args[0], &args[1], ctx)?,
 			_ => unreachable!(),
+		})
+	}
+
+	pub fn differentiate<'a, 'b>(
+		&self,
+		wrt: &Data,
+		_ctx: &'a mut InterpreterContext<'b>,
+	) -> Result<Data, Error>
+	where
+		'b: 'a,
+	{
+		let Data::Ident(name) = wrt else {
+			return Err(Error::LogicError(
+				"expected variable to differentiate".to_string(),
+			));
 		};
 
-		Ok(data)
+		Ok(match self.name.as_str() {
+			"exp" => Data::Expression(Expression::FunctionCall(
+				"exp".to_string(),
+				vec![(Expression::Identifier(name.to_string()), 0..0)],
+			)),
+			"ln" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(Decimal::ONE)),
+				Token::Div,
+				Box::new(Expression::Identifier(name.to_string())),
+			)),
+			"log10" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(
+					Decimal::from_str("0.4342944819032518276511289188").unwrap(),
+				)),
+				Token::Div,
+				Box::new(Expression::Identifier(name.to_string())),
+			)),
+			"sin" => Data::Expression(Expression::FunctionCall(
+				"cos".to_string(),
+				vec![(Expression::Identifier(name.to_string()), 0..0)],
+			)),
+			"cos" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(Decimal::NEGATIVE_ONE)),
+				Token::Mul,
+				Box::new(Expression::FunctionCall(
+					"sin".to_string(),
+					vec![(Expression::Identifier(name.to_string()), 0..0)],
+				)),
+			)),
+			"sinh" => Data::Expression(Expression::FunctionCall(
+				"cosh".to_string(),
+				vec![(Expression::Identifier(name.to_string()), 0..0)],
+			)),
+			"cosh" => Data::Expression(Expression::FunctionCall(
+				"sinh".to_string(),
+				vec![(Expression::Identifier(name.to_string()), 0..0)],
+			)),
+			"tan" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(Decimal::ONE)),
+				Token::Div,
+				Box::new(Expression::Binary(
+					Box::new(Expression::FunctionCall(
+						"cos".to_string(),
+						vec![(Expression::Identifier(name.to_string()), 0..0)],
+					)),
+					Token::Pow,
+					Box::new(Expression::Float(Decimal::TWO)),
+				)),
+			)),
+			"atan" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(Decimal::ONE)),
+				Token::Div,
+				Box::new(Expression::Binary(
+					Box::new(Expression::Float(Decimal::ONE)),
+					Token::Add,
+					Box::new(Expression::Binary(
+						Box::new(Expression::Identifier(name.to_string())),
+						Token::Pow,
+						Box::new(Expression::Float(Decimal::TWO)),
+					)),
+				)),
+			)),
+			"sqrt" => Data::Expression(Expression::Binary(
+				Box::new(Expression::Float(Decimal::ONE)),
+				Token::Div,
+				Box::new(Expression::Binary(
+					Box::new(Expression::Float(Decimal::TWO)),
+					Token::Mul,
+					Box::new(Expression::FunctionCall(
+						"sqrt".to_string(),
+						vec![(Expression::Identifier(name.to_string()), 0..0)],
+					)),
+				)),
+			)),
+			_ => {
+				return Err(Error::LogicError(
+					"attempt to differentiate standard library function which has no derivative".to_string(),
+				));
+			}
+		})
 	}
 }

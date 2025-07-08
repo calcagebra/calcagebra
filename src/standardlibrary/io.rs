@@ -1,10 +1,7 @@
-use std::io::{Write, stdin, stdout};
-
-use rust_decimal::Decimal;
-
 use crate::{
 	errors::Error, interpreter::InterpreterContext, lexer::Lexer, parser::Parser, types::Data,
 };
+use std::io::{Write, stdin, stdout};
 
 pub fn print(a: Vec<Data>) -> Data {
 	for b in a {

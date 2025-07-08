@@ -1,9 +1,9 @@
 use crate::types::DataType;
 
 pub mod io;
+pub mod iter;
 pub mod math;
 pub mod operators;
-pub mod iter;
 
 pub fn is_std(f: &str) -> bool {
 	[

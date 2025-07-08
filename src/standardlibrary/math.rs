@@ -10,7 +10,7 @@ use std::f32;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::errors::Error;
-use crate::interpreter::{Function, InterpreterContext};
+use crate::interpreter::{Function, InterpreterContext, Variable};
 use crate::standardlibrary::operators::{add, div, mul, sub};
 use crate::types::Data;
 
@@ -80,7 +80,7 @@ pub fn sin(a: &Data) -> Data {
 	let y = a.to_img();
 
 	if y == Decimal::ZERO {
-		return Data::new_real(x.sin());
+		return Data::new_real((dec!(3.0) * Decimal::PI).sin());
 	}
 
 	let p = &mul(&Data::new_real(x.sin()), &cosh(&Data::new_real(y)));
@@ -575,7 +575,7 @@ pub fn graph<'a, 'b>(f: &Data, ctx: &'a mut InterpreterContext<'b>) -> Result<Da
 where
 	'b: 'a,
 {
-	if let Data::FnPointer(f) = f
+	if let Data::Ident(f) = f
 		&& let Function::UserDefined(g) = ctx.1.get(f).unwrap().clone()
 	{
 		let start = SystemTime::now();
@@ -606,18 +606,22 @@ where
 
 			ctx.0.insert(
 				"x".to_string(),
-				Data::new_real(Decimal::from_f64(x).unwrap()),
+				Variable::new(Data::new_real(Decimal::from_f64(x).unwrap()), false),
 			);
 
-			let data = code.clone().evaluate(ctx, g.range.clone())?;
-
-			values.push((
-				x as f32,
-				match data {
-					Data::Number(a, _) => a.to_string().parse::<f32>().unwrap(),
-					_ => panic!("expected number for plotting"),
+			let data = match code.clone().evaluate(ctx, g.range.clone()) {
+				Ok(data) => match data {
+					Data::Number(a, _) => a.to_f32().unwrap(),
+					_ => {
+						return Err(Error::LogicError(
+							"expected number for plotting".to_string(),
+						));
+					}
 				},
-			));
+				Err(..) => f32::NAN,
+			};
+
+			values.push((x as f32, data));
 		}
 
 		chart
@@ -658,9 +662,7 @@ pub fn sum<'a, 'b>(
 where
 	'b: 'a,
 {
-	let Data::FnPointer(g) = f else {
-		unreachable!()
-	};
+	let Data::Ident(g) = f else { unreachable!() };
 
 	let func = ctx.1.get(g).unwrap().clone();
 
@@ -688,9 +690,7 @@ pub fn prod<'a, 'b>(
 where
 	'b: 'a,
 {
-	let Data::FnPointer(g) = f else {
-		unreachable!()
-	};
+	let Data::Ident(g) = f else { unreachable!() };
 
 	let func = ctx.1.get(g).unwrap().clone();
 
@@ -707,4 +707,17 @@ where
 	}
 
 	Ok(prod)
+}
+
+pub fn differentiate<'a, 'b>(
+	f: &Data,
+	a: &Data,
+	ctx: &'a mut InterpreterContext<'b>,
+) -> Result<Data, Error>
+where
+	'b: 'a,
+{
+	let Data::Ident(g) = f else { unreachable!() };
+
+	ctx.1.get(g).unwrap().clone().differentiate(a, ctx)
 }
