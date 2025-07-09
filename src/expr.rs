@@ -32,6 +32,7 @@ pub enum Expression {
 }
 
 impl Expression {
+	#[inline(always)]
 	pub fn evaluate<'a, 'b>(
 		self,
 		ctx: &'a mut InterpreterContext<'b>,
@@ -147,6 +148,7 @@ impl Expression {
 		}
 	}
 
+	#[inline(always)]
 	pub fn infer_datatype(&self) -> Option<DataType> {
 		match self {
 			Expression::Abs(expression) => expression.infer_datatype(),
@@ -184,6 +186,7 @@ impl Expression {
 		}
 	}
 
+	#[inline(always)]
 	pub fn differentiate<'a, 'b>(
 		&self,
 		wrt: &Data,
@@ -299,6 +302,7 @@ impl Expression {
 		)
 	}
 
+	#[inline(always)]
 	pub fn simplify(&self) -> Expression {
 		match self {
 			Expression::Binary(e1, op, e2) => match (*e1.to_owned(), op, *e2.to_owned()) {

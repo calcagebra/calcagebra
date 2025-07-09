@@ -5,10 +5,12 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
+	#[inline(always)]
 	pub fn new(contents: &'a str) -> Self {
 		Self { contents }
 	}
 
+	#[inline(always)]
 	pub fn tokens(&self) -> Vec<Vec<TokenInfo>> {
 		let mut offset = 1;
 		let mut tokeninfos = vec![];

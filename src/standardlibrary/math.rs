@@ -14,6 +14,7 @@ use crate::interpreter::{Function, InterpreterContext, Variable};
 use crate::standardlibrary::operators::{add, div, mul, sub};
 use crate::types::Data;
 
+#[inline(always)]
 pub fn abs(a: &Data) -> Data {
 	match a {
 		Data::Number(a, b) => Data::new_real((a * a + b * b).sqrt().unwrap()),
@@ -22,6 +23,7 @@ pub fn abs(a: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn round(a: &Data) -> Data {
 	match a {
 		Data::Number(x, y) => Data::Number(x.round(), y.round()),
@@ -29,6 +31,7 @@ pub fn round(a: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn ceil(a: &Data) -> Data {
 	match a {
 		Data::Number(x, y) => Data::Number(x.round(), y.round()),
@@ -36,6 +39,7 @@ pub fn ceil(a: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn floor(a: &Data) -> Data {
 	match a {
 		Data::Number(x, y) => Data::Number(x.round(), y.round()),
@@ -43,6 +47,7 @@ pub fn floor(a: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn exp(a: &Data) -> Data {
 	let x = a.to_real();
 
@@ -52,6 +57,7 @@ pub fn exp(a: &Data) -> Data {
 	)
 }
 
+#[inline(always)]
 pub fn ln(a: &Data) -> Data {
 	let x = a.to_real();
 	let y = a.to_img();
@@ -61,6 +67,7 @@ pub fn ln(a: &Data) -> Data {
 	Data::Number((x * x + y * y).sqrt().unwrap().ln(), t)
 }
 
+#[inline(always)]
 pub fn log10(a: &Data) -> Data {
 	match a {
 		Data::Number(..) => div(&ln(a), &ln(&Data::new_real(Decimal::TEN))),
@@ -68,6 +75,7 @@ pub fn log10(a: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn log(a: &Data, b: &Data) -> Data {
 	match a {
 		Data::Number(..) => div(&ln(a), &ln(b)),
@@ -75,6 +83,7 @@ pub fn log(a: &Data, b: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn sin(a: &Data) -> Data {
 	let x = a.to_real();
 	let y = a.to_img();
@@ -89,6 +98,7 @@ pub fn sin(a: &Data) -> Data {
 	Data::Number(p.to_real(), q.to_real())
 }
 
+#[inline(always)]
 pub fn sinh(a: &Data) -> Data {
 	div(
 		&sub(
@@ -99,6 +109,7 @@ pub fn sinh(a: &Data) -> Data {
 	)
 }
 
+#[inline(always)]
 pub fn cos(a: &Data) -> Data {
 	let x = a.to_real();
 	let y = a.to_img();
@@ -113,6 +124,7 @@ pub fn cos(a: &Data) -> Data {
 	Data::Number(p.to_real(), q.to_real())
 }
 
+#[inline(always)]
 pub fn cosh(a: &Data) -> Data {
 	div(
 		&add(
@@ -123,6 +135,7 @@ pub fn cosh(a: &Data) -> Data {
 	)
 }
 
+#[inline(always)]
 pub fn tan(a: &Data) -> Data {
 	div(&sin(a), &cos(a))
 }
@@ -162,6 +175,7 @@ macro_rules! i {
 	};
 }
 
+#[inline(always)]
 pub fn atan2(x: &Data, y: &Data) -> Data {
 	let Data::Number(x, _) = x else {
 		unimplemented!()
@@ -297,6 +311,7 @@ pub fn atan2(x: &Data, y: &Data) -> Data {
 	)
 }
 
+#[inline(always)]
 pub fn atan(x: &Data) -> Data {
 	let Data::Number(x, _) = x else {
 		unimplemented!()
@@ -407,6 +422,7 @@ pub fn atan(x: &Data) -> Data {
 	Data::Number(if sign != 0 { -z } else { z }, Decimal::ZERO)
 }
 
+#[inline(always)]
 pub fn sqrt(a: &Data) -> Data {
 	let b = a.to_img();
 	let a = a.to_real();
@@ -418,6 +434,7 @@ pub fn sqrt(a: &Data) -> Data {
 	Data::Number(r.sqrt().unwrap() * (a + r) / zr, r.sqrt().unwrap() * b / zr)
 }
 
+#[inline(always)]
 pub fn nrt(a: &Data, b: &Data) -> Data {
 	if let Data::Number(x, y) = a
 		&& let Data::Number(r, _) = abs(a)
@@ -440,6 +457,7 @@ pub fn nrt(a: &Data, b: &Data) -> Data {
 	unimplemented!()
 }
 
+#[inline(always)]
 pub fn determinant(v: &Data) -> Data {
 	match v {
 		Data::Matrix(matrix) => {
@@ -487,6 +505,7 @@ pub fn determinant(v: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn transpose(v: &Data) -> Data {
 	match v {
 		Data::Matrix(matrix) => {
@@ -515,6 +534,7 @@ pub fn transpose(v: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn adj(v: &Data) -> Data {
 	match v {
 		Data::Matrix(matrix) => {
@@ -554,6 +574,7 @@ pub fn adj(v: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn inverse(v: &Data) -> Data {
 	match v {
 		t @ Data::Matrix(matrix) => {
@@ -571,6 +592,7 @@ pub fn inverse(v: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn graph<'a, 'b>(f: &Data, ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
 where
 	'b: 'a,
@@ -653,6 +675,7 @@ where
 	panic!("expected indentifier")
 }
 
+#[inline(always)]
 pub fn sum<'a, 'b>(
 	f: &Data,
 	a: &Data,
@@ -681,6 +704,7 @@ where
 	Ok(sum)
 }
 
+#[inline(always)]
 pub fn prod<'a, 'b>(
 	f: &Data,
 	a: &Data,
@@ -709,6 +733,7 @@ where
 	Ok(prod)
 }
 
+#[inline(always)]
 pub fn differentiate<'a, 'b>(
 	f: &Data,
 	a: &Data,

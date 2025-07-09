@@ -25,6 +25,7 @@ impl From<&str> for Error {
 }
 
 impl Error {
+	#[inline(always)]
 	pub fn error_message(&self) -> String {
 		match self {
 			Error::SyntaxError(syntax_error) => syntax_error.error_message(),
@@ -34,6 +35,7 @@ impl Error {
 		}
 	}
 
+	#[inline(always)]
 	pub fn help_message(&self) -> String {
 		match self {
 			Error::SyntaxError(syntax_error) => syntax_error.help_message(),
@@ -43,6 +45,7 @@ impl Error {
 		}
 	}
 
+	#[inline(always)]
 	pub fn range(&self) -> Range<usize> {
 		match self {
 			Error::SyntaxError(syntax_error) => syntax_error.range.clone(),
@@ -61,6 +64,7 @@ pub struct SyntaxError {
 }
 
 impl SyntaxError {
+	#[inline(always)]
 	pub fn new(expected: Token, got: Token, range: Range<usize>) -> Self {
 		Self {
 			expected,
@@ -69,6 +73,7 @@ impl SyntaxError {
 		}
 	}
 
+	#[inline(always)]
 	pub fn error_message(&self) -> String {
 		format!(
 			"\x1b[1mencountered `{}` where {} was expected \x1b[0m",
@@ -76,10 +81,12 @@ impl SyntaxError {
 		)
 	}
 
+	#[inline(always)]
 	pub fn help_message(&self) -> String {
 		format!("\x1b[1mhelp:\x1b[0m add {} here", self.expected)
 	}
 
+	#[inline(always)]
 	pub fn to_error(self) -> Error {
 		Error::SyntaxError(self)
 	}
@@ -93,6 +100,7 @@ pub struct TypeError {
 }
 
 impl TypeError {
+	#[inline(always)]
 	pub fn new(expected: DataType, got: DataType, range: Range<usize>) -> Self {
 		Self {
 			expected,
@@ -101,6 +109,7 @@ impl TypeError {
 		}
 	}
 
+	#[inline(always)]
 	pub fn error_message(&self) -> String {
 		format!(
 			"\x1b[1mexpected `{}`, found `{}`\x1b[0m",
@@ -108,6 +117,7 @@ impl TypeError {
 		)
 	}
 
+	#[inline(always)]
 	pub fn help_message(&self) -> String {
 		format!(
 			"\x1b[1mhelp:\x1b[0m use `{}(...)` method to convert to correct type",
@@ -115,6 +125,7 @@ impl TypeError {
 		)
 	}
 
+	#[inline(always)]
 	pub fn to_error(self) -> Error {
 		Error::TypeError(self)
 	}
@@ -126,18 +137,22 @@ pub struct EOLError {
 }
 
 impl EOLError {
+	#[inline(always)]
 	pub fn new(range: Range<usize>) -> Self {
 		Self { range }
 	}
 
+	#[inline(always)]
 	pub fn error_message(&self) -> String {
 		"\x1b[1munexpected end of tokens \x1b[0m".to_string()
 	}
 
+	#[inline(always)]
 	pub fn help_message(&self) -> String {
 		"\x1b[1mhelp:\x1b[0m more tokens were expected here".to_string()
 	}
 
+	#[inline(always)]
 	pub fn to_error(self) -> Error {
 		Error::EOLError(self)
 	}
@@ -149,12 +164,14 @@ pub struct ErrorReporter<'a> {
 }
 
 impl<'a> ErrorReporter<'a> {
+	#[inline(always)]
 	pub fn new(name: &'a str, source: &'a str) -> Self {
 		Self {
 			file: SimpleFile::new(name, source),
 		}
 	}
 
+	#[inline(always)]
 	pub fn error(&self, error_message: String, help_message: String, range: Range<usize>) -> ! {
 		let diagnostic = Diagnostic::error()
 			.with_message(&error_message)
@@ -171,6 +188,7 @@ impl<'a> ErrorReporter<'a> {
 		std::process::exit(1);
 	}
 
+	#[inline(always)]
 	pub fn error_without_exit(
 		&self,
 		error_message: String,

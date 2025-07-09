@@ -16,10 +16,12 @@ use parser::Parser;
 
 pub use standardlibrary::io::print;
 
+#[inline(always)]
 pub fn version() -> String {
 	env!("CARGO_PKG_VERSION").to_string()
 }
 
+#[inline(always)]
 pub fn run(input: &str, debug: bool, time: bool) {
 	let contents = read_to_string(input).unwrap();
 

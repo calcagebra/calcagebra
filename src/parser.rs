@@ -15,10 +15,12 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+	#[inline(always)]
 	pub fn new(tokens: &'a Vec<Vec<TokenInfo>>) -> Self {
 		Self { tokens }
 	}
 
+	#[inline(always)]
 	pub fn ast(&self) -> Result<Vec<(Expression, Range<usize>)>, Error> {
 		let mut ast = vec![];
 		let lines = self.tokens;
@@ -34,6 +36,7 @@ impl<'a> Parser<'a> {
 		Ok(ast)
 	}
 
+	#[inline(always)]
 	pub fn parser<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
@@ -418,6 +421,7 @@ impl<'a> Parser<'a> {
 		Ok((expr.unwrap(), tokens, start..end))
 	}
 
+	#[inline(always)]
 	pub fn parse_fn<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,
@@ -484,6 +488,7 @@ impl<'a> Parser<'a> {
 		Ok((Expression::FunctionCall(i.to_string(), params), tokens, end))
 	}
 
+	#[inline(always)]
 	pub fn parse_if<'b>(
 		&'b self,
 		mut tokens: Peekable<Iter<'b, TokenInfo>>,

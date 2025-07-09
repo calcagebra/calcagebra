@@ -11,6 +11,7 @@ pub enum Data {
 }
 
 impl Data {
+	#[inline(always)]
 	pub fn ty(&self) -> DataType {
 		match self {
 			Data::Number(..) => DataType::Number,
@@ -20,6 +21,7 @@ impl Data {
 		}
 	}
 
+	#[inline(always)]
 	pub fn to_real(&self) -> Decimal {
 		match &self {
 			Data::Number(a, _) => *a,
@@ -27,6 +29,7 @@ impl Data {
 		}
 	}
 
+	#[inline(always)]
 	pub fn to_img(&self) -> Decimal {
 		match &self {
 			Data::Number(_, b) => *b,
@@ -34,14 +37,17 @@ impl Data {
 		}
 	}
 
+	#[inline(always)]
 	pub fn new_real(a: Decimal) -> Self {
 		Self::Number(a, Decimal::ZERO)
 	}
 
+	#[inline(always)]
 	pub fn new_img(b: Decimal) -> Self {
 		Self::Number(Decimal::ZERO, b)
 	}
 
+	#[inline(always)]
 	pub fn new_zero() -> Self {
 		Self::Number(Decimal::ZERO, Decimal::ZERO)
 	}
@@ -124,6 +130,7 @@ pub enum DataType {
 }
 
 impl DataType {
+	#[inline(always)]
 	pub fn parse(ident: &str) -> Self {
 		match ident.to_uppercase().as_str() {
 			"C" | "COMPLEX" => Self::Number,
