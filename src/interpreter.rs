@@ -28,6 +28,7 @@ impl Default for Interpreter {
 }
 
 impl Interpreter {
+	#[inline(always)]
 	pub fn new() -> Self {
 		let mut globals = HashMap::new();
 		let mut functions = HashMap::new();
@@ -97,6 +98,7 @@ impl Interpreter {
 		Self { globals, functions }
 	}
 
+	#[inline(always)]
 	pub fn interpret(&mut self, ast: Vec<(Expression, Range<usize>)>) -> Result<(), Error> {
 		let ctx = &mut (&mut self.globals, &mut self.functions);
 
@@ -115,6 +117,7 @@ pub struct Variable {
 }
 
 impl Variable {
+	#[inline(always)]
 	pub fn new(value: Data, is_global: bool) -> Self {
 		Self { value, is_global }
 	}
@@ -127,6 +130,7 @@ pub enum Function {
 }
 
 impl Function {
+	#[inline(always)]
 	pub fn execute<'a, 'b>(
 		&self,
 		ctx: &'a mut InterpreterContext<'b>,
@@ -144,6 +148,7 @@ impl Function {
 		}
 	}
 
+	#[inline(always)]
 	pub fn differentiate<'a, 'b>(
 		&self,
 		a: &Data,
@@ -171,6 +176,7 @@ pub struct UserDefinedFunction {
 }
 
 impl UserDefinedFunction {
+	#[inline(always)]
 	pub fn execute<'a, 'b>(
 		&self,
 		ctx: &'a mut InterpreterContext<'b>,
@@ -180,6 +186,7 @@ impl UserDefinedFunction {
 		'b: 'a,
 	{
 		let mut param_names = vec![];
+
 		for (i, (arg, numbertype)) in self.params.iter().enumerate() {
 			let r = args.remove(i);
 
@@ -187,20 +194,32 @@ impl UserDefinedFunction {
 				return Err(TypeError::new(*numbertype, r.ty(), 0..0).to_error());
 			}
 
-			param_names.push(arg.to_string());
+			param_names.push((
+				arg.to_string(),
+				if ctx.0.get(arg).is_some() {
+					Some(ctx.0.get(arg).unwrap().clone())
+				} else {
+					None
+				},
+			));
 
 			ctx.0.insert(arg.to_string(), Variable::new(r, false));
 		}
 
 		let data = self.code.clone().evaluate(ctx, self.range.clone());
 
-		for name in param_names {
-			ctx.0.remove(&name);
+		for (name, value) in param_names {
+			if let Some(value) = value {
+				ctx.0.insert(name, value);
+			} else {
+				ctx.0.remove(&name);
+			}
 		}
 
 		data
 	}
 
+	#[inline(always)]
 	pub fn differentiate<'a, 'b>(
 		&self,
 		wrt: &Data,
@@ -219,6 +238,7 @@ pub struct STDFunction {
 }
 
 impl STDFunction {
+	#[inline(always)]
 	pub fn execute<'a, 'b>(
 		&self,
 		ctx: &'a mut InterpreterContext<'b>,
@@ -272,6 +292,7 @@ impl STDFunction {
 		})
 	}
 
+	#[inline(always)]
 	pub fn differentiate<'a, 'b>(
 		&self,
 		wrt: &Data,

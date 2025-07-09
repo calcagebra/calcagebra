@@ -1,5 +1,6 @@
 use crate::{errors::Error, interpreter::InterpreterContext, types::Data};
 
+#[inline(always)]
 pub fn map(f: &Data, a: &Data, ctx: &mut InterpreterContext) -> Result<Data, Error> {
 	let Data::Matrix(matrix) = a else {
 		unreachable!()

@@ -5,6 +5,7 @@ pub mod iter;
 pub mod math;
 pub mod operators;
 
+#[inline(always)]
 pub fn is_std(f: &str) -> bool {
 	[
 		"print",
@@ -47,6 +48,7 @@ pub fn is_std(f: &str) -> bool {
 
 // TODO: Add operators in this
 /// Returns argument type and return type
+#[inline(always)]
 pub fn internal_type_map(f: &str) -> (Vec<Vec<DataType>>, DataType) {
 	match f {
 		"read" => (vec![], DataType::Number),

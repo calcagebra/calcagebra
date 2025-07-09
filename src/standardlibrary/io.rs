@@ -3,6 +3,7 @@ use crate::{
 };
 use std::io::{Write, stdin, stdout};
 
+#[inline(always)]
 pub fn print(a: Vec<Data>) -> Data {
 	for b in a {
 		println!("{b}");
@@ -10,6 +11,7 @@ pub fn print(a: Vec<Data>) -> Data {
 	Data::new_zero()
 }
 
+#[inline(always)]
 pub fn read<'a, 'b>(ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
 where
 	'b: 'a,
@@ -24,7 +26,7 @@ where
 	let tokens = Lexer::new(buf.trim_end()).tokens();
 
 	Parser::new(&tokens)
-		.parser(tokens[0].iter().peekable(), 0)
+		.parser(&mut tokens[0].iter().peekable(), 0)
 		.unwrap()
 		.0
 		.evaluate(ctx, 0..0)

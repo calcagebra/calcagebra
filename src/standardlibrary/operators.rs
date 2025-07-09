@@ -7,6 +7,7 @@ use crate::{
 	types::Data,
 };
 
+#[inline(always)]
 pub fn add(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(a + c, b + d),
@@ -33,6 +34,7 @@ pub fn add(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn sub(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(a - c, b - d),
@@ -59,6 +61,7 @@ pub fn sub(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn mul(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(a * c - b * d, a * d + b * c),
@@ -98,6 +101,7 @@ pub fn mul(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn div(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => Data::Number(
@@ -113,6 +117,7 @@ pub fn div(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(n, m)) => {
@@ -185,6 +190,7 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn rem(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -197,6 +203,7 @@ pub fn rem(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn is_eq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -207,6 +214,7 @@ pub fn is_eq(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn neq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -217,6 +225,7 @@ pub fn neq(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn gt(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -229,6 +238,7 @@ pub fn gt(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn gteq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -241,6 +251,7 @@ pub fn gteq(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn lt(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {
@@ -253,6 +264,7 @@ pub fn lt(lhd: &Data, rhd: &Data) -> Data {
 	}
 }
 
+#[inline(always)]
 pub fn lteq(lhd: &Data, rhd: &Data) -> Data {
 	match (lhd, rhd) {
 		(Data::Number(a, b), Data::Number(c, d)) => {

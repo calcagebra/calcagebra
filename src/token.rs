@@ -8,10 +8,15 @@ pub struct TokenInfo {
 }
 
 impl TokenInfo {
+	#[inline(always)]
 	pub fn new(token: String, range: Range<usize>) -> Self {
-		Self { token: Token::new(token), range }
+		Self {
+			token: Token::new(token),
+			range,
+		}
 	}
 
+	#[inline(always)]
 	pub fn set_range(mut self, range: Range<usize>) -> Self {
 		self.range = range;
 
@@ -60,6 +65,7 @@ pub enum Token {
 }
 
 impl Token {
+	#[inline(always)]
 	pub fn new(token: String) -> Self {
 		match token.as_ref() {
 			"let" => Token::Let,
