@@ -562,13 +562,7 @@ impl<'a> Parser<'a> {
 			Token::Add | Token::Sub => (1, 2),
 			Token::Mul | Token::Div | Token::Rem => (3, 4),
 			Token::Pow => (5, 6),
-			Token::IsEq
-			| Token::NEq
-			| Token::Gt
-			| Token::Lt
-			| Token::GtEq
-			| Token::LtEq
-			| Token::Belongs => (7, 8),
+			Token::IsEq | Token::NEq | Token::Gt | Token::Lt | Token::GtEq | Token::LtEq => (7, 8),
 			Token::If | Token::Then | Token::Else | Token::End => (9, 10),
 			_ => (0, 0),
 		}

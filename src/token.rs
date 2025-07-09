@@ -43,7 +43,6 @@ pub enum Token {
 	Rem,
 
 	Comma,
-	Belongs,
 	Colon,
 	SemiColon,
 	LParen,
@@ -82,7 +81,6 @@ impl Token {
 			"%" => Token::Rem,
 
 			"," => Token::Comma,
-			"E" => Token::Belongs,
 			":" => Token::Colon,
 			";" => Token::SemiColon,
 			"(" => Token::LParen,
@@ -137,7 +135,6 @@ impl Display for Token {
 				Token::Pow => "^".to_string(),
 				Token::Rem => "%".to_string(),
 				Token::Comma => ",".to_string(),
-				Token::Belongs => "E".to_string(),
 				Token::Colon => ":".to_string(),
 				Token::SemiColon => ";".to_string(),
 				Token::LParen => "(".to_string(),
