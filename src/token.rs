@@ -1,6 +1,5 @@
-use std::{fmt::Display, ops::Range, str::FromStr};
-
 use rust_decimal::Decimal;
+use std::{fmt::Display, ops::Range, str::FromStr};
 
 #[derive(Debug, Clone)]
 pub struct TokenInfo {
@@ -9,15 +8,21 @@ pub struct TokenInfo {
 }
 
 impl TokenInfo {
-	pub fn new(token: Token, range: Range<usize>) -> Self {
-		Self { token, range }
+	pub fn new(token: String, range: Range<usize>) -> Self {
+		Self { token: Token::new(token), range }
+	}
+
+	pub fn set_range(mut self, range: Range<usize>) -> Self {
+		self.range = range;
+
+		self
 	}
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Token {
 	Float(Decimal),
-	Identifier(String),
+	Ident(String),
 
 	Let,
 	Fn,
@@ -44,7 +49,7 @@ pub enum Token {
 
 	Comma,
 	Colon,
-	SemiColon,
+	Semi,
 	LParen,
 	RParen,
 	LSquare,
@@ -56,7 +61,7 @@ pub enum Token {
 
 impl Token {
 	pub fn new(token: String) -> Self {
-		match token.as_str().trim() {
+		match token.as_ref() {
 			"let" => Token::Let,
 			"fn" => Token::Fn,
 			"if" => Token::If,
@@ -82,7 +87,7 @@ impl Token {
 
 			"," => Token::Comma,
 			":" => Token::Colon,
-			";" => Token::SemiColon,
+			";" => Token::Semi,
 			"(" => Token::LParen,
 			")" => Token::RParen,
 			"[" => Token::LSquare,
@@ -90,16 +95,12 @@ impl Token {
 			"{" => Token::LCurly,
 			"}" => Token::RCurly,
 			_ => {
-				if token.chars().all(|a| a.is_ascii_digit() || a == '.') {
-					let try_decimal = Decimal::from_str(&token);
+				let try_decimal = Decimal::from_str(&token);
 
-					if let Ok(f) = try_decimal {
-						Token::Float(f)
-					} else {
-						panic!("could not lex number: `{token}`");
-					}
+				if let Ok(f) = try_decimal {
+					Token::Float(f)
 				} else {
-					Token::Identifier(token)
+					Token::Ident(token)
 				}
 			}
 		}
@@ -113,7 +114,7 @@ impl Display for Token {
 			"{}",
 			match self {
 				Token::Float(n) => n.to_string(),
-				Token::Identifier(ident) => ident.to_string(),
+				Token::Ident(ident) => ident.to_string(),
 				Token::Let => "let".to_string(),
 				Token::Fn => "fn".to_string(),
 				Token::If => "if".to_string(),
@@ -136,7 +137,7 @@ impl Display for Token {
 				Token::Rem => "%".to_string(),
 				Token::Comma => ",".to_string(),
 				Token::Colon => ":".to_string(),
-				Token::SemiColon => ";".to_string(),
+				Token::Semi => ";".to_string(),
 				Token::LParen => "(".to_string(),
 				Token::RParen => ")".to_string(),
 				Token::LSquare => "[".to_string(),

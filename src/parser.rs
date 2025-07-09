@@ -58,15 +58,11 @@ impl<'a> Parser<'a> {
 				let mut datatype = None;
 
 				let name = match &tokens.peek().unwrap().token {
-					Token::Identifier(name) => name,
+					Token::Ident(name) => name,
 					_ => {
 						return Err(
-							SyntaxError::new(
-								Token::Identifier("ident".to_string()),
-								token.clone(),
-								start..end,
-							)
-							.to_error(),
+							SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
+								.to_error(),
 						);
 					}
 				};
@@ -75,7 +71,7 @@ impl<'a> Parser<'a> {
 				if tokens.peek().unwrap().token == Token::Colon {
 					tokens.next();
 
-					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+					if let Token::Ident(ident) = &tokens.peek().unwrap().token {
 						tokens.next();
 
 						datatype = Some(DataType::parse(ident))
@@ -84,7 +80,7 @@ impl<'a> Parser<'a> {
 
 						return Err(
 							SyntaxError::new(
-								Token::Identifier("ident".to_string()),
+								Token::Ident("ident".to_string()),
 								tokeninfo.token.clone(),
 								tokeninfo.range.clone(),
 							)
@@ -129,15 +125,11 @@ impl<'a> Parser<'a> {
 			}
 			Token::Fn => {
 				let name = match &tokens.peek().unwrap().token {
-					Token::Identifier(name) => name,
+					Token::Ident(name) => name,
 					_ => {
 						return Err(
-							SyntaxError::new(
-								Token::Identifier("ident".to_string()),
-								token.clone(),
-								start..end,
-							)
-							.to_error(),
+							SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
+								.to_error(),
 						);
 					}
 				};
@@ -175,7 +167,7 @@ impl<'a> Parser<'a> {
 					if tokens.peek().unwrap().token == Token::Colon {
 						tokens.next();
 
-						if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+						if let Token::Ident(ident) = &tokens.peek().unwrap().token {
 							tokens.next();
 
 							datatype = Some(DataType::parse(ident))
@@ -184,7 +176,7 @@ impl<'a> Parser<'a> {
 
 							return Err(
 								SyntaxError::new(
-									Token::Identifier("numbertype".to_string()),
+									Token::Ident("numbertype".to_string()),
 									tokeninfo.token.clone(),
 									tokeninfo.range.clone(),
 								)
@@ -194,7 +186,7 @@ impl<'a> Parser<'a> {
 					}
 
 					match &t.token {
-						Token::Identifier(i) => args.push((i.to_string(), datatype.unwrap())),
+						Token::Ident(i) => args.push((i.to_string(), datatype.unwrap())),
 						Token::Comma => {}
 						_ => unreachable!(),
 					};
@@ -205,7 +197,7 @@ impl<'a> Parser<'a> {
 				if tokens.peek().unwrap().token == Token::Colon {
 					tokens.next();
 
-					if let Token::Identifier(ident) = &tokens.peek().unwrap().token {
+					if let Token::Ident(ident) = &tokens.peek().unwrap().token {
 						tokens.next();
 
 						return_type = Some(DataType::parse(ident))
@@ -214,7 +206,7 @@ impl<'a> Parser<'a> {
 
 						return Err(
 							SyntaxError::new(
-								Token::Identifier("numbertype".to_string()),
+								Token::Ident("numbertype".to_string()),
 								tokeninfo.token.clone(),
 								tokeninfo.range.clone(),
 							)
@@ -256,7 +248,7 @@ impl<'a> Parser<'a> {
 				));
 				end = range.end;
 			}
-			Token::Identifier(i) => {
+			Token::Ident(i) => {
 				// An identifier can either be a function call, in multiplication with a mod
 				// or simply an identifier, eg read(), a|b|, c
 
@@ -314,7 +306,7 @@ impl<'a> Parser<'a> {
 						break;
 					}
 
-					if t.token == Token::SemiColon {
+					if t.token == Token::Semi {
 						if !row_tokens.is_empty() {
 							let exp;
 

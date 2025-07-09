@@ -42,7 +42,7 @@ impl<'a> Lexer<'a> {
 				if !token.is_empty() {
 					let size = token.len();
 
-					tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+					tokens.push(TokenInfo::new(token, c..c + size));
 				}
 				break;
 			}
@@ -71,7 +71,7 @@ impl<'a> Lexer<'a> {
 
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+				tokens.push(TokenInfo::new(token, c..c + size));
 
 				c += size;
 			} else if char.is_ascii_digit() {
@@ -91,7 +91,7 @@ impl<'a> Lexer<'a> {
 
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+				tokens.push(TokenInfo::new(token, c..c + size));
 
 				c += size;
 			} else {
@@ -117,7 +117,7 @@ impl<'a> Lexer<'a> {
 				}
 				let size = token.len();
 
-				tokens.push(TokenInfo::new(Token::new(token), c..c + size));
+				tokens.push(TokenInfo::new(token, c..c + size));
 
 				c += size;
 			}
@@ -137,36 +137,30 @@ impl<'a> Lexer<'a> {
 
 			let tokeninfo = token_iter.next().unwrap();
 
+			let start = tokeninfo.range.start;
+			let end = tokeninfo.range.end;
+
 			if token_iter.peek().is_none() {
-				r.push(TokenInfo::new(
-					tokeninfo.token,
-					tokeninfo.range.start..tokeninfo.range.end + offset,
-				));
+				r.push(tokeninfo.set_range(start..end + offset));
 
 				break;
 			}
 
 			match tokeninfo.token {
 				Token::Float(..) => {
-					r.push(TokenInfo::new(
-						tokeninfo.token,
-						tokeninfo.range.start..tokeninfo.range.end + offset,
-					));
+					r.push(tokeninfo.set_range(start..end + offset));
 
-					if let Token::Identifier(..) = token_iter.peek().unwrap().token {
+					if let Token::Ident(..) = token_iter.peek().unwrap().token {
 						offset += 1;
 
-						r.push(TokenInfo::new(
-							Token::Mul,
-							tokeninfo.range.start..tokeninfo.range.end + offset,
-						));
+						r.push(TokenInfo {
+							token: Token::Mul,
+							range: start..end + offset,
+						});
 					}
 				}
 				_ => {
-					r.push(TokenInfo::new(
-						tokeninfo.token,
-						tokeninfo.range.start..tokeninfo.range.end + offset,
-					));
+					r.push(tokeninfo.set_range(start..end + offset));
 				}
 			}
 		}
