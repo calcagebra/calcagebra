@@ -7,9 +7,6 @@ use crate::{
 	types::DataType,
 };
 
-type PrattParserReturnData<'b> =
-	Result<(Expression, Peekable<Iter<'b, TokenInfo>>, Range<usize>), Error>;
-
 pub struct Parser<'a> {
 	tokens: &'a Vec<Vec<TokenInfo>>,
 }
@@ -26,9 +23,9 @@ impl<'a> Parser<'a> {
 		let lines = self.tokens;
 
 		for line in lines {
-			let tokens = line.iter().peekable();
+			let mut tokens = line.iter().peekable();
 
-			let (expr, _, range) = self.parser(tokens, 0)?;
+			let (expr, range) = self.parser(&mut tokens, 0)?;
 
 			ast.push((expr, range));
 		}
@@ -39,16 +36,18 @@ impl<'a> Parser<'a> {
 	#[inline(always)]
 	pub fn parser<'b>(
 		&'b self,
-		mut tokens: Peekable<Iter<'b, TokenInfo>>,
+		tokens: &mut Peekable<Iter<'b, TokenInfo>>,
 		prec: u16,
-	) -> PrattParserReturnData<'b> {
-		if tokens.peek().is_none() {
+	) -> Result<(Expression, Range<usize>), Error> {
+		let tokeninfo = &tokens.next();
+
+		if tokeninfo.is_none() {
 			return Err(Error::LogicError(
 				"expression parser did not find any tokens to parse".to_string(),
 			));
 		}
 
-		let tokeninfo = &tokens.next().unwrap();
+		let tokeninfo = &tokeninfo.unwrap();
 
 		let token = &tokeninfo.token;
 		let mut expr: Option<Expression> = None;
@@ -60,26 +59,31 @@ impl<'a> Parser<'a> {
 			Token::Let => {
 				let mut datatype = None;
 
-				let name = match &tokens.peek().unwrap().token {
-					Token::Ident(name) => name,
-					_ => {
-						return Err(
-							SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
-								.to_error(),
-						);
-					}
+				let mut next_token = tokens.next();
+
+				let name = if next_token.is_some()
+					&& let Token::Ident(name) = &next_token.unwrap().token
+				{
+					name
+				} else {
+					return Err(
+						SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
+							.to_error(),
+					);
 				};
-				tokens.next();
 
-				if tokens.peek().unwrap().token == Token::Colon {
-					tokens.next();
+				next_token = tokens.next();
 
-					if let Token::Ident(ident) = &tokens.peek().unwrap().token {
-						tokens.next();
+				if next_token.is_some() && next_token.unwrap().token == Token::Colon {
+					next_token = tokens.next();
 
-						datatype = Some(DataType::parse(ident))
+					if next_token.is_some()
+						&& let Token::Ident(ident) = &next_token.unwrap().token
+					{
+						datatype = Some(DataType::parse(ident));
+						next_token = tokens.next();
 					} else {
-						let tokeninfo = tokens.next().unwrap();
+						let tokeninfo = next_token.unwrap();
 
 						return Err(
 							SyntaxError::new(
@@ -92,21 +96,23 @@ impl<'a> Parser<'a> {
 					}
 				}
 
-				if let Token::Eq = &tokens.peek().unwrap().token {
-					tokens.next();
-				} else {
-					let tokeninfo = tokens.next().unwrap();
+				if next_token.is_none() || Token::Eq != next_token.unwrap().token {
+					let next_token = next_token.unwrap();
 
 					return Err(
-						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_error(),
+						SyntaxError::new(
+							Token::Eq,
+							next_token.token.clone(),
+							next_token.range.clone(),
+						)
+						.to_error(),
 					);
 				}
 
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.parser(tokens, 0)?;
+				(exp, range) = self.parser(tokens, 0)?;
 
 				let expr_type = exp.infer_datatype();
 
@@ -127,59 +133,66 @@ impl<'a> Parser<'a> {
 				end = range.end;
 			}
 			Token::Fn => {
-				let name = match &tokens.peek().unwrap().token {
-					Token::Ident(name) => name,
-					_ => {
-						return Err(
-							SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
-								.to_error(),
-						);
-					}
-				};
-				tokens.next();
+				let next_token = tokens.next();
 
-				if let Token::LParen = &tokens.peek().unwrap().token {
-					tokens.next();
+				let name = if next_token.is_some()
+					&& let Token::Ident(name) = &next_token.unwrap().token
+				{
+					name
 				} else {
-					let tokeninfo = tokens.next().unwrap();
+					return Err(
+						SyntaxError::new(Token::Ident("ident".to_string()), token.clone(), start..end)
+							.to_error(),
+					);
+				};
+
+				let next_token = tokens.next();
+
+				if next_token.is_none() || Token::LParen != next_token.unwrap().token {
+					let next_token = next_token.unwrap();
 
 					return Err(
-						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_error(),
+						SyntaxError::new(
+							Token::Eq,
+							next_token.token.clone(),
+							next_token.range.clone(),
+						)
+						.to_error(),
 					);
 				}
 
 				let mut args = vec![];
 
 				loop {
-					let t = tokens.peek();
+					let token = tokens.next();
 
-					if t.is_none() {
+					if token.is_none() {
 						break;
 					}
 
-					if Token::RParen == t.unwrap().token {
-						tokens.next();
+					let token = token.unwrap();
+
+					if Token::RParen == token.token {
 						break;
 					}
-
-					let t = tokens.next().unwrap();
 
 					let mut datatype = Some(DataType::Number);
 
-					if tokens.peek().unwrap().token == Token::Colon {
-						tokens.next();
+					let next_token = tokens.next();
 
-						if let Token::Ident(ident) = &tokens.peek().unwrap().token {
-							tokens.next();
+					if next_token.is_some() && next_token.unwrap().token == Token::Colon {
+						let next_token = tokens.next();
 
+						if next_token.is_some()
+							&& let Token::Ident(ident) = &next_token.unwrap().token
+						{
 							datatype = Some(DataType::parse(ident))
 						} else {
 							let tokeninfo = tokens.next().unwrap();
 
 							return Err(
 								SyntaxError::new(
-									Token::Ident("numbertype".to_string()),
+									Token::Ident("ident".to_string()),
 									tokeninfo.token.clone(),
 									tokeninfo.range.clone(),
 								)
@@ -188,7 +201,11 @@ impl<'a> Parser<'a> {
 						}
 					}
 
-					match &t.token {
+					if Token::RParen == next_token.unwrap().token {
+						break;
+					}
+
+					match &token.token {
 						Token::Ident(i) => args.push((i.to_string(), datatype.unwrap())),
 						Token::Comma => {}
 						_ => unreachable!(),
@@ -197,19 +214,22 @@ impl<'a> Parser<'a> {
 
 				let mut return_type = Some(DataType::Number);
 
-				if tokens.peek().unwrap().token == Token::Colon {
-					tokens.next();
+				let mut next_token = tokens.next();
 
-					if let Token::Ident(ident) = &tokens.peek().unwrap().token {
-						tokens.next();
+				if next_token.is_some() && next_token.unwrap().token == Token::Colon {
+					next_token = tokens.next();
 
-						return_type = Some(DataType::parse(ident))
+					if next_token.is_some()
+						&& let Token::Ident(ident) = &next_token.unwrap().token
+					{
+						return_type = Some(DataType::parse(ident));
+						next_token = tokens.next();
 					} else {
 						let tokeninfo = tokens.next().unwrap();
 
 						return Err(
 							SyntaxError::new(
-								Token::Ident("numbertype".to_string()),
+								Token::Ident("ident".to_string()),
 								tokeninfo.token.clone(),
 								tokeninfo.range.clone(),
 							)
@@ -218,21 +238,23 @@ impl<'a> Parser<'a> {
 					}
 				}
 
-				if let Token::Eq = &tokens.peek().unwrap().token {
-					tokens.next();
-				} else {
-					let tokeninfo = tokens.next().unwrap();
+				if next_token.is_none() || Token::Eq != next_token.unwrap().token {
+					let next_token = next_token.unwrap();
 
 					return Err(
-						SyntaxError::new(Token::Eq, tokeninfo.token.clone(), tokeninfo.range.clone())
-							.to_error(),
+						SyntaxError::new(
+							Token::Eq,
+							next_token.token.clone(),
+							next_token.range.clone(),
+						)
+						.to_error(),
 					);
 				}
 
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.parser(tokens, 0)?;
+				(exp, range) = self.parser(tokens, 0)?;
 
 				let expr_type = exp.infer_datatype();
 
@@ -254,14 +276,14 @@ impl<'a> Parser<'a> {
 			Token::Ident(i) => {
 				// An identifier can either be a function call, in multiplication with a mod
 				// or simply an identifier, eg read(), a|b|, c
-
-				if tokens.peek().is_some()
-					&& self.infix_binding_power(&tokens.peek().unwrap().token) == (0, 0)
-					&& ![Token::RParen, Token::Abs].contains(&tokens.peek().unwrap().token)
+				let peeked_token = tokens.peek();
+				if peeked_token.is_some()
+					&& self.infix_binding_power(&peeked_token.unwrap().token) == (0, 0)
+					&& ![Token::RParen, Token::Abs].contains(&peeked_token.unwrap().token)
 				{
 					let exp;
 
-					(exp, tokens, end) = self.parse_fn(tokens, i.clone())?;
+					(exp, end) = self.parse_fn(tokens, i.clone())?;
 
 					expr = Some(exp)
 				} else {
@@ -273,7 +295,7 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.parser(tokens, 0)?;
+				(exp, range) = self.parser(tokens, 0)?;
 
 				end = range.end;
 				expr = Some(exp);
@@ -299,7 +321,7 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
+							(exp, _) = self.parser(&mut row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 						}
@@ -313,7 +335,7 @@ impl<'a> Parser<'a> {
 						if !row_tokens.is_empty() {
 							let exp;
 
-							(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
+							(exp, _) = self.parser(&mut row_tokens.iter().peekable(), 0)?;
 
 							row.push(exp);
 							row_tokens.clear();
@@ -327,7 +349,7 @@ impl<'a> Parser<'a> {
 					if t.token == Token::Comma {
 						let exp;
 
-						(exp, _, _) = self.parser(row_tokens.iter().peekable(), 0)?;
+						(exp, _) = self.parser(&mut row_tokens.iter().peekable(), 0)?;
 
 						row.push(exp);
 						row_tokens.clear();
@@ -344,7 +366,7 @@ impl<'a> Parser<'a> {
 				let exp;
 				let range;
 
-				(exp, tokens, range) = self.parser(tokens, 0)?;
+				(exp, range) = self.parser(tokens, 0)?;
 
 				end = range.end;
 				expr = Some(Expression::Abs(Box::new(exp)));
@@ -353,7 +375,7 @@ impl<'a> Parser<'a> {
 			Token::If => {
 				let exp;
 
-				(exp, tokens, end) = self.parse_if(tokens)?;
+				(exp, end) = self.parse_if(tokens)?;
 
 				expr = Some(exp);
 			}
@@ -394,7 +416,7 @@ impl<'a> Parser<'a> {
 			let rhs;
 			let range;
 
-			(rhs, tokens, range) = match self.parser(tokens, rbp) {
+			(rhs, range) = match self.parser(tokens, rbp) {
 				Ok(t) => t,
 				Err(t) => match t {
 					Error::SyntaxError(..) | Error::TypeError(..) | Error::EOLError(..) => {
@@ -418,15 +440,15 @@ impl<'a> Parser<'a> {
 			return Err(EOLError::new(end..end + 1).to_error());
 		}
 
-		Ok((expr.unwrap(), tokens, start..end))
+		Ok((expr.unwrap(), start..end))
 	}
 
 	#[inline(always)]
 	pub fn parse_fn<'b>(
 		&'b self,
-		mut tokens: Peekable<Iter<'b, TokenInfo>>,
+		tokens: &mut Peekable<Iter<'b, TokenInfo>>,
 		i: String,
-	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), Error> {
+	) -> Result<(Expression, usize), Error> {
 		let mut depth = 0;
 		let mut params = vec![];
 		let mut expression = vec![];
@@ -450,8 +472,8 @@ impl<'a> Parser<'a> {
 			if *token == Token::RParen {
 				if depth == 0 {
 					if !expression.is_empty() && depth == 0 {
-						let lex = expression.iter().peekable();
-						let data = self.parser(lex, 0)?.0;
+						let mut lex = expression.iter().peekable();
+						let data = self.parser(&mut lex, 0)?.0;
 
 						params.push((data, start..end));
 						expression.clear();
@@ -466,8 +488,8 @@ impl<'a> Parser<'a> {
 			}
 
 			if *token == Token::Comma && depth == 0 {
-				let lex = expression.iter().peekable();
-				let data = self.parser(lex, 0)?.0;
+				let mut lex = expression.iter().peekable();
+				let data = self.parser(&mut lex, 0)?.0;
 
 				params.push((data, start..end));
 
@@ -477,22 +499,23 @@ impl<'a> Parser<'a> {
 
 			expression.push((*tokeninfo).to_owned());
 		}
+
 		if !expression.is_empty() {
-			let lex = expression.iter().peekable();
-			let data = self.parser(lex, 0)?.0;
+			let mut lex = expression.iter().peekable();
+			let data = self.parser(&mut lex, 0)?.0;
 
 			params.push((data, start..end));
 			expression.clear();
 		}
 
-		Ok((Expression::FunctionCall(i.to_string(), params), tokens, end))
+		Ok((Expression::FunctionCall(i.to_string(), params), end))
 	}
 
 	#[inline(always)]
 	pub fn parse_if<'b>(
 		&'b self,
-		mut tokens: Peekable<Iter<'b, TokenInfo>>,
-	) -> Result<(Expression, Peekable<Iter<'b, TokenInfo>>, usize), Error> {
+		tokens: &mut Peekable<Iter<'b, TokenInfo>>,
+	) -> Result<(Expression, usize), Error> {
 		let mut depth = 1;
 		let mut params = vec![];
 		let mut expression = vec![];
@@ -513,8 +536,8 @@ impl<'a> Parser<'a> {
 			end = tokeninfo.range.end;
 
 			if *token == Token::Then || *token == Token::Else {
-				let lex = expression.iter().peekable();
-				let data = self.parser(lex, 0)?.0;
+				let mut lex = expression.iter().peekable();
+				let data = self.parser(&mut lex, 0)?.0;
 
 				params.push(data);
 				expression.clear();
@@ -536,8 +559,8 @@ impl<'a> Parser<'a> {
 		}
 
 		if !expression.is_empty() {
-			let lex = expression.iter().peekable();
-			let data = self.parser(lex, 0)?.0;
+			let mut lex = expression.iter().peekable();
+			let data = self.parser(&mut lex, 0)?.0;
 
 			params.push(data);
 			expression.clear();
@@ -549,7 +572,6 @@ impl<'a> Parser<'a> {
 				Box::new(params[1].clone()),
 				Box::new(params[2].clone()),
 			),
-			tokens,
 			end,
 		))
 	}

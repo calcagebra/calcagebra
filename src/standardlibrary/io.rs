@@ -26,7 +26,7 @@ where
 	let tokens = Lexer::new(buf.trim_end()).tokens();
 
 	Parser::new(&tokens)
-		.parser(tokens[0].iter().peekable(), 0)
+		.parser(&mut tokens[0].iter().peekable(), 0)
 		.unwrap()
 		.0
 		.evaluate(ctx, 0..0)
