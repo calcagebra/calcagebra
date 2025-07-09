@@ -186,6 +186,7 @@ impl UserDefinedFunction {
 		'b: 'a,
 	{
 		let mut param_names = vec![];
+
 		for (i, (arg, numbertype)) in self.params.iter().enumerate() {
 			let r = args.remove(i);
 
@@ -193,15 +194,26 @@ impl UserDefinedFunction {
 				return Err(TypeError::new(*numbertype, r.ty(), 0..0).to_error());
 			}
 
-			param_names.push(arg.to_string());
+			param_names.push((
+				arg.to_string(),
+				if ctx.0.get(arg).is_some() {
+					Some(ctx.0.get(arg).unwrap().clone())
+				} else {
+					None
+				},
+			));
 
 			ctx.0.insert(arg.to_string(), Variable::new(r, false));
 		}
 
 		let data = self.code.clone().evaluate(ctx, self.range.clone());
 
-		for name in param_names {
-			ctx.0.remove(&name);
+		for (name, value) in param_names {
+			if let Some(value) = value {
+				ctx.0.insert(name, value);
+			} else {
+				ctx.0.remove(&name);
+			}
 		}
 
 		data

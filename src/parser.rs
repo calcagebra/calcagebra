@@ -201,15 +201,15 @@ impl<'a> Parser<'a> {
 						}
 					}
 
-					if Token::RParen == next_token.unwrap().token {
-						break;
-					}
-
 					match &token.token {
 						Token::Ident(i) => args.push((i.to_string(), datatype.unwrap())),
 						Token::Comma => {}
 						_ => unreachable!(),
 					};
+
+					if Token::RParen == next_token.unwrap().token {
+						break;
+					}
 				}
 
 				let mut return_type = Some(DataType::Number);
