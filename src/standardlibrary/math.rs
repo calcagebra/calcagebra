@@ -3,9 +3,9 @@ use plotters::chart::ChartBuilder;
 use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
-use plotters::style::{Color, IntoFont, full_palette::*};
+use plotters::style::{full_palette::*, Color, IntoFont};
 use rust_decimal::prelude::FromPrimitive;
-use rust_decimal::{Decimal, MathematicalOps, dec, prelude::*};
+use rust_decimal::{dec, prelude::*, Decimal, MathematicalOps};
 use std::f32;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -744,5 +744,5 @@ where
 {
 	let Data::Ident(g) = f else { unreachable!() };
 
-	ctx.1.get(g).unwrap().clone().differentiate(a, ctx)
+	ctx.1.get(g).unwrap().clone().differentiate(a, &vec![], ctx)
 }

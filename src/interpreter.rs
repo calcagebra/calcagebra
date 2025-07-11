@@ -152,6 +152,7 @@ impl Function {
 	pub fn differentiate<'a, 'b>(
 		&self,
 		a: &Data,
+		args: &Vec<(Expression, Range<usize>)>,
 		ctx: &'a mut InterpreterContext<'b>,
 	) -> Result<Data, Error>
 	where
@@ -160,7 +161,7 @@ impl Function {
 		if let Function::UserDefined(user_defined_function) = self {
 			user_defined_function.differentiate(a, ctx)
 		} else if let Function::STD(stdfunction) = self {
-			stdfunction.differentiate(a, ctx)
+			stdfunction.differentiate(a, args, ctx)
 		} else {
 			unreachable!()
 		}
@@ -296,62 +297,45 @@ impl STDFunction {
 	pub fn differentiate<'a, 'b>(
 		&self,
 		wrt: &Data,
+		args: &Vec<(Expression, Range<usize>)>,
 		_ctx: &'a mut InterpreterContext<'b>,
 	) -> Result<Data, Error>
 	where
 		'b: 'a,
 	{
-		let Data::Ident(name) = wrt else {
+		let Data::Ident(_) = wrt else {
 			return Err(Error::LogicError(
 				"expected variable to differentiate".to_string(),
 			));
 		};
 
 		Ok(match self.name.as_str() {
-			"exp" => Data::Expression(Expression::FunctionCall(
-				"exp".to_string(),
-				vec![(Expression::Identifier(name.to_string()), 0..0)],
-			)),
+			"exp" => Data::Expression(Expression::FunctionCall("exp".to_string(), args.to_vec())),
 			"ln" => Data::Expression(Expression::Binary(
 				Box::new(Expression::Float(Decimal::ONE)),
 				Token::Div,
-				Box::new(Expression::Identifier(name.to_string())),
+				Box::new(args[0].0.clone()),
 			)),
 			"log10" => Data::Expression(Expression::Binary(
 				Box::new(Expression::Float(
 					Decimal::from_str("0.4342944819032518276511289188").unwrap(),
 				)),
 				Token::Div,
-				Box::new(Expression::Identifier(name.to_string())),
+				Box::new(args[0].0.clone()),
 			)),
-			"sin" => Data::Expression(Expression::FunctionCall(
-				"cos".to_string(),
-				vec![(Expression::Identifier(name.to_string()), 0..0)],
-			)),
+			"sin" => Data::Expression(Expression::FunctionCall("cos".to_string(), args.to_vec())),
 			"cos" => Data::Expression(Expression::Binary(
 				Box::new(Expression::Float(Decimal::NEGATIVE_ONE)),
 				Token::Mul,
-				Box::new(Expression::FunctionCall(
-					"sin".to_string(),
-					vec![(Expression::Identifier(name.to_string()), 0..0)],
-				)),
+				Box::new(Expression::FunctionCall("sin".to_string(), args.to_vec())),
 			)),
-			"sinh" => Data::Expression(Expression::FunctionCall(
-				"cosh".to_string(),
-				vec![(Expression::Identifier(name.to_string()), 0..0)],
-			)),
-			"cosh" => Data::Expression(Expression::FunctionCall(
-				"sinh".to_string(),
-				vec![(Expression::Identifier(name.to_string()), 0..0)],
-			)),
+			"sinh" => Data::Expression(Expression::FunctionCall("cosh".to_string(), args.to_vec())),
+			"cosh" => Data::Expression(Expression::FunctionCall("sinh".to_string(), args.to_vec())),
 			"tan" => Data::Expression(Expression::Binary(
 				Box::new(Expression::Float(Decimal::ONE)),
 				Token::Div,
 				Box::new(Expression::Binary(
-					Box::new(Expression::FunctionCall(
-						"cos".to_string(),
-						vec![(Expression::Identifier(name.to_string()), 0..0)],
-					)),
+					Box::new(Expression::FunctionCall("cos".to_string(), args.to_vec())),
 					Token::Pow,
 					Box::new(Expression::Float(Decimal::TWO)),
 				)),
@@ -363,7 +347,7 @@ impl STDFunction {
 					Box::new(Expression::Float(Decimal::ONE)),
 					Token::Add,
 					Box::new(Expression::Binary(
-						Box::new(Expression::Identifier(name.to_string())),
+						Box::new(args[0].0.clone()),
 						Token::Pow,
 						Box::new(Expression::Float(Decimal::TWO)),
 					)),
@@ -375,10 +359,7 @@ impl STDFunction {
 				Box::new(Expression::Binary(
 					Box::new(Expression::Float(Decimal::TWO)),
 					Token::Mul,
-					Box::new(Expression::FunctionCall(
-						"sqrt".to_string(),
-						vec![(Expression::Identifier(name.to_string()), 0..0)],
-					)),
+					Box::new(Expression::FunctionCall("sqrt".to_string(), args.to_vec())),
 				)),
 			)),
 			_ => {

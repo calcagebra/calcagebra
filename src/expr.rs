@@ -28,7 +28,6 @@ pub enum Expression {
 		Box<Expression>,
 		Range<usize>,
 	),
-	Differentiate(Box<Expression>),
 }
 
 impl Expression {
@@ -144,7 +143,6 @@ impl Expression {
 
 				f.execute(ctx, args)
 			}
-			_ => unimplemented!(),
 		}
 	}
 
@@ -182,7 +180,6 @@ impl Expression {
 			}
 			Expression::Assignment(_, expression) => expression.infer_datatype(),
 			Expression::FunctionDeclaration(..) => Some(DataType::Ident),
-			Expression::Differentiate(..) => None,
 		}
 	}
 
@@ -257,7 +254,6 @@ impl Expression {
 					_ => unimplemented!(),
 				},
 				Expression::Branched(_, _, _) => todo!(),
-				Expression::Differentiate(expr) => expr.differentiate(wrt, ctx)?.differentiate(wrt, ctx)?,
 				Expression::Identifier(ident) => {
 					let Data::Ident(name) = wrt else {
 						return Err(Error::LogicError(
@@ -282,7 +278,7 @@ impl Expression {
 
 					let func = func.unwrap().clone();
 
-					let Data::Expression(mut expr) = func.differentiate(wrt, ctx)? else {
+					let Data::Expression(mut expr) = func.differentiate(wrt, args, ctx)? else {
 						unreachable!()
 					};
 
@@ -400,7 +396,6 @@ impl Display for Expression {
 					}
 				}
 				Expression::Branched(e1, e2, e3) => format!("if {e1} then {e2} else {e3} end"),
-				Expression::Differentiate(f) => format!("d/dx {f}"),
 				Expression::Identifier(ident) => ident.to_string(),
 				Expression::Float(n) => n.to_string(),
 				Expression::Matrix(matrix) => {
