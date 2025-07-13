@@ -3,9 +3,9 @@ use plotters::chart::ChartBuilder;
 use plotters::drawing::IntoDrawingArea;
 use plotters::element::PathElement;
 use plotters::series::LineSeries;
-use plotters::style::{full_palette::*, Color, IntoFont};
+use plotters::style::{Color, IntoFont, full_palette::*};
 use rust_decimal::prelude::FromPrimitive;
-use rust_decimal::{dec, prelude::*, Decimal, MathematicalOps};
+use rust_decimal::{Decimal, MathematicalOps, dec, prelude::*};
 use std::f32;
 use std::time::{SystemTime, UNIX_EPOCH};
 

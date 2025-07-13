@@ -150,7 +150,7 @@ impl Expression {
 	pub fn infer_datatype(&self) -> Option<DataType> {
 		match self {
 			Expression::Abs(expression) => expression.infer_datatype(),
-			Expression::Branched(..) => None,
+			Expression::Branched(_, e1, _) => e1.infer_datatype(),
 			Expression::Binary(lhs, _, rhs) => {
 				let lhs = Self::infer_datatype(lhs);
 				let rhs = Self::infer_datatype(rhs);
@@ -192,9 +192,15 @@ impl Expression {
 	where
 		'b: 'a,
 	{
+		let Data::Ident(name) = wrt else {
+			return Err(Error::LogicError(
+				"expected ident to differetiate with".to_string(),
+			));
+		};
+
 		Ok(
 			match self {
-				Expression::Binary(e1, op, e2) => match op {
+				t @ Expression::Binary(e1, op, e2) => match op {
 					Token::Add | Token::Sub => Expression::Binary(
 						Box::new(e1.differentiate(wrt, ctx)?),
 						op.to_owned(),
@@ -234,23 +240,36 @@ impl Expression {
 							Box::new(Expression::Float(Decimal::TWO)),
 						)),
 					),
-					Token::Pow => Expression::Binary(
-						e2.to_owned(),
-						Token::Mul,
-						Box::new(Expression::Binary(
-							e1.to_owned(),
-							Token::Pow,
-							Box::new(match *e2.to_owned() {
-								Expression::Identifier(_) => Expression::Binary(
+					Token::Pow => match (*e1.to_owned(), *e2.to_owned()) {
+						(e @ Expression::Float(..), Expression::Identifier(ident)) => {
+							if name == &ident {
+								Expression::Binary(
+									Box::new(Expression::FunctionCall("ln".to_string(), vec![(e, 0..0)])),
+									Token::Mul,
+									Box::new(t.to_owned()),
+								)
+							} else {
+								Expression::Float(Decimal::ZERO)
+							}
+						}
+						(Expression::Identifier(ident), Expression::Float(n)) => {
+							if name == &ident {
+								Expression::Binary(
 									e2.to_owned(),
-									Token::Sub,
-									Box::new(Expression::Float(Decimal::ONE)),
-								),
-								Expression::Float(n) => *Box::new(Expression::Float(n - Decimal::ONE)),
-								_ => unimplemented!(),
-							}),
-						)),
-					),
+									Token::Mul,
+									Box::new(Expression::Binary(
+										e1.to_owned(),
+										Token::Pow,
+										Box::new(Expression::Float(n - Decimal::ONE)),
+									)),
+								)
+							} else {
+								Expression::Float(Decimal::ZERO)
+							}
+						},
+						// TODO: Add case for f(x)^g(x)
+						_ => unimplemented!(),
+					},
 					_ => unimplemented!(),
 				},
 				Expression::Branched(_, _, _) => todo!(),
