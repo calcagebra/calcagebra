@@ -744,5 +744,5 @@ where
 {
 	let Data::Ident(g) = f else { unreachable!() };
 
-	ctx.1.get(g).unwrap().clone().differentiate(a, &vec![], ctx)
+	ctx.1.get(g).unwrap().clone().differentiate(a, &[], ctx)
 }

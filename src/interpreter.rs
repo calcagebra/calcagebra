@@ -152,7 +152,7 @@ impl Function {
 	pub fn differentiate<'a, 'b>(
 		&self,
 		a: &Data,
-		args: &Vec<(Expression, Range<usize>)>,
+		args: &[(Expression, Range<usize>)],
 		ctx: &'a mut InterpreterContext<'b>,
 	) -> Result<Data, Error>
 	where
@@ -297,7 +297,7 @@ impl STDFunction {
 	pub fn differentiate<'a, 'b>(
 		&self,
 		wrt: &Data,
-		args: &Vec<(Expression, Range<usize>)>,
+		args: &[(Expression, Range<usize>)],
 		_ctx: &'a mut InterpreterContext<'b>,
 	) -> Result<Data, Error>
 	where
