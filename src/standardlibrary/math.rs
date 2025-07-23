@@ -469,7 +469,9 @@ pub fn determinant(v: &Data) -> Data {
 				}
 			}
 
-			if cols == 2 && matrix[0].len() == 2 && matrix[1].len() == 2 {
+			if cols == 1 {
+				matrix[0][0].clone()
+			} else if cols == 2 && matrix[0].len() == 2 && matrix[1].len() == 2 {
 				sub(
 					&mul(&matrix[0][0], &matrix[1][1]),
 					&mul(&matrix[0][1], &matrix[1][0]),
@@ -549,7 +551,7 @@ pub fn adj(v: &Data) -> Data {
 			}
 
 			for i in 0..matrix.len() {
-				for (j, n) in matrix[i].iter().enumerate() {
+				for j in 0..matrix[i].len() {
 					let mut minor_matrix = matrix.clone();
 
 					minor_matrix.remove(i);
@@ -558,12 +560,11 @@ pub fn adj(v: &Data) -> Data {
 						row.remove(j);
 					}
 
+					let delta = determinant(&Data::Matrix(minor_matrix));
+
 					adj_matrix[j][i] = mul(
-						&mul(
-							n,
-							&Data::new_real([Decimal::ONE, Decimal::NEGATIVE_ONE][i % 2]),
-						),
-						&determinant(&Data::Matrix(minor_matrix)),
+						&Data::new_real([Decimal::ONE, Decimal::NEGATIVE_ONE][(i + j) % 2]),
+						&delta,
 					);
 				}
 			}
@@ -586,7 +587,7 @@ pub fn inverse(v: &Data) -> Data {
 				}
 			}
 			let det = &determinant(t);
-			div(t, det)
+			div(&adj(&t), det)
 		}
 		_ => panic!("expected matrix for inverse"),
 	}
