@@ -34,7 +34,7 @@ pub fn round(a: &Data) -> Data {
 #[inline(always)]
 pub fn ceil(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.round(), y.round()),
+		Data::Number(x, y) => Data::Number(x.ceil(), y.ceil()),
 		_ => unimplemented!(),
 	}
 }
@@ -42,7 +42,7 @@ pub fn ceil(a: &Data) -> Data {
 #[inline(always)]
 pub fn floor(a: &Data) -> Data {
 	match a {
-		Data::Number(x, y) => Data::Number(x.round(), y.round()),
+		Data::Number(x, y) => Data::Number(x.floor(), y.floor()),
 		_ => unimplemented!(),
 	}
 }
@@ -745,4 +745,23 @@ where
 	let Data::Ident(g) = f else { unreachable!() };
 
 	ctx.1.get(g).unwrap().clone().differentiate(a, &[], ctx)
+}
+
+#[inline(always)]
+pub fn quadroot<'a, 'b>(f: &Data, ctx: &'a mut InterpreterContext<'b>) -> Result<Data, Error>
+where
+	'b: 'a,
+{
+	let expr = match f {
+		Data::Ident(name) => match ctx.1.get(name).unwrap().clone() {
+			Function::UserDefined(user_defined_function) => user_defined_function.code,
+			_ => return Err(Error::LogicError("expected expression".to_string())),
+		},
+		Data::Expression(expression) => expression.clone(),
+		_ => return Err(Error::LogicError("expected expression".to_string())),
+	};
+
+	dbg!(expr);
+
+	Ok(Data::new_zero())
 }

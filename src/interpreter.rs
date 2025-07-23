@@ -85,6 +85,7 @@ impl Interpreter {
 			"prod",
 			"map",
 			"differentiate",
+			"quadroot",
 		]
 		.map(|name| {
 			functions.insert(
@@ -289,6 +290,7 @@ impl STDFunction {
 			"prod" => math::prod(&args[0], &args[1], &args[2], ctx)?,
 			"map" => iter::map(&args[0], &args[1], ctx)?,
 			"differentiate" => math::differentiate(&args[0], &args[1], ctx)?,
+			"quadroot" => math::quadroot(&args[0], ctx)?,
 			_ => unreachable!(),
 		})
 	}
