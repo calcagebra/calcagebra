@@ -178,8 +178,8 @@ pub fn pow(lhd: &Data, rhd: &Data) -> Data {
 				Ordering::Greater => {
 					let mut resultant_matrix = lhd.clone();
 
-					for _ in 0..n.to_string().parse::<i64>().unwrap() {
-						resultant_matrix = mul(&resultant_matrix, &resultant_matrix);
+					for _ in 1..n.to_string().parse::<i64>().unwrap() {
+						resultant_matrix = mul(&resultant_matrix, &lhd);
 					}
 
 					resultant_matrix
