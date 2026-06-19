@@ -106,7 +106,7 @@ impl<'a> Lexer<'a> {
 			} else {
 				token.push(char);
 
-				let punctuation = ['.', '(', ')', '{', '}', '[', ']', '|', ','];
+				let punctuation = ['.', '(', ')', '{', '}', '[', ']', '|', ',', ';'];
 
 				loop {
 					let char = line.peek();

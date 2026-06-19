@@ -266,7 +266,7 @@ impl Expression {
 							} else {
 								Expression::Float(Decimal::ZERO)
 							}
-						},
+						}
 						// TODO: Add case for f(x)^g(x)
 						_ => unimplemented!(),
 					},
