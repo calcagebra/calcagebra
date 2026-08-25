@@ -89,7 +89,7 @@ pub fn sin(a: &Data) -> Data {
 	let y = a.to_img();
 
 	if y == Decimal::ZERO {
-		return Data::new_real((dec!(3.0) * Decimal::PI).sin());
+		return Data::new_real(x.sin());
 	}
 
 	let p = &mul(&Data::new_real(x.sin()), &cosh(&Data::new_real(y)));
